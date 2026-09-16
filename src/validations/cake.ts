@@ -1,0 +1,3 @@
+import { z } from "zod";
+export const cakeConfigurationSchema=z.object({occasion:z.string().min(1),size:z.string().min(1),flavour:z.string().min(1),filling:z.string().min(1),design:z.string().min(1),colours:z.string().max(120),inscription:z.string().max(45),deliveryDate:z.iso.date(),referenceName:z.string().max(255),customerName:z.string().trim().min(2).max(100),email:z.string().trim().email().max(200),phone:z.string().transform(v=>v.replace(/\D/g,"")).pipe(z.string().min(10).max(15)),customerNote:z.string().trim().max(1000)});
+export const cakeUploadSchema=z.object({name:z.string().max(255),size:z.number().max(5*1024*1024),type:z.enum(["image/jpeg","image/png","image/webp"])});

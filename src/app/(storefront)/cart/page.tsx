@@ -1,0 +1,1 @@
+import { CartPage } from "@/components/cart/cart-page";export default function Page(){return <><header className="page-hero small"><span className="overline">Almost yours</span><h1>Your basket.</h1></header><section className="site-container cart-page"><CartPage/></section></>}

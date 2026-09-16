@@ -1,0 +1,1 @@
+import Link from "next/link";export default function NotFound(){return <main className="site-container state-page"><div className="empty-state"><span>404</span><h1>This treat has left the counter.</h1><p>Let’s get you back to something delicious.</p><Link className="button button-primary" href="/shop">Browse the bakery</Link></div></main>}

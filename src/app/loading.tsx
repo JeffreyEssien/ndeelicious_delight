@@ -1,0 +1,1 @@
+import { Skeleton } from "@/components/ui/primitives";export default function Loading(){return <main className="site-container page-loading"><Skeleton className="sk-title"/><div className="product-grid">{[1,2,3,4].map(i=><div key={i}><Skeleton className="sk-image"/><Skeleton className="sk-line"/><Skeleton className="sk-short"/></div>)}</div></main>}

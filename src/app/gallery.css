@@ -1,0 +1,2 @@
+.gallery-section{background:var(--surface)}.social-gallery{display:grid;grid-template-columns:1.2fr .8fr .8fr 1.2fr;gap:12px}.social-gallery>div{position:relative;aspect-ratio:4/5;overflow:hidden;border-radius:var(--radius)}.social-gallery>div:nth-child(2),.social-gallery>div:nth-child(3){margin-top:48px}.social-gallery img{transition:transform var(--ease)}.social-gallery>div:hover img{transform:scale(1.03)}
+@media(max-width:800px){.social-gallery{grid-template-columns:1fr 1fr}.social-gallery>div:nth-child(2),.social-gallery>div:nth-child(3){margin-top:0}}

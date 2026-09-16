@@ -1,0 +1,1 @@
+"use client";import { ErrorState } from "@/components/ui/primitives";export default function ErrorPage({reset}:{error:Error;reset:()=>void}){return <main className="site-container state-page"><ErrorState retry={reset}/></main>}

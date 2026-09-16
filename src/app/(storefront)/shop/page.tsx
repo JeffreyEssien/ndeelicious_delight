@@ -1,0 +1,3 @@
+import type { Metadata } from "next";import { Catalogue } from "@/components/product/catalogue";
+export const metadata:Metadata={title:"Shop the bakery",description:"Browse fresh pastries, celebration cakes and ready-to-bake favourites."};
+export default async function ShopPage({searchParams}:{searchParams:Promise<{category?:string}>}){const category=(await searchParams).category as "PASTRIES"|"READY_TO_BAKE"|"CUSTOM_CAKES"|undefined;return <><header className="page-hero small"><span className="overline">The bakery counter</span><h1>Find your favourite.</h1><p>Made in small batches, packed with care and ready for your table.</p></header><section className="site-container catalogue-section"><Catalogue initialCategory={category}/></section></>}
