@@ -48,7 +48,7 @@ CI command ownership:
 
 - Regression: `npm run test:regression` (domain, validation, and library tests).
 - Functional: `npm run test:functional` (route-handler behavior).
-- Structural: `npm run test:structural` (strict TypeScript and production build).
+- Structural: `npm run test:structural` (Next.js route type generation, strict TypeScript, and production build).
 - Full local gate: `npm run check`.
 
 ## TODO — immediate
