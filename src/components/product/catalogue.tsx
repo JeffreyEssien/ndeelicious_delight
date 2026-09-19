@@ -170,7 +170,14 @@ export function Catalogue({ initialCategory }: { initialCategory?: Category }) {
           )}
         </div>
       </div>
-      {filters && <button type="button" className="scrim mobile-only" onClick={() => setFilters(false)} aria-label="Close filters" />}
+      {filters && (
+        <button
+          type="button"
+          className="scrim mobile-only"
+          onClick={() => setFilters(false)}
+          aria-label="Close filters"
+        />
+      )}
     </>
   );
 }

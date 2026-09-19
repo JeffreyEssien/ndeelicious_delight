@@ -5,9 +5,10 @@ import { type FormEvent, useMemo, useState } from "react";
 import type { AdminCakeRequest, AdminCoupon, AdminReview } from "@/lib/data/admin";
 import type { DeliveryZone, Order, OrderStatus, Product, ProductStatus } from "@/types";
 import { formatDate, formatMoney } from "@/lib/format";
-import { Badge, Button, EmptyState, Input, Select, Textarea } from "@/components/ui/primitives";
+import { Badge, Button, EmptyState, Input, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 import { CakeRequests, Coupons, Reviews } from "@/components/admin/live-sections";
+import { ProductEditor } from "@/components/admin/product-editor";
 import { useStoreTheme, useToast, type StoreTheme } from "@/components/providers";
 
 type Props = {
@@ -72,7 +73,7 @@ export function AdminPortal({
   const [products, setProducts] = useState(initialProducts);
   const [orders, setOrders] = useState(initialOrders);
   const [zones, setZones] = useState(initialZones);
-  const [drawer, setDrawer] = useState(false);
+  const [editor, setEditor] = useState<Product | null>();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ALL");
   const notify = useToast();
@@ -86,6 +87,14 @@ export function AdminPortal({
       setProducts(before);
       notify("Product update could not be saved.");
     }
+  }
+  async function duplicateProduct(product: Product) {
+    const response = await fetch(`/api/admin/products/${product.id}`, { method: "POST" });
+    const payload = await response.json();
+    if (response.ok) {
+      notify(`${product.name} duplicated as a draft.`);
+      window.location.reload();
+    } else notify(payload.error ?? "Product could not be duplicated.");
   }
   async function orderStatus(id: string, value: OrderStatus) {
     const before = orders;
@@ -139,7 +148,7 @@ export function AdminPortal({
         </div>
         <div className="admin-head-actions">
           {section === "products" && (
-            <Button onClick={() => setDrawer(true)}>
+            <Button onClick={() => setEditor(null)}>
               <Icon name="plus" /> Add product
             </Button>
           )}
@@ -202,6 +211,8 @@ export function AdminPortal({
           setQuery={setQuery}
           setStatus={setStatus}
           onStatus={productStatus}
+          onEdit={setEditor}
+          onDuplicate={duplicateProduct}
         />
       )}
       {section === "inventory" && <Inventory products={products} onChange={inventory} />}
@@ -211,19 +222,20 @@ export function AdminPortal({
       {section === "content" && <ContentSettings />}
       {section === "delivery" && <DeliveryZones zones={zones} setZones={setZones} />}
       {section === "settings" && <BusinessSettings theme={theme} changeTheme={changeTheme} />}
-      {drawer && (
+      {editor !== undefined && (
         <>
           <button
             type="button"
             className="scrim admin-scrim"
-            onClick={() => setDrawer(false)}
+            onClick={() => setEditor(undefined)}
             aria-label="Close product drawer"
           />
-          <ProductDrawer
-            close={() => setDrawer(false)}
+          <ProductEditor
+            product={editor}
+            close={() => setEditor(undefined)}
             onSaved={() => {
-              setDrawer(false);
-              notify("Product draft saved.");
+              setEditor(undefined);
+              notify("Product saved. Storefront visibility is up to date.");
               window.location.reload();
             }}
           />
@@ -418,6 +430,8 @@ function Products({
   setQuery,
   setStatus,
   onStatus,
+  onEdit,
+  onDuplicate,
 }: {
   products: Product[];
   query: string;
@@ -425,6 +439,8 @@ function Products({
   setQuery: (v: string) => void;
   setStatus: (v: string) => void;
   onStatus: (id: string, status: ProductStatus) => void;
+  onEdit: (product: Product) => void;
+  onDuplicate: (product: Product) => void;
 }) {
   const visible = products.filter(
     (p) => (status === "ALL" || p.status === status) && p.name.toLowerCase().includes(query.toLowerCase()),
@@ -447,6 +463,7 @@ function Products({
               <th>Price</th>
               <th>Stock</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -457,7 +474,7 @@ function Products({
                     <Image src={product.image} alt="" width={48} height={54} />
                     <div>
                       <b>{product.name}</b>
-                      <small>{product.slug}</small>
+                      <small>{product.featured ? `Featured · ${product.slug}` : product.slug}</small>
                     </div>
                   </div>
                 </td>
@@ -478,6 +495,16 @@ function Products({
                       <option key={item}>{item}</option>
                     ))}
                   </select>
+                </td>
+                <td>
+                  <div className="table-actions">
+                    <button type="button" className="text-button" onClick={() => onEdit(product)}>
+                      Edit
+                    </button>
+                    <button type="button" className="text-button" onClick={() => onDuplicate(product)}>
+                      Duplicate
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -715,73 +742,5 @@ function BusinessSettings({ theme, changeTheme }: { theme: StoreTheme; changeThe
         <Button type="submit">Save settings</Button>
       </form>
     </div>
-  );
-}
-
-function ProductDrawer({ close, onSaved }: { close: () => void; onSaved: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
-    const data = new FormData(e.currentTarget);
-    const name = String(data.get("name"));
-    const category = String(data.get("category"));
-    const body = {
-      name,
-      slug: name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, ""),
-      shortDescription: String(data.get("description") || name),
-      category,
-      price: Math.round(Number(data.get("price")) * 100),
-      stockQuantity: Number(data.get("stock")),
-    };
-    const response = await fetch("/api/admin/products", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const payload = await response.json();
-    setBusy(false);
-    if (response.ok) onSaved();
-    else setError(payload.error ?? "Product could not be saved.");
-  }
-  return (
-    <aside className="admin-drawer">
-      <div className="panel-head">
-        <div>
-          <span className="overline">Catalogue</span>
-          <h2>Add product</h2>
-        </div>
-        <button type="button" className="icon-button" onClick={close} aria-label="Close product drawer">
-          <Icon name="close" />
-        </button>
-      </div>
-      <form onSubmit={submit} className="form-stack">
-        <Input label="Product name" name="name" required />
-        <Textarea label="Short description" name="description" rows={3} />
-        <Select label="Category" name="category">
-          <option value="PASTRIES">Fresh pastries</option>
-          <option value="READY_TO_BAKE">Ready to bake</option>
-          <option value="CUSTOM_CAKES">Custom cakes</option>
-        </Select>
-        <div className="field-row">
-          <Input label="Price (₦)" name="price" type="number" min="0" required />
-          <Input label="Opening stock" name="stock" type="number" min="0" defaultValue="0" />
-        </div>
-        {error && <p className="form-error">{error}</p>}
-        <div className="drawer-actions">
-          <Button variant="ghost" type="button" onClick={close}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={busy}>
-            {busy ? "Saving…" : "Save draft"}
-          </Button>
-        </div>
-      </form>
-    </aside>
   );
 }

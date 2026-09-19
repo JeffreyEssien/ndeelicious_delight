@@ -46,7 +46,9 @@ export function ProductReviews({ productName }: { productName: string }) {
               <button className="button button-ghost" type="button" onClick={() => setOpen(false)}>
                 Cancel
               </button>
-              <button type="submit" className="button button-primary">Submit review</button>
+              <button type="submit" className="button button-primary">
+                Submit review
+              </button>
             </div>
           </form>
         )}

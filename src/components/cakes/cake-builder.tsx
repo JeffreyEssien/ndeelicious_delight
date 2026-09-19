@@ -426,7 +426,12 @@ function Choice({
       <p className="stage-intro">{subtitle}</p>
       <div className="choice-grid">
         {values.map((value, i) => (
-          <button type="button" key={value} className={selected === value ? "selected" : ""} onClick={() => onChoose(value)}>
+          <button
+            type="button"
+            key={value}
+            className={selected === value ? "selected" : ""}
+            onClick={() => onChoose(value)}
+          >
             <span className="choice-check">{selected === value && <Icon name="check" />}</span>
             <b>{value}</b>
             {details?.[i] && <small>{details[i]}</small>}

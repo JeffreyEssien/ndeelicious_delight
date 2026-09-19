@@ -18,7 +18,7 @@ The initial full-stack application is committed on `main`. The current `develop`
 - Incremental Biome linting and formatting for every changed file, locally and in CI.
 - A clean full-repository Biome lint baseline; the former 82-error/141-warning backlog is resolved.
 
-The active implementation checkpoint is now **G02 · Product management**.
+The active implementation checkpoint is now **G03 · Inventory integrity**.
 
 The email/site-URL changes were already uncommitted when this checkpoint was created. They have now been reviewed, hardened against unsafe customer HTML, and covered by unit and route-level tests.
 
@@ -41,6 +41,10 @@ The email/site-URL changes were already uncommitted when this checkpoint was cre
 - [x] Functional notification tests for orders, cake requests, contact messages, and newsletter sign-ups.
 - [x] CI gates for regression, functional, and structural tests.
 - [x] Opt-in CD jobs for Vercel staging from `develop` and production from `main`.
+- [x] Complete product create/edit/archive/duplicate flows with category, price, stock, visibility, and featured controls.
+- [x] Product variant management with inactive-row preservation for historical order integrity.
+- [x] Product image upload, required alt text, ordering, storefront gallery use, and storage/RLS migration.
+- [x] Storefront catalogue visibility now respects an empty live catalogue instead of exposing fallback products after archival.
 
 ## Verification status
 
@@ -60,6 +64,7 @@ Latest checkpoint verification on 2026-09-19:
 - `npm test` — 14 files and 38 tests passed after the lint remediation.
 - `npm run typecheck` — Next.js route generation and strict TypeScript passed after the lint remediation.
 - `npm run build` — production compilation and all 43 routes/pages passed after the lint remediation.
+- `npm run check` — 33 regression tests, 16 functional tests, strict TypeScript, and the 44-route production build passed for G02.
 
 CI command ownership:
 
@@ -77,6 +82,7 @@ CI command ownership:
 - [ ] Configure `ADMIN_EMAIL`, `RESEND_API_KEY`, `SMTP_FROM_EMAIL`, and `SMTP_FROM_NAME` in staging and production.
 - [ ] Configure GitHub/Vercel deployment values, then set repository variable `VERCEL_CD_ENABLED=true`.
 - [ ] Add branch protection for `main` and `develop`, requiring all four CI jobs.
+- [ ] Apply `db/migrations/0003_product_media.sql` to each Supabase environment before deploying G02 image management.
 - [x] Commit and push the preserved email/SEO work plus the pipeline after review.
 
 ## Ordered implementation gap register
@@ -84,7 +90,7 @@ CI command ownership:
 Complete these checkpoints in order unless a newly discovered dependency requires reordering. A checkbox is complete only when the relevant `implementation.md` acceptance criteria are met, not merely when a page or database table exists.
 
 - [x] **G01 · Phase 1 — Foundation quality:** add linting and incremental formatting enforcement to local scripts and CI.
-- [ ] **G02 · Phase 5 — Product management:** complete product editing, duplication, variants, image management, visibility, and featured controls.
+- [x] **G02 · Phase 5 — Product management:** complete product editing, duplication, variants, image management, visibility, and featured controls.
 - [ ] **G03 · Phase 6 — Inventory integrity:** add transactional stock reservation/deduction/restoration and concurrent overselling protection.
 - [ ] **G04 · Phase 13 — Cake configuration:** move cake options and lead-time rules to admin-controlled data.
 - [ ] **G05 · Phase 13 — Cake uploads:** securely store and validate cake inspiration images.

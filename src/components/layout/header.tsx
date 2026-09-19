@@ -39,7 +39,12 @@ export function Header() {
       </div>
       <header className="site-header">
         <div className="site-container nav-row">
-          <button type="button" className="icon-button mobile-only" onClick={() => setMenu(true)} aria-label="Open navigation">
+          <button
+            type="button"
+            className="icon-button mobile-only"
+            onClick={() => setMenu(true)}
+            aria-label="Open navigation"
+          >
             <Icon name="menu" />
           </button>
           <Link className="brand" href="/" aria-label="Ndeeelicious Delight home">

@@ -94,15 +94,13 @@ export async function POST(request: Request) {
   if (input.action === "review-status")
     ({ error } = await supabase.from("reviews").update({ status: input.status }).eq("id", input.id));
   if (input.action === "coupon-create")
-    ({ error } = await supabase
-      .from("coupons")
-      .insert({
-        code: `DRAFT${Date.now().toString().slice(-6)}`,
-        type: "PERCENTAGE",
-        value: 10,
-        minimum_order: 0,
-        active: false,
-      }));
+    ({ error } = await supabase.from("coupons").insert({
+      code: `DRAFT${Date.now().toString().slice(-6)}`,
+      type: "PERCENTAGE",
+      value: 10,
+      minimum_order: 0,
+      active: false,
+    }));
   if (input.action === "delivery-zones") {
     const ids = input.zones.map((zone) => zone.id).filter((id) => z.string().uuid().safeParse(id).success);
     const current = await supabase.from("delivery_zones").select("id");

@@ -15,7 +15,12 @@ export function CartDrawer() {
   return (
     <>
       {cart.open && (
-        <button type="button" className="scrim cart-scrim" onClick={() => cart.setOpen(false)} aria-label="Close basket" />
+        <button
+          type="button"
+          className="scrim cart-scrim"
+          onClick={() => cart.setOpen(false)}
+          aria-label="Close basket"
+        />
       )}
       <aside className={`cart-drawer ${cart.open ? "is-open" : ""}`} aria-hidden={!cart.open}>
         <div className="panel-head">
@@ -51,11 +56,19 @@ export function CartDrawer() {
                     <small>{v.name}</small>
                     <strong>{formatMoney(p.price + v.priceAdjustment)}</strong>
                     <div className="quantity">
-                      <button type="button" onClick={() => cart.update(p.id, v.id, line.quantity - 1)} aria-label="Decrease quantity">
+                      <button
+                        type="button"
+                        onClick={() => cart.update(p.id, v.id, line.quantity - 1)}
+                        aria-label="Decrease quantity"
+                      >
                         <Icon name="minus" />
                       </button>
                       <span>{line.quantity}</span>
-                      <button type="button" onClick={() => cart.update(p.id, v.id, line.quantity + 1)} aria-label="Increase quantity">
+                      <button
+                        type="button"
+                        onClick={() => cart.update(p.id, v.id, line.quantity + 1)}
+                        aria-label="Increase quantity"
+                      >
                         <Icon name="plus" />
                       </button>
                     </div>

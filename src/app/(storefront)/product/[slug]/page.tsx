@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductPurchase } from "@/components/product/product-purchase";
+import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { ProductGrid } from "@/components/product/product-grid";
 import { formatMoney } from "@/lib/format";
@@ -32,32 +32,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <span>{product.name}</span>
       </div>
       <section className="site-container product-detail">
-        <div className="gallery">
-          <div className="gallery-main">
-            <Image
-              src={product.image}
-              alt={product.name}
-              fill
-              priority
-              sizes="(max-width:800px) 100vw, 55vw"
-              style={{ objectPosition: product.imagePosition }}
-            />
-          </div>
-          <div className="gallery-thumbs">
-            <button type="button" className="active">
-              <Image src={product.image} alt={`${product.name}, full view`} fill sizes="100px" />
-            </button>
-            <button type="button">
-              <Image
-                src={product.image}
-                alt={`${product.name}, detail`}
-                fill
-                sizes="100px"
-                style={{ objectPosition: "70% 60%" }}
-              />
-            </button>
-          </div>
-        </div>
+        <ProductGallery product={product} />
         <div className="product-copy">
           {product.badge && <Badge tone="berry">{product.badge}</Badge>}
           <h1>{product.name}</h1>

@@ -194,12 +194,20 @@ export function CheckoutFlow() {
             <span className="overline">Fulfilment</span>
             <h1>How should we get it to you?</h1>
             <div className="fulfilment-toggle">
-              <button type="button" className={fulfilment === "delivery" ? "selected" : ""} onClick={() => setFulfilment("delivery")}>
+              <button
+                type="button"
+                className={fulfilment === "delivery" ? "selected" : ""}
+                onClick={() => setFulfilment("delivery")}
+              >
                 <Icon name="truck" />
                 <b>Delivery</b>
                 <small>To your Lagos address</small>
               </button>
-              <button type="button" className={fulfilment === "pickup" ? "selected" : ""} onClick={() => setFulfilment("pickup")}>
+              <button
+                type="button"
+                className={fulfilment === "pickup" ? "selected" : ""}
+                onClick={() => setFulfilment("pickup")}
+              >
                 <Icon name="bag" />
                 <b>Pickup</b>
                 <small>Collect from our bakery</small>
@@ -275,7 +283,9 @@ export function CheckoutFlow() {
                   <br />
                   {info.phone}
                 </p>
-                <button type="button" onClick={() => setStep(0)}>Edit</button>
+                <button type="button" onClick={() => setStep(0)}>
+                  Edit
+                </button>
               </div>
               <div>
                 <span>{fulfilment === "delivery" ? "Deliver to" : "Collection"}</span>
@@ -284,7 +294,9 @@ export function CheckoutFlow() {
                     ? `${info.street}, ${deliveryZones.find((z) => z.id === zone)?.name}, Lagos`
                     : "Ndeeelicious Delight, Lekki"}
                 </p>
-                <button type="button" onClick={() => setStep(1)}>Edit</button>
+                <button type="button" onClick={() => setStep(1)}>
+                  Edit
+                </button>
               </div>
             </div>
             <div className="coupon-box">

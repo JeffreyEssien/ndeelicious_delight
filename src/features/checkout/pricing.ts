@@ -111,7 +111,9 @@ export function calculateDiscount(
   let eligible = subtotal;
   const productIds = coupon.productIds;
   if (productIds?.length)
-    eligible = lines.filter((line) => productIds.includes(line.productId)).reduce((sum, line) => sum + line.lineTotal, 0);
+    eligible = lines
+      .filter((line) => productIds.includes(line.productId))
+      .reduce((sum, line) => sum + line.lineTotal, 0);
   const categoryIds = coupon.categoryIds;
   if (categoryIds?.length)
     eligible = lines

@@ -11,10 +11,13 @@ export type Product = {
   price: number;
   discountPrice?: number;
   compareAtPrice?: number;
+  sku?: string;
   image: string;
+  images?: ProductImage[];
   imagePosition?: string;
   badge?: string;
   featured?: boolean;
+  trackInventory?: boolean;
   status: ProductStatus;
   stockQuantity: number;
   lowStockThreshold: number;
@@ -25,7 +28,21 @@ export type Product = {
   preparationInstructions?: string;
 };
 
-export type ProductVariant = { id: string; name: string; priceAdjustment: number; stockQuantity: number };
+export type ProductImage = {
+  id: string;
+  url: string;
+  altText: string;
+  sortOrder: number;
+  storagePath?: string;
+};
+export type ProductVariant = {
+  id: string;
+  name: string;
+  sku?: string;
+  priceAdjustment: number;
+  stockQuantity: number;
+  active?: boolean;
+};
 export type CartLine = { productId: string; variantId: string; quantity: number };
 export type Fulfilment = "delivery" | "pickup";
 export type DeliveryZone = { id: string; name: string; fee: number; estimate: string; active: boolean };
