@@ -80,7 +80,11 @@ describe("POST /api/admin/products", () => {
     const response = await POST(
       new Request("http://localhost/api/admin/products", {
         method: "POST",
-        body: JSON.stringify({ ...validProduct, status: "ACTIVE", variants: [{ ...validProduct.variants[0], active: false }] }),
+        body: JSON.stringify({
+          ...validProduct,
+          status: "ACTIVE",
+          variants: [{ ...validProduct.variants[0], active: false }],
+        }),
       }),
     );
 

@@ -63,5 +63,25 @@ export type CakeConfiguration = {
   customerNote?: string;
 };
 
-export type OrderStatus = "PENDING_PAYMENT" | "PAID" | "CONFIRMED" | "PREPARING" | "READY" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED" | "REFUNDED" | "FAILED" | "QUOTE_REQUIRED";
-export type Order = { id: string; customer: string; email: string; total: number; status: OrderStatus; date: string; items: number; fulfilment: Fulfilment };
+export type OrderStatus =
+  | "PENDING_PAYMENT"
+  | "PAID"
+  | "CONFIRMED"
+  | "PREPARING"
+  | "READY"
+  | "OUT_FOR_DELIVERY"
+  | "DELIVERED"
+  | "CANCELLED"
+  | "REFUNDED"
+  | "FAILED"
+  | "QUOTE_REQUIRED";
+export type Order = {
+  id: string;
+  customer: string;
+  email: string;
+  total: number;
+  status: OrderStatus;
+  date: string;
+  items: number;
+  fulfilment: Fulfilment;
+};

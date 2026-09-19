@@ -52,7 +52,9 @@ describe("POST /api/admin/products/images", () => {
     form.set("altText", "Product artwork");
     form.set("sortOrder", "0");
     form.set("file", new File(["<svg />"], "image.svg", { type: "image/svg+xml" }));
-    const response = await POST(new Request("http://localhost/api/admin/products/images", { method: "POST", body: form }));
+    const response = await POST(
+      new Request("http://localhost/api/admin/products/images", { method: "POST", body: form }),
+    );
 
     expect(response.status).toBe(400);
     expect(db.storage.from).not.toHaveBeenCalled();
@@ -64,7 +66,9 @@ describe("POST /api/admin/products/images", () => {
     form.set("altText", "Product artwork");
     form.set("sortOrder", "0");
     form.set("file", new File(["png"], "image.png", { type: "image/png" }));
-    const response = await POST(new Request("http://localhost/api/admin/products/images", { method: "POST", body: form }));
+    const response = await POST(
+      new Request("http://localhost/api/admin/products/images", { method: "POST", body: form }),
+    );
 
     expect(response.status).toBe(201);
     expect(mocks.upload).toHaveBeenCalledOnce();
@@ -80,7 +84,9 @@ describe("POST /api/admin/products/images", () => {
     form.set("altText", "Product artwork");
     form.set("sortOrder", "0");
     form.set("file", new File(["png"], "image.png", { type: "image/png" }));
-    const response = await POST(new Request("http://localhost/api/admin/products/images", { method: "POST", body: form }));
+    const response = await POST(
+      new Request("http://localhost/api/admin/products/images", { method: "POST", body: form }),
+    );
 
     expect(response.status).toBe(409);
     expect(mocks.upload).not.toHaveBeenCalled();

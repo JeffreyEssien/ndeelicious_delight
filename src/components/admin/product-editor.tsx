@@ -17,7 +17,15 @@ function slugify(value: string) {
     .replace(/^-|-$/g, "");
 }
 
-export function ProductEditor({ product, close, onSaved }: { product: Product | null; close: () => void; onSaved: () => void }) {
+export function ProductEditor({
+  product,
+  close,
+  onSaved,
+}: {
+  product: Product | null;
+  close: () => void;
+  onSaved: () => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [savedId, setSavedId] = useState(product?.id ?? "");
@@ -119,7 +127,13 @@ export function ProductEditor({ product, close, onSaved }: { product: Product | 
           <h3>Basics</h3>
           <Input label="Product name" name="name" defaultValue={product?.name} required />
           <Input label="URL slug" name="slug" defaultValue={product?.slug} placeholder="Generated from the name" />
-          <Textarea label="Short description" name="shortDescription" defaultValue={product?.shortDescription} rows={2} required />
+          <Textarea
+            label="Short description"
+            name="shortDescription"
+            defaultValue={product?.shortDescription}
+            rows={2}
+            required
+          />
           <Textarea label="Full description" name="description" defaultValue={product?.description} rows={5} required />
           <Select label="Category" name="category" defaultValue={product?.category ?? "PASTRIES"}>
             <option value="PASTRIES">Fresh pastries</option>
@@ -131,8 +145,23 @@ export function ProductEditor({ product, close, onSaved }: { product: Product | 
         <div className="product-editor-section">
           <h3>Pricing & visibility</h3>
           <div className="field-row">
-            <Input label="Price (₦)" name="price" type="number" min="0" step="0.01" defaultValue={(product?.price ?? 0) / 100} required />
-            <Input label="Sale price (₦)" name="discountPrice" type="number" min="0" step="0.01" defaultValue={product?.discountPrice ? product.discountPrice / 100 : ""} />
+            <Input
+              label="Price (₦)"
+              name="price"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={(product?.price ?? 0) / 100}
+              required
+            />
+            <Input
+              label="Sale price (₦)"
+              name="discountPrice"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={product?.discountPrice ? product.discountPrice / 100 : ""}
+            />
           </div>
           <Input label="Product SKU" name="sku" defaultValue={product?.sku} />
           <Select label="Storefront visibility" name="status" defaultValue={product?.status ?? "DRAFT"}>
@@ -148,8 +177,22 @@ export function ProductEditor({ product, close, onSaved }: { product: Product | 
           <h3>Inventory</h3>
           <Checkbox label="Track inventory" name="trackInventory" defaultChecked={product?.trackInventory ?? true} />
           <div className="field-row">
-            <Input label="Total stock" name="stockQuantity" type="number" min="0" defaultValue={product?.stockQuantity ?? 0} required />
-            <Input label="Low-stock alert" name="lowStockThreshold" type="number" min="0" defaultValue={product?.lowStockThreshold ?? 5} required />
+            <Input
+              label="Total stock"
+              name="stockQuantity"
+              type="number"
+              min="0"
+              defaultValue={product?.stockQuantity ?? 0}
+              required
+            />
+            <Input
+              label="Low-stock alert"
+              name="lowStockThreshold"
+              type="number"
+              min="0"
+              defaultValue={product?.lowStockThreshold ?? 5}
+              required
+            />
           </div>
         </div>
 
@@ -158,19 +201,86 @@ export function ProductEditor({ product, close, onSaved }: { product: Product | 
             <h3>Variants</h3>
             <Button
               variant="secondary"
-              onClick={() => setVariants((current) => [...current, { name: "", sku: "", priceAdjustment: 0, stockQuantity: 0, active: true }])}
+              onClick={() =>
+                setVariants((current) => [
+                  ...current,
+                  { name: "", sku: "", priceAdjustment: 0, stockQuantity: 0, active: true },
+                ])
+              }
             >
               <Icon name="plus" /> Add variant
             </Button>
           </div>
           {variants.map((variant, index) => (
             <div className="variant-editor" key={variant.id ?? `new-${index}`}>
-              <Input label="Name" value={variant.name} onChange={(event) => setVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} required />
-              <Input label="SKU" value={variant.sku ?? ""} onChange={(event) => setVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, sku: event.target.value } : item))} />
-              <Input label="Price adjustment (₦)" type="number" step="0.01" value={variant.priceAdjustment / 100} onChange={(event) => setVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, priceAdjustment: Math.round(Number(event.target.value) * 100) } : item))} />
-              <Input label="Stock" type="number" min="0" value={variant.stockQuantity} onChange={(event) => setVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stockQuantity: Number(event.target.value) } : item))} />
-              <Checkbox label="Active" checked={variant.active ?? true} onChange={(event) => setVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, active: event.target.checked } : item))} />
-              <button type="button" className="text-button danger-text" disabled={variants.length === 1} onClick={() => setVariants((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
+              <Input
+                label="Name"
+                value={variant.name}
+                onChange={(event) =>
+                  setVariants((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index ? { ...item, name: event.target.value } : item,
+                    ),
+                  )
+                }
+                required
+              />
+              <Input
+                label="SKU"
+                value={variant.sku ?? ""}
+                onChange={(event) =>
+                  setVariants((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index ? { ...item, sku: event.target.value } : item,
+                    ),
+                  )
+                }
+              />
+              <Input
+                label="Price adjustment (₦)"
+                type="number"
+                step="0.01"
+                value={variant.priceAdjustment / 100}
+                onChange={(event) =>
+                  setVariants((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index
+                        ? { ...item, priceAdjustment: Math.round(Number(event.target.value) * 100) }
+                        : item,
+                    ),
+                  )
+                }
+              />
+              <Input
+                label="Stock"
+                type="number"
+                min="0"
+                value={variant.stockQuantity}
+                onChange={(event) =>
+                  setVariants((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index ? { ...item, stockQuantity: Number(event.target.value) } : item,
+                    ),
+                  )
+                }
+              />
+              <Checkbox
+                label="Active"
+                checked={variant.active ?? true}
+                onChange={(event) =>
+                  setVariants((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index ? { ...item, active: event.target.checked } : item,
+                    ),
+                  )
+                }
+              />
+              <button
+                type="button"
+                className="text-button danger-text"
+                disabled={variants.length === 1}
+                onClick={() => setVariants((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+              >
                 Remove
               </button>
             </div>
@@ -183,19 +293,67 @@ export function ProductEditor({ product, close, onSaved }: { product: Product | 
           {images.map((image, index) => (
             <div className="image-editor" key={image.id}>
               <Image src={image.url} alt="" width={64} height={64} />
-              <Input label="Alternative text" value={image.altText} onChange={(event) => setImages((current) => current.map((item) => item.id === image.id ? { ...item, altText: event.target.value } : item))} required />
+              <Input
+                label="Alternative text"
+                value={image.altText}
+                onChange={(event) =>
+                  setImages((current) =>
+                    current.map((item) => (item.id === image.id ? { ...item, altText: event.target.value } : item)),
+                  )
+                }
+                required
+              />
               <div className="image-order-actions">
-                <button type="button" className="icon-button" disabled={index === 0} onClick={() => moveImage(index, -1)} aria-label={`Move ${image.altText} earlier`}>↑</button>
-                <button type="button" className="icon-button" disabled={index === images.length - 1} onClick={() => moveImage(index, 1)} aria-label={`Move ${image.altText} later`}>↓</button>
-                <button type="button" className="text-button danger-text" onClick={() => setImages((current) => current.filter((item) => item.id !== image.id))}>Remove</button>
+                <button
+                  type="button"
+                  className="icon-button"
+                  disabled={index === 0}
+                  onClick={() => moveImage(index, -1)}
+                  aria-label={`Move ${image.altText} earlier`}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="icon-button"
+                  disabled={index === images.length - 1}
+                  onClick={() => moveImage(index, 1)}
+                  aria-label={`Move ${image.altText} later`}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  className="text-button danger-text"
+                  onClick={() => setImages((current) => current.filter((item) => item.id !== image.id))}
+                >
+                  Remove
+                </button>
               </div>
             </div>
           ))}
           {pendingImages.map((pending, index) => (
             <div className="pending-image" key={pending.key}>
               <span>{pending.file.name}</span>
-              <Input label="Alternative text" value={pending.altText} onChange={(event) => setPendingImages((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, altText: event.target.value } : item))} required />
-              <button type="button" className="text-button danger-text" onClick={() => setPendingImages((current) => current.filter((item) => item.key !== pending.key))}>Remove</button>
+              <Input
+                label="Alternative text"
+                value={pending.altText}
+                onChange={(event) =>
+                  setPendingImages((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index ? { ...item, altText: event.target.value } : item,
+                    ),
+                  )
+                }
+                required
+              />
+              <button
+                type="button"
+                className="text-button danger-text"
+                onClick={() => setPendingImages((current) => current.filter((item) => item.key !== pending.key))}
+              >
+                Remove
+              </button>
             </div>
           ))}
           <Input
@@ -220,14 +378,32 @@ export function ProductEditor({ product, close, onSaved }: { product: Product | 
           <h3>Product details</h3>
           <Textarea label="Ingredients" name="ingredients" defaultValue={product?.ingredients} rows={3} />
           <Input label="Allergens (comma separated)" name="allergens" defaultValue={product?.allergens.join(", ")} />
-          <Textarea label="Storage instructions" name="storageInstructions" defaultValue={product?.storageInstructions} rows={3} />
-          <Textarea label="Preparation instructions" name="preparationInstructions" defaultValue={product?.preparationInstructions} rows={3} />
+          <Textarea
+            label="Storage instructions"
+            name="storageInstructions"
+            defaultValue={product?.storageInstructions}
+            rows={3}
+          />
+          <Textarea
+            label="Preparation instructions"
+            name="preparationInstructions"
+            defaultValue={product?.preparationInstructions}
+            rows={3}
+          />
         </div>
 
-        {error && <p className="form-error" role="alert">{error}</p>}
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
         <div className="drawer-actions">
-          <Button variant="ghost" onClick={close}>Cancel</Button>
-          <Button type="submit" disabled={busy}>{busy ? "Saving…" : product ? "Save changes" : "Create product"}</Button>
+          <Button variant="ghost" onClick={close}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={busy}>
+            {busy ? "Saving…" : product ? "Save changes" : "Create product"}
+          </Button>
         </div>
       </form>
     </aside>

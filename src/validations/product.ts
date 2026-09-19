@@ -49,7 +49,11 @@ export const productInputSchema = z
   })
   .superRefine((product, context) => {
     if (product.discountPrice !== null && product.discountPrice > product.price) {
-      context.addIssue({ code: "custom", path: ["discountPrice"], message: "Sale price cannot exceed the regular price." });
+      context.addIssue({
+        code: "custom",
+        path: ["discountPrice"],
+        message: "Sale price cannot exceed the regular price.",
+      });
     }
     if (product.status === "ACTIVE" && !product.variants.some((variant) => variant.active)) {
       context.addIssue({ code: "custom", path: ["variants"], message: "An active product needs an active variant." });

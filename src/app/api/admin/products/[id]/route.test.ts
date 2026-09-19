@@ -50,7 +50,12 @@ const db = {
           mocks.relationInsert(table, value);
           return Promise.resolve({ error: null });
         },
-        select: () => ({ eq: () => Promise.resolve({ data: table === "product_variants" ? [{ id: "11111111-1111-4111-8111-111111111111" }] : [] }) }),
+        select: () => ({
+          eq: () =>
+            Promise.resolve({
+              data: table === "product_variants" ? [{ id: "11111111-1111-4111-8111-111111111111" }] : [],
+            }),
+        }),
       };
     }
     throw new Error(`Unexpected table: ${table}`);
@@ -78,10 +83,9 @@ describe("/api/admin/products/[id]", () => {
     expect(mocks.productInsert).toHaveBeenCalledWith(
       expect.objectContaining({ name: "Almond Croissant (Copy)", status: "DRAFT", featured: false, sku: null }),
     );
-    expect(mocks.relationInsert).toHaveBeenCalledWith(
-      "product_variants",
-      [expect.objectContaining({ product_id: "copy-id", sku: null })],
-    );
+    expect(mocks.relationInsert).toHaveBeenCalledWith("product_variants", [
+      expect.objectContaining({ product_id: "copy-id", sku: null }),
+    ]);
   });
 
   it("rejects a variant ID owned by another product", async () => {

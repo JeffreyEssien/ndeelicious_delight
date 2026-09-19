@@ -58,7 +58,11 @@ export async function PATCH(request: Request, context: Context) {
   }
   for (const variantId of variantIds) {
     if (!submittedVariantIds.has(variantId)) {
-      const { error } = await db.from("product_variants").update({ active: false }).eq("id", variantId).eq("product_id", id);
+      const { error } = await db
+        .from("product_variants")
+        .update({ active: false })
+        .eq("id", variantId)
+        .eq("product_id", id);
       if (error) return Response.json({ error: "A removed variant could not be archived." }, { status: 500 });
     }
   }
@@ -89,7 +93,9 @@ export async function POST(request: Request, context: Context) {
   const { db } = auth;
   const { data: source, error: sourceError } = await db
     .from("products")
-    .select("*,product_variants(name,price_adjustment,stock_quantity,active),product_images(url,alt_text,sort_order,storage_path)")
+    .select(
+      "*,product_variants(name,price_adjustment,stock_quantity,active),product_images(url,alt_text,sort_order,storage_path)",
+    )
     .eq("id", id)
     .single();
   if (sourceError || !source) return Response.json({ error: "Product could not be found." }, { status: 404 });
@@ -132,7 +138,8 @@ export async function POST(request: Request, context: Context) {
         active: variant.active,
       })),
     );
-    if (variantError) return Response.json({ error: "The product copy was created without its variants." }, { status: 500 });
+    if (variantError)
+      return Response.json({ error: "The product copy was created without its variants." }, { status: 500 });
   }
   const images = (source.product_images ?? []) as SourceImage[];
   if (images.length) {
@@ -145,7 +152,8 @@ export async function POST(request: Request, context: Context) {
         storage_path: image.storage_path,
       })),
     );
-    if (imageError) return Response.json({ error: "The product copy was created without its images." }, { status: 500 });
+    if (imageError)
+      return Response.json({ error: "The product copy was created without its images." }, { status: 500 });
   }
   return Response.json({ ok: true, id: copy.id }, { status: 201 });
 }
