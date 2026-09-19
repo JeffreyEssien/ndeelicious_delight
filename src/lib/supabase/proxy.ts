@@ -5,7 +5,9 @@ import { getSupabaseConfig } from "./config";
 
 function redirectWithCookies(request: NextRequest, response: NextResponse, pathname: string) {
   const redirect = NextResponse.redirect(new URL(pathname, request.url));
-  response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+  response.cookies.getAll().forEach((cookie) => {
+    redirect.cookies.set(cookie);
+  });
   return redirect;
 }
 
@@ -19,9 +21,13 @@ export async function updateSession(request: NextRequest) {
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
           response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
         },
       },
     });

@@ -16,6 +16,9 @@ The initial full-stack application is committed on `main`. The current `develop`
 - Environment-aware canonical URLs for metadata, `robots.txt`, and `sitemap.xml`.
 - A GitHub Actions pipeline split into regression, functional, and structural gates, with opt-in Vercel staging and production deployment.
 - Incremental Biome linting and formatting for every changed file, locally and in CI.
+- A clean full-repository Biome lint baseline; the former 82-error/141-warning backlog is resolved.
+
+The active implementation checkpoint is now **G02 · Product management**.
 
 The email/site-URL changes were already uncommitted when this checkpoint was created. They have now been reviewed, hardened against unsafe customer HTML, and covered by unit and route-level tests.
 
@@ -53,6 +56,10 @@ Latest checkpoint verification on 2026-09-19:
 - `npm run test:functional` — 5 files and 9 tests passed.
 - `npm run test:structural` — route type generation, strict TypeScript, and the 43-route production build passed.
 - `npm run quality` — 16 changed files passed linting and formatting checks.
+- `biome lint . --max-diagnostics=200` — all 116 tracked source/config files passed with no lint errors or warnings.
+- `npm test` — 14 files and 38 tests passed after the lint remediation.
+- `npm run typecheck` — Next.js route generation and strict TypeScript passed after the lint remediation.
+- `npm run build` — production compilation and all 43 routes/pages passed after the lint remediation.
 
 CI command ownership:
 
@@ -115,7 +122,8 @@ Complete these checkpoints in order unless a newly discovered dependency require
 - [ ] Add coupon expiry, price change, and out-of-stock race-condition tests.
 - [ ] Add accessibility checks for critical customer and admin journeys.
 - [x] Add an incremental lint/format policy and CI check for every changed file.
-- [ ] Resolve the pre-existing full-repository Biome backlog (currently tracked under accessibility and security work).
+- [x] Resolve the pre-existing full-repository Biome lint backlog (82 errors and 141 warnings).
+- [ ] Normalize untouched legacy formatting incrementally when those files enter an implementation checkpoint.
 
 ## TODO — production readiness
 
