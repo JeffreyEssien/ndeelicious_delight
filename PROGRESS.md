@@ -16,7 +16,7 @@ The initial full-stack application is committed on `main`. The latest work, curr
 - Environment-aware canonical URLs for metadata, `robots.txt`, and `sitemap.xml`.
 - A GitHub Actions pipeline split into regression, functional, and structural gates, with opt-in Vercel staging and production deployment.
 
-The email/site-URL changes were already uncommitted when this checkpoint was created. They have been preserved as work in progress and still need dedicated tests and review.
+The email/site-URL changes were already uncommitted when this checkpoint was created. They have now been reviewed, hardened against unsafe customer HTML, and covered by unit and route-level tests.
 
 ## Implemented
 
@@ -33,6 +33,8 @@ The email/site-URL changes were already uncommitted when this checkpoint was cre
 - [x] Functional route tests for cake and checkout quotes.
 - [x] Metadata, sitemap, and robots route foundations.
 - [x] Transactional email integration implemented in the working tree.
+- [x] Transactional email provider, HTML escaping, and canonical site URL tests.
+- [x] Functional notification tests for orders, cake requests, contact messages, and newsletter sign-ups.
 - [x] CI gates for regression, functional, and structural tests.
 - [x] Opt-in CD jobs for Vercel staging from `develop` and production from `main`.
 
@@ -44,6 +46,12 @@ Verified locally on 2026-09-19 before introducing the CI files:
 - `npm test` — 9 files and 27 tests passed.
 - `npm run build` — passed; 43 routes/pages generated.
 
+Latest checkpoint verification on 2026-09-19:
+
+- `npm run test:regression` — 9 files and 29 tests passed.
+- `npm run test:functional` — 5 files and 9 tests passed.
+- `npm run test:structural` — route type generation, strict TypeScript, and the 43-route production build passed.
+
 CI command ownership:
 
 - Regression: `npm run test:regression` (domain, validation, and library tests).
@@ -53,9 +61,9 @@ CI command ownership:
 
 ## TODO — immediate
 
-- [ ] Review and format the transactional-email route changes.
-- [ ] Add unit tests for HTML escaping, provider failure, and missing email configuration.
-- [ ] Add functional tests for order creation, contact submission, and newsletter subscription.
+- [x] Review and format the transactional-email route changes.
+- [x] Add unit tests for HTML escaping, provider failure, and missing email configuration.
+- [x] Add functional tests for order creation, cake requests, contact submission, and newsletter subscription.
 - [ ] Confirm the Resend sending domain and replace the development sender address.
 - [ ] Configure `ADMIN_EMAIL`, `RESEND_API_KEY`, `SMTP_FROM_EMAIL`, and `SMTP_FROM_NAME` in staging and production.
 - [ ] Configure GitHub/Vercel deployment values, then set repository variable `VERCEL_CD_ENABLED=true`.
@@ -89,6 +97,7 @@ CI command ownership:
 - [ ] Replace fallback catalogue content with approved production content and imagery.
 - [ ] Add analytics, error monitoring, and structured logs.
 - [ ] Review rate limiting for a multi-instance production deployment.
+- [ ] Add durable abuse protection for public contact, newsletter, cake-request, and order endpoints.
 - [ ] Complete security, privacy, accessibility, and performance audits.
 - [ ] Run database migrations and seed only the intended environment.
 - [ ] Perform the full customer and admin regression checklist from `implementation.md`.
