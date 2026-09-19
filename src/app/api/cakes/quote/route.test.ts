@@ -22,7 +22,7 @@ vi.mock("@/lib/supabase/service", () => ({
   }),
 }));
 vi.mock("@/lib/email/resend", async (importOriginal) => ({
-  ...await importOriginal<typeof import("@/lib/email/resend")>(),
+  ...(await importOriginal<typeof import("@/lib/email/resend")>()),
   sendTransactionalEmail: mocks.sendEmail,
 }));
 
@@ -56,27 +56,33 @@ describe("POST /api/cakes/quote", () => {
   });
 
   it("rejects incomplete cake requests", async () => {
-    const response = await POST(new Request("http://localhost/api/cakes/quote", {
-      method: "POST",
-      body: JSON.stringify({ occasion: "Birthday" }),
-    }));
+    const response = await POST(
+      new Request("http://localhost/api/cakes/quote", {
+        method: "POST",
+        body: JSON.stringify({ occasion: "Birthday" }),
+      }),
+    );
     expect(response.status).toBe(400);
   });
 
   it("persists the request and sends escaped customer and admin emails", async () => {
-    const response = await POST(new Request("http://localhost/api/cakes/quote", {
-      method: "POST",
-      body: JSON.stringify(validCake),
-    }));
+    const response = await POST(
+      new Request("http://localhost/api/cakes/quote", {
+        method: "POST",
+        body: JSON.stringify(validCake),
+      }),
+    );
 
     expect(response.status).toBe(201);
     expect(mocks.cakeInsert).toHaveBeenCalledOnce();
     expect(mocks.sendEmail).toHaveBeenCalledTimes(2);
     expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "ada@example.com" }));
-    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
-      to: "owner@example.com",
-      replyTo: "ada@example.com",
-    }));
+    expect(mocks.sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "owner@example.com",
+        replyTo: "ada@example.com",
+      }),
+    );
     for (const [email] of mocks.sendEmail.mock.calls) {
       expect(email.html).toContain("Ada &lt;baker&gt;");
       expect(email.html).not.toContain("Ada <baker>");

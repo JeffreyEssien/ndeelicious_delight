@@ -19,6 +19,27 @@ env:
   NEXT_TELEMETRY_DISABLED: "1"
 
 jobs:
+  code-quality:
+    name: Lint and formatting
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Check changed files
+        env:
+          QUALITY_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+        run: npm run quality -- --since="$QUALITY_BASE_SHA"
+
   regression-tests:
     name: Regression tests
     runs-on: ubuntu-latest
@@ -76,7 +97,7 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/develop' &&
       vars.VERCEL_CD_ENABLED == 'true'
-    needs: [regression-tests, functional-tests, structural-tests]
+    needs: [code-quality, regression-tests, functional-tests, structural-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -110,7 +131,7 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       vars.VERCEL_CD_ENABLED == 'true'
-    needs: [regression-tests, functional-tests, structural-tests]
+    needs: [code-quality, regression-tests, functional-tests, structural-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:

@@ -47,7 +47,7 @@ vi.mock("@/lib/supabase/service", () => ({
   }),
 }));
 vi.mock("@/lib/email/resend", async (importOriginal) => ({
-  ...await importOriginal<typeof import("@/lib/email/resend")>(),
+  ...(await importOriginal<typeof import("@/lib/email/resend")>()),
   sendTransactionalEmail: mocks.sendEmail,
 }));
 
@@ -67,14 +67,16 @@ describe("POST /api/orders", () => {
   });
 
   it("creates an order and safely emails the customer and owner", async () => {
-    const response = await POST(new Request("http://localhost/api/orders", {
-      method: "POST",
-      body: JSON.stringify({
-        customer: { name: "Ada <baker>", email: "ada@example.com", phone: "08012345678" },
-        delivery: { fulfilment: "pickup" },
-        cart: [{ productId: "product-id", variantId: "variant-id", quantity: 2 }],
+    const response = await POST(
+      new Request("http://localhost/api/orders", {
+        method: "POST",
+        body: JSON.stringify({
+          customer: { name: "Ada <baker>", email: "ada@example.com", phone: "08012345678" },
+          delivery: { fulfilment: "pickup" },
+          cart: [{ productId: "product-id", variantId: "variant-id", quantity: 2 }],
+        }),
       }),
-    }));
+    );
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({

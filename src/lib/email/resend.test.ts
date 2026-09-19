@@ -22,8 +22,9 @@ describe("transactional email", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(sendTransactionalEmail({ to: "customer@example.com", subject: "Hello", html: "<p>Hello</p>" }))
-      .resolves.toEqual({ sent: false, reason: "not-configured" });
+    await expect(
+      sendTransactionalEmail({ to: "customer@example.com", subject: "Hello", html: "<p>Hello</p>" }),
+    ).resolves.toEqual({ sent: false, reason: "not-configured" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -32,22 +33,25 @@ describe("transactional email", () => {
     vi.stubEnv("RESEND_API_KEY", "test-key");
     vi.stubEnv("SMTP_FROM_EMAIL", "orders@example.com");
     vi.stubEnv("SMTP_FROM_NAME", "Ndeeelicious Test");
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ id: "email-123" }), { status: 200 }),
-    );
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "email-123" }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(sendTransactionalEmail({
-      to: "customer@example.com",
-      replyTo: "reply@example.com",
-      subject: "Order received",
-      html: "<p>Thank you</p>",
-    })).resolves.toEqual({ sent: true, id: "email-123" });
+    await expect(
+      sendTransactionalEmail({
+        to: "customer@example.com",
+        replyTo: "reply@example.com",
+        subject: "Order received",
+        html: "<p>Thank you</p>",
+      }),
+    ).resolves.toEqual({ sent: true, id: "email-123" });
 
-    expect(fetchMock).toHaveBeenCalledWith("https://api.resend.com/emails", expect.objectContaining({
-      method: "POST",
-      headers: { authorization: "Bearer test-key", "content-type": "application/json" },
-    }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.resend.com/emails",
+      expect.objectContaining({
+        method: "POST",
+        headers: { authorization: "Bearer test-key", "content-type": "application/json" },
+      }),
+    );
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(JSON.parse(request.body as string)).toEqual({
       from: "Ndeeelicious Test <orders@example.com>",
@@ -65,7 +69,8 @@ describe("transactional email", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 503 })));
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
-    await expect(sendTransactionalEmail({ to: "customer@example.com", subject: "Hello", html: "<p>Hello</p>" }))
-      .resolves.toEqual({ sent: false, reason: "provider-error" });
+    await expect(
+      sendTransactionalEmail({ to: "customer@example.com", subject: "Hello", html: "<p>Hello</p>" }),
+    ).resolves.toEqual({ sent: false, reason: "provider-error" });
   });
 });

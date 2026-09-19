@@ -4,8 +4,10 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/resend";
 
 const schema = z.object({
-  name: z.string().trim().min(2).max(100), email: z.string().trim().toLowerCase().email().max(200),
-  phone: z.string().trim().max(30).optional(), subject: z.string().trim().min(2).max(100),
+  name: z.string().trim().min(2).max(100),
+  email: z.string().trim().toLowerCase().email().max(200),
+  phone: z.string().trim().max(30).optional(),
+  subject: z.string().trim().min(2).max(100),
   message: z.string().trim().min(10).max(3000),
 });
 

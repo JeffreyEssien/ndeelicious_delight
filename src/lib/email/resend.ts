@@ -37,9 +37,8 @@ export async function sendTransactionalEmail(input: EmailInput) {
       return { sent: false, reason: "provider-error" as const };
     }
     const body: unknown = await response.json();
-    const id = typeof body === "object" && body !== null && "id" in body && typeof body.id === "string"
-      ? body.id
-      : undefined;
+    const id =
+      typeof body === "object" && body !== null && "id" in body && typeof body.id === "string" ? body.id : undefined;
     return { sent: true, id };
   } catch (error) {
     console.warn("Resend request failed", error instanceof Error ? error.message : "Unknown error");
