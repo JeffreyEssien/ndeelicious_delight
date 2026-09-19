@@ -7,7 +7,10 @@
     "build": "next build --webpack",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "npm run typecheck && npm test && npm run build",
+    "test:regression": "vitest run src/features src/lib src/validations",
+    "test:functional": "vitest run src/app/api",
+    "test:structural": "npm run typecheck && npm run build",
+    "check": "npm run test:regression && npm run test:functional && npm run test:structural",
     "admin:bootstrap": "node scripts/bootstrap-admin.mjs",
     "db:seed": "node scripts/seed-catalog.mjs",
     "start": "next start"
