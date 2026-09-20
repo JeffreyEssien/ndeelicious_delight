@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { isSameOrigin } from "@/lib/auth/validation";
 import { createServiceClient } from "@/lib/supabase/service";
-import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/resend";
+import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(100),

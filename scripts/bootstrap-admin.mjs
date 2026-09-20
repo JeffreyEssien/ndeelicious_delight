@@ -21,32 +21,9 @@ const supabase = createClient(url, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-async function findUserByEmail() {
-  for (let page = 1; page <= 20; page += 1) {
-    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 100 });
-    if (error) throw error;
-    const user = data.users.find((candidate) => candidate.email?.toLowerCase() === email);
-    if (user) return user;
-    if (data.users.length < 100) return null;
-  }
-  throw new Error("Could not search all Auth users.");
-}
-
-let user = await findUserByEmail();
-if (!user) {
-  const { data, error } = await supabase.auth.admin.createUser({
-    email,
-    email_confirm: true,
-    user_metadata: { name },
-  });
-  if (error) throw error;
-  user = data.user;
-}
-
-const { error: adminError } = await supabase.from("admins").upsert(
-  { auth_user_id: user.id, email, name, role: "OWNER", active: true },
-  { onConflict: "email" },
-);
+const { error: adminError } = await supabase
+  .from("admins")
+  .upsert({ email, name, role: "OWNER", active: true }, { onConflict: "email" });
 if (adminError) throw adminError;
 
-console.log(`Admin ready: ${email}. Use the email OTP form at /admin/login.`);
+console.log(`Admin ready: ${email}. The first-party OTP form is available at /admin/login.`);

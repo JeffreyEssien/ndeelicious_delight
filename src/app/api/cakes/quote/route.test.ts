@@ -21,8 +21,8 @@ vi.mock("@/lib/supabase/service", () => ({
     },
   }),
 }));
-vi.mock("@/lib/email/resend", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/email/resend")>()),
+vi.mock("@/lib/email/mailer", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/email/mailer")>()),
   sendTransactionalEmail: mocks.sendEmail,
 }));
 

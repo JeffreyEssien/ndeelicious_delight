@@ -84,9 +84,11 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
   };
 }
 
-export async function getProducts(options: { includeInactive?: boolean; fallback?: boolean } = {}) {
+export async function getProducts(
+  options: { includeInactive?: boolean; fallback?: boolean; client?: SupabaseClient } = {},
+) {
   try {
-    const supabase = await createClient();
+    const supabase = options.client ?? (await createClient());
     let query = supabase
       .from("products")
       .select(`
@@ -110,9 +112,9 @@ export async function getProduct(slug: string) {
   return (await getProducts()).find((product) => product.slug === slug);
 }
 
-export async function getDeliveryZones() {
+export async function getDeliveryZones(client?: SupabaseClient) {
   try {
-    const supabase = await createClient();
+    const supabase = client ?? (await createClient());
     const { data, error } = await supabase
       .from("delivery_zones")
       .select("id,name,fee,estimated_time,active")
@@ -131,3 +133,4 @@ export async function getDeliveryZones() {
     return fallbackZones;
   }
 }
+import type { SupabaseClient } from "@supabase/supabase-js";

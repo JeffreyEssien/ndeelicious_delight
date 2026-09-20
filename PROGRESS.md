@@ -1,7 +1,7 @@
 # Project Progress and TODOs
 
-Last updated: 2026-09-19  
-Active development branch: `develop`  
+Last updated: 2026-09-20
+Active development branch: `develop`
 Baseline commit: `fc769b6` (`the initial push`)
 
 This is the living checkpoint for implementation progress. Update it when a feature, migration, test, deployment prerequisite, or known limitation changes. `implementation.md` remains the full product plan and definition of done.
@@ -10,7 +10,7 @@ This is the living checkpoint for implementation progress. Update it when a feat
 
 The initial full-stack application is committed on `main`. The current `develop` branch adds:
 
-- Resend-based transactional email helpers.
+- Provider-neutral SMTP transactional email through Gmail-compatible STARTTLS, app-password, or OAuth2 credentials.
 - Customer emails for orders, cake requests, and newsletter sign-ups.
 - Admin emails for new orders, cake requests, and contact messages when `ADMIN_EMAIL` is configured.
 - Environment-aware canonical URLs for metadata, `robots.txt`, and `sitemap.xml`.
@@ -20,7 +20,7 @@ The initial full-stack application is committed on `main`. The current `develop`
 
 The active implementation checkpoint is now **G03 · Inventory integrity**.
 
-The email/site-URL changes were already uncommitted when this checkpoint was created. They have now been reviewed, hardened against unsafe customer HTML, and covered by unit and route-level tests.
+The first-party admin OTP/SMTP security remediation is implemented and verified locally. Deployment remains blocked on migration `0004`, per-environment secrets, SMTP credentials, admin bootstrap, and revocation of legacy Supabase Auth sessions.
 
 ## Implemented
 
@@ -30,7 +30,7 @@ The email/site-URL changes were already uncommitted when this checkpoint was cre
 - [x] Checkout quote calculation, delivery zones, coupons, and order creation route.
 - [x] Order tracking interface and route.
 - [x] Supabase schema migrations, server/client access, seed script, and admin bootstrap script.
-- [x] Admin OTP authentication, protected admin shell, product/order/content/settings interfaces, and admin mutation routes.
+- [x] First-party admin OTP authentication with hashed one-time challenges, durable rate limits, opaque revocable sessions, protected admin shell, and protected mutation routes.
 - [x] Contact and newsletter persistence routes.
 - [x] Error, loading, not-found, policy, delivery, FAQ, and about pages.
 - [x] Unit tests for checkout pricing, cake pricing, inventory rules, formatting, validation, and auth helpers.
@@ -45,6 +45,10 @@ The email/site-URL changes were already uncommitted when this checkpoint was cre
 - [x] Product variant management with inactive-row preservation for historical order integrity.
 - [x] Product image upload, required alt text, ordering, storefront gallery use, and storage/RLS migration.
 - [x] Storefront catalogue visibility now respects an empty live catalogue instead of exposing fallback products after archival.
+- [x] Removed the Supabase Auth magic-link/PKCE dependency from admin authentication so login codes no longer enter redirect URLs.
+- [x] Added service-role-only `admin_otp_challenges` and `admin_sessions` tables in migration `0004_admin_otp_sessions.sql`.
+- [x] Replaced process-local OTP throttling with database-backed recipient and requester limits suitable for multiple application instances.
+- [x] Replaced Resend-specific delivery code with a server-owned SMTP mail engine shared by admin OTP and customer notifications.
 
 ## Verification status
 
@@ -65,6 +69,7 @@ Latest checkpoint verification on 2026-09-19:
 - `npm run typecheck` — Next.js route generation and strict TypeScript passed after the lint remediation.
 - `npm run build` — production compilation and all 43 routes/pages passed after the lint remediation.
 - `npm run check` — 33 regression tests, 16 functional tests, strict TypeScript, and the 44-route production build passed for G02.
+- `npm run check` — 34 regression tests, 20 functional tests, strict TypeScript, and the 44-route production build passed after the first-party OTP/SMTP security migration on 2026-09-20.
 
 CI command ownership:
 
@@ -78,8 +83,11 @@ CI command ownership:
 - [x] Review and format the transactional-email route changes.
 - [x] Add unit tests for HTML escaping, provider failure, and missing email configuration.
 - [x] Add functional tests for order creation, cake requests, contact submission, and newsletter subscription.
-- [ ] Confirm the Resend sending domain and replace the development sender address.
-- [ ] Configure `ADMIN_EMAIL`, `RESEND_API_KEY`, `SMTP_FROM_EMAIL`, and `SMTP_FROM_NAME` in staging and production.
+- [ ] Apply `db/migrations/0004_admin_otp_sessions.sql` to development, staging, and production before deploying the new admin login.
+- [ ] Configure a unique 32+ character `ADMIN_AUTH_SECRET` in each environment; never expose it through a `NEXT_PUBLIC_` variable.
+- [ ] Configure `SMTP_USER`, a Gmail app password or OAuth2 credentials, `SMTP_FROM_EMAIL`, and `SMTP_FROM_NAME` in each environment.
+- [ ] Run `npm run admin:bootstrap` in each intended environment after its variables and migration are ready.
+- [ ] Globally revoke existing Supabase Auth admin sessions and correct the Supabase Auth Site URL to an absolute `https://...` URL until every old deployment is retired.
 - [ ] Configure GitHub/Vercel deployment values, then set repository variable `VERCEL_CD_ENABLED=true`.
 - [ ] Add branch protection for `main` and `develop`, requiring all four CI jobs.
 - [ ] Apply `db/migrations/0003_product_media.sql` to each Supabase environment before deploying G02 image management.
@@ -133,7 +141,7 @@ Complete these checkpoints in order unless a newly discovered dependency require
 
 ## TODO — production readiness
 
-- [ ] Create and validate separate development, staging, and production Supabase/Stripe/Resend environments.
+- [ ] Create and validate separate development, staging, and production Supabase/Stripe/SMTP environments.
 - [ ] Replace fallback catalogue content with approved production content and imagery.
 - [ ] Add analytics, error monitoring, and structured logs.
 - [ ] Review rate limiting for a multi-instance production deployment.

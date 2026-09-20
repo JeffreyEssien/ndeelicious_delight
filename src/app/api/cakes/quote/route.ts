@@ -3,7 +3,7 @@ import { CommerceError } from "@/features/checkout/pricing";
 import { cakeConfigurationSchema } from "@/validations/cake";
 import { isSameOrigin } from "@/lib/auth/validation";
 import { createServiceClient } from "@/lib/supabase/service";
-import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/resend";
+import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
 
 export async function POST(request: Request) {
   try {

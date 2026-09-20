@@ -1,1 +1,20 @@
-import { AdminPortal } from "@/components/admin/admin-portal";import { getAdminData } from "@/lib/data/admin";export default async function Page({params}:{params:Promise<{section?:string[]}>}){const [{section},data]=await Promise.all([params,getAdminData()]);return <AdminPortal section={section?.[0]??"dashboard"} initialProducts={data.products} initialOrders={data.orders} initialZones={data.zones} initialCakes={data.cakes} initialCoupons={data.coupons} initialReviews={data.reviews}/>}
+import { redirect } from "next/navigation";
+import { AdminPortal } from "@/components/admin/admin-portal";
+import { requireAdminPageSession } from "@/lib/auth/admin-request";
+import { getAdminData } from "@/lib/data/admin";
+export default async function Page({ params }: { params: Promise<{ section?: string[] }> }) {
+  const session = await requireAdminPageSession();
+  if (!session) redirect("/admin/login");
+  const [{ section }, data] = await Promise.all([params, getAdminData(session.db)]);
+  return (
+    <AdminPortal
+      section={section?.[0] ?? "dashboard"}
+      initialProducts={data.products}
+      initialOrders={data.orders}
+      initialZones={data.zones}
+      initialCakes={data.cakes}
+      initialCoupons={data.coupons}
+      initialReviews={data.reviews}
+    />
+  );
+}

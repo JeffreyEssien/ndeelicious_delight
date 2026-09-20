@@ -4,7 +4,7 @@ import { getDeliveryZones, getProducts } from "@/lib/data/catalog";
 import { isSameOrigin } from "@/lib/auth/validation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getCoupon } from "@/lib/data/coupons";
-import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/resend";
+import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const orderNumber = () => `ND-${Date.now().toString().slice(-7)}${Math.floor(Math.random() * 10)}`;

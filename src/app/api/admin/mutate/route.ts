@@ -1,7 +1,5 @@
 import { z } from "zod";
-import { isSameOrigin } from "@/lib/auth/validation";
-import { isActiveAdmin } from "@/lib/auth/admin-auth";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdminRequest } from "@/lib/auth/admin-request";
 
 const schema = z.discriminatedUnion("action", [
   z.object({
@@ -49,13 +47,11 @@ const schema = z.discriminatedUnion("action", [
 ]);
 
 export async function POST(request: Request) {
-  if (!isSameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
+  const auth = await requireAdminRequest(request);
+  if (!auth.ok) return auth.response;
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Invalid admin update." }, { status: 400 });
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  if (!data.user || !(await isActiveAdmin(supabase, data.user.id)))
-    return Response.json({ error: "Unauthorized." }, { status: 401 });
+  const supabase = auth.db;
   const input = parsed.data;
   let error: { message: string } | null | undefined;
   if (input.action === "product-status")
