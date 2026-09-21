@@ -1,6 +1,6 @@
 # Project Progress and TODOs
 
-Last updated: 2026-09-20
+Last updated: 2026-09-21
 Active development branch: `develop`
 Baseline commit: `fc769b6` (`the initial push`)
 
@@ -20,7 +20,7 @@ The initial full-stack application is committed on `main`. The current `develop`
 
 The active implementation checkpoint is now **G03 · Inventory integrity**.
 
-The first-party admin OTP/SMTP security remediation is implemented and verified locally. Deployment remains blocked on migration `0004`, per-environment secrets, SMTP credentials, admin bootstrap, and revocation of legacy Supabase Auth sessions.
+The first-party admin OTP/SMTP security remediation is implemented and verified locally. Migration `0004` is applied to the project's single Supabase database. Activation remains blocked on `ADMIN_AUTH_SECRET`, deployment, and revocation of legacy Supabase Auth sessions.
 
 ## Implemented
 
@@ -83,7 +83,7 @@ CI command ownership:
 - [x] Review and format the transactional-email route changes.
 - [x] Add unit tests for HTML escaping, provider failure, and missing email configuration.
 - [x] Add functional tests for order creation, cake requests, contact submission, and newsletter subscription.
-- [ ] Apply `db/migrations/0004_admin_otp_sessions.sql` to development, staging, and production before deploying the new admin login.
+- [x] Apply `db/migrations/0004_admin_otp_sessions.sql` to the project's Supabase database and verify RLS plus role revocations.
 - [ ] Configure a unique 32+ character `ADMIN_AUTH_SECRET` in each environment; never expose it through a `NEXT_PUBLIC_` variable.
 - [ ] Configure `SMTP_USER`, a Gmail app password or OAuth2 credentials, `SMTP_FROM_EMAIL`, and `SMTP_FROM_NAME` in each environment.
 - [ ] Run `npm run admin:bootstrap` in each intended environment after its variables and migration are ready.
