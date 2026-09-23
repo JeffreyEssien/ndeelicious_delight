@@ -7,6 +7,7 @@ export function deductInventory(products: Product[], cart: CartLine[]): Product[
     const product = next.find((p) => p.id === line.productId);
     const variant = product?.variants.find((v) => v.id === line.variantId);
     if (!product || !variant) throw new CommerceError("PRODUCT_UNAVAILABLE", "A product is no longer available.");
+    if (product.trackInventory === false) continue;
     if (product.stockQuantity < line.quantity || variant.stockQuantity < line.quantity)
       throw new CommerceError(
         "INSUFFICIENT_STOCK",

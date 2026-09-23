@@ -1,6 +1,6 @@
 # Project Progress and TODOs
 
-Last updated: 2026-09-21
+Last updated: 2026-09-23
 Active development branch: `develop`
 Baseline commit: `fc769b6` (`the initial push`)
 
@@ -18,9 +18,9 @@ The initial full-stack application is committed on `main`. The current `develop`
 - Incremental Biome linting and formatting for every changed file, locally and in CI.
 - A clean full-repository Biome lint baseline; the former 82-error/141-warning backlog is resolved.
 
-The active implementation checkpoint is now **G03 · Inventory integrity**.
+The active implementation checkpoint is now **G04 · Admin-controlled cake configuration**.
 
-The first-party admin OTP/SMTP security remediation is implemented and verified locally. Migration `0004` is applied to the project's single Supabase database. Activation remains blocked on `ADMIN_AUTH_SECRET`, deployment, and revocation of legacy Supabase Auth sessions.
+The first-party admin OTP/SMTP security remediation is implemented and verified locally. Migrations `0004` and `0005` are applied to the project's single Supabase database. Deployment remains blocked on production environment configuration and revocation of legacy Supabase Auth sessions.
 
 ## Implemented
 
@@ -49,6 +49,7 @@ The first-party admin OTP/SMTP security remediation is implemented and verified 
 - [x] Added service-role-only `admin_otp_challenges` and `admin_sessions` tables in migration `0004_admin_otp_sessions.sql`.
 - [x] Replaced process-local OTP throttling with database-backed recipient and requester limits suitable for multiple application instances.
 - [x] Replaced Resend-specific delivery code with a server-owned SMTP mail engine shared by admin OTP and customer notifications.
+- [x] Added transactional, expiring inventory reservations with payment-stage deduction, cancellation/refund restoration, protected admin adjustments, and database row locking against concurrent overselling.
 
 ## Verification status
 
@@ -58,7 +59,7 @@ Verified locally on 2026-09-19 before introducing the CI files:
 - `npm test` — 9 files and 27 tests passed.
 - `npm run build` — passed; 43 routes/pages generated.
 
-Latest checkpoint verification on 2026-09-19:
+Checkpoint verification history:
 
 - `npm run test:regression` — 9 files and 29 tests passed.
 - `npm run test:functional` — 5 files and 9 tests passed.
@@ -70,6 +71,8 @@ Latest checkpoint verification on 2026-09-19:
 - `npm run build` — production compilation and all 43 routes/pages passed after the lint remediation.
 - `npm run check` — 33 regression tests, 16 functional tests, strict TypeScript, and the 44-route production build passed for G02.
 - `npm run check` — 34 regression tests, 20 functional tests, strict TypeScript, and the 44-route production build passed after the first-party OTP/SMTP security migration on 2026-09-20.
+- `npm run check` — 40 regression tests, 24 functional tests, strict TypeScript, and the 44-route production build passed for G03 on 2026-09-23.
+- Migration `0005_inventory_integrity.sql` was transactionally validated and applied to the configured Supabase database on 2026-09-23; rollback-only lifecycle checks and a live two-connection race confirmed one winner, one rejected reservation, zero oversales, correct deduction/restoration, RLS, triggers, and role restrictions.
 
 CI command ownership:
 
@@ -84,6 +87,7 @@ CI command ownership:
 - [x] Add unit tests for HTML escaping, provider failure, and missing email configuration.
 - [x] Add functional tests for order creation, cake requests, contact submission, and newsletter subscription.
 - [x] Apply `db/migrations/0004_admin_otp_sessions.sql` to the project's Supabase database and verify RLS plus role revocations.
+- [x] Apply `db/migrations/0005_inventory_integrity.sql` and verify reservation, concurrency, deduction, restoration, RLS, triggers, and role restrictions.
 - [ ] Configure a unique 32+ character `ADMIN_AUTH_SECRET` in each environment; never expose it through a `NEXT_PUBLIC_` variable.
 - [ ] Configure `SMTP_USER`, a Gmail app password or OAuth2 credentials, `SMTP_FROM_EMAIL`, and `SMTP_FROM_NAME` in each environment.
 - [ ] Run `npm run admin:bootstrap` in each intended environment after its variables and migration are ready.
@@ -99,7 +103,7 @@ Complete these checkpoints in order unless a newly discovered dependency require
 
 - [x] **G01 · Phase 1 — Foundation quality:** add linting and incremental formatting enforcement to local scripts and CI.
 - [x] **G02 · Phase 5 — Product management:** complete product editing, duplication, variants, image management, visibility, and featured controls.
-- [ ] **G03 · Phase 6 — Inventory integrity:** add transactional stock reservation/deduction/restoration and concurrent overselling protection.
+- [x] **G03 · Phase 6 — Inventory integrity:** add transactional stock reservation/deduction/restoration and concurrent overselling protection.
 - [ ] **G04 · Phase 13 — Cake configuration:** move cake options and lead-time rules to admin-controlled data.
 - [ ] **G05 · Phase 13 — Cake uploads:** securely store and validate cake inspiration images.
 - [ ] **G06 · Phases 14–16 — Delivery and coupons:** complete minimum-order rules, coupon administration, and per-customer usage limits.
@@ -121,8 +125,8 @@ Complete these checkpoints in order unless a newly discovered dependency require
 - [ ] Implement Stripe Checkout/payment intent creation.
 - [ ] Implement and verify signed Stripe webhooks.
 - [ ] Make payment/order processing idempotent.
-- [ ] Deduct and restore inventory transactionally after payment/refund events.
-- [ ] Prevent overselling under concurrent checkouts.
+- [x] Deduct and restore inventory transactionally after payment/refund events.
+- [x] Prevent overselling under concurrent checkouts.
 - [ ] Add customer-facing payment failure and retry states.
 - [ ] Complete admin order status transitions and customer status notifications.
 - [ ] Add image upload/storage for products and cake references.

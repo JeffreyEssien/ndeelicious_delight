@@ -5,5 +5,6 @@ describe("calculateOrderQuote",()=>{
   it("never adds a fee for pickup",()=>{const quote=calculateOrderQuote({cart,products,fulfilment:"pickup",deliveryFee:999999});expect(quote.deliveryFee).toBe(0)});
   it("applies capped percentage coupons",()=>{const quote=calculateOrderQuote({cart:[{productId:"p1",variantId:"v3",quantity:1}],products,fulfilment:"pickup",coupon:previewCoupon});expect(quote.discount).toBe(500000)});
   it("rejects insufficient stock",()=>{expect(()=>calculateOrderQuote({cart:[{productId:"p4",variantId:"v1",quantity:7}],products,fulfilment:"pickup"})).toThrowError(CommerceError)});
+  it("does not impose stock limits when inventory tracking is disabled",()=>{const unlimited={...products[1],trackInventory:false,stockQuantity:0,variants:products[1].variants.map(variant=>({...variant,stockQuantity:0}))};const quote=calculateOrderQuote({cart:[{productId:unlimited.id,variantId:unlimited.variants[0].id,quantity:50}],products:[unlimited],fulfilment:"pickup"});expect(quote.lines[0].quantity).toBe(50)});
   it("rejects expired coupons",()=>{expect(()=>calculateOrderQuote({cart,products,fulfilment:"pickup",coupon:{...previewCoupon,expiresAt:new Date("2025-01-01")},now:new Date("2026-01-01")})).toThrowError(/expired/) });
 });

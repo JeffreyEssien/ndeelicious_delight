@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
   orderResult: vi.fn(),
   addressInsert: vi.fn(),
   itemInsert: vi.fn(),
+  reserveInventory: vi.fn(),
+  cleanupEq: vi.fn(),
   sendEmail: vi.fn(),
 }));
 
@@ -39,12 +41,20 @@ vi.mock("@/lib/supabase/service", () => ({
       }
       if (table === "delivery_addresses") return { insert: mocks.addressInsert };
       if (table === "orders") {
-        return { insert: () => ({ select: () => ({ single: mocks.orderResult }) }) };
+        return {
+          insert: () => ({ select: () => ({ single: mocks.orderResult }) }),
+          delete: () => ({ eq: mocks.cleanupEq }),
+        };
       }
-      if (table === "order_items") return { insert: mocks.itemInsert };
+      if (table === "order_items") return { insert: mocks.itemInsert, delete: () => ({ eq: mocks.cleanupEq }) };
+      if (table === "coupon_usages") return { delete: () => ({ eq: mocks.cleanupEq }) };
       throw new Error(`Unexpected table: ${table}`);
     },
   }),
+}));
+vi.mock("@/lib/data/inventory", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/data/inventory")>()),
+  reserveOrderInventory: mocks.reserveInventory,
 }));
 vi.mock("@/lib/email/mailer", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/email/mailer")>()),
@@ -63,6 +73,8 @@ describe("POST /api/orders", () => {
     mocks.orderResult.mockResolvedValue({ data: { id: "order-id", order_number: "ND-12345678" }, error: null });
     mocks.addressInsert.mockResolvedValue({ error: null });
     mocks.itemInsert.mockResolvedValue({ error: null });
+    mocks.reserveInventory.mockResolvedValue(new Date("2026-09-23T10:00:00Z"));
+    mocks.cleanupEq.mockResolvedValue({ error: null });
     mocks.sendEmail.mockResolvedValue({ sent: true });
   });
 
@@ -83,6 +95,7 @@ describe("POST /api/orders", () => {
       order: { number: "ND-12345678", total: 1_000_000, status: "PENDING_PAYMENT" },
     });
     expect(mocks.itemInsert).toHaveBeenCalledOnce();
+    expect(mocks.reserveInventory).toHaveBeenCalledWith(expect.anything(), "order-id");
     expect(mocks.sendEmail).toHaveBeenCalledTimes(2);
     for (const [email] of mocks.sendEmail.mock.calls) {
       expect(email.html).toContain("Ada &lt;baker&gt;");
@@ -90,5 +103,26 @@ describe("POST /api/orders", () => {
       expect(email.html).toContain("Single &lt;large&gt;");
       expect(email.html).not.toContain("Ada <baker>");
     }
+  });
+
+  it("returns a conflict and removes the incomplete order when the atomic reservation loses a stock race", async () => {
+    const { InventoryConflictError } = await import("@/lib/data/inventory");
+    mocks.reserveInventory.mockRejectedValueOnce(new InventoryConflictError());
+
+    const response = await POST(
+      new Request("http://localhost/api/orders", {
+        method: "POST",
+        body: JSON.stringify({
+          customer: { name: "Ada", email: "ada@example.com", phone: "08012345678" },
+          delivery: { fulfilment: "pickup" },
+          cart: [{ productId: "product-id", variantId: "variant-id", quantity: 2 }],
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({ code: "INSUFFICIENT_STOCK" });
+    expect(mocks.cleanupEq).toHaveBeenCalledTimes(3);
+    expect(mocks.sendEmail).not.toHaveBeenCalled();
   });
 });

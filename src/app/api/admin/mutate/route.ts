@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
+import { InventoryConflictError, setProductInventory, transitionOrderStatus } from "@/lib/data/inventory";
 
 const schema = z.discriminatedUnion("action", [
   z.object({
@@ -59,20 +60,24 @@ export async function POST(request: Request) {
       .from("products")
       .update({ status: input.status, updated_at: new Date().toISOString() })
       .eq("id", input.id));
-  if (input.action === "inventory")
-    ({ error } = await supabase
-      .from("products")
-      .update({
-        stock_quantity: input.quantity,
-        status: input.quantity === 0 ? "OUT_OF_STOCK" : undefined,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", input.id));
-  if (input.action === "order-status")
-    ({ error } = await supabase
-      .from("orders")
-      .update({ status: input.status, updated_at: new Date().toISOString() })
-      .eq("order_number", input.orderNumber));
+  if (input.action === "inventory") {
+    try {
+      await setProductInventory(supabase, input.id, input.quantity);
+    } catch (reason) {
+      if (reason instanceof InventoryConflictError)
+        return Response.json({ error: reason.message, code: reason.code }, { status: 409 });
+      error = { message: "Inventory update failed." };
+    }
+  }
+  if (input.action === "order-status") {
+    try {
+      await transitionOrderStatus(supabase, input.orderNumber, input.status);
+    } catch (reason) {
+      if (reason instanceof InventoryConflictError)
+        return Response.json({ error: reason.message, code: reason.code }, { status: 409 });
+      error = { message: "Order status transition failed." };
+    }
+  }
   if (input.action === "theme")
     ({ error } = await supabase
       .from("site_settings")

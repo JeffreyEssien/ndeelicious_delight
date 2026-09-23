@@ -4,6 +4,7 @@ import { getDeliveryZones, getProducts } from "@/lib/data/catalog";
 import { isSameOrigin } from "@/lib/auth/validation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getCoupon } from "@/lib/data/coupons";
+import { InventoryConflictError, reserveOrderInventory } from "@/lib/data/inventory";
 import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -88,6 +89,7 @@ export async function POST(request: Request) {
       })),
     );
     if (itemsError) throw itemsError;
+    await reserveOrderInventory(service, order.id);
     if (coupon?.id && quote.discount > 0) {
       const { error: usageError } = await service.from("coupon_usages").insert({
         coupon_id: coupon.id,
@@ -134,6 +136,8 @@ export async function POST(request: Request) {
     }
     if (error instanceof CommerceError)
       return Response.json({ error: error.message, code: error.code }, { status: 400 });
+    if (error instanceof InventoryConflictError)
+      return Response.json({ error: error.message, code: error.code }, { status: 409 });
     return Response.json({ error: "We couldn’t create your order. Please try again." }, { status: 500 });
   }
 }

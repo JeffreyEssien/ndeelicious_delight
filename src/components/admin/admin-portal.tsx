@@ -103,7 +103,8 @@ export function AdminPortal({
     if (response.ok) notify("Order status updated.");
     else {
       setOrders(before);
-      notify("Order update could not be saved.");
+      const payload = await response.json().catch(() => null);
+      notify(payload?.error ?? "Order update could not be saved.");
     }
   }
   async function inventory(id: string, quantity: number) {
@@ -123,7 +124,8 @@ export function AdminPortal({
     if (response.ok) notify("Inventory updated.");
     else {
       setProducts(before);
-      notify("Inventory could not be saved.");
+      const payload = await response.json().catch(() => null);
+      notify(payload?.error ?? "Inventory could not be saved.");
     }
   }
   async function saveZones() {

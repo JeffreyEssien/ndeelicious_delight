@@ -58,12 +58,15 @@ export function calculateOrderQuote(input: {
     const product = input.products.find((p) => p.id === line.productId);
     if (!product || product.status === "DRAFT" || product.status === "ARCHIVED")
       throw new CommerceError("PRODUCT_UNAVAILABLE", "A product in your basket is no longer available.");
-    const variant = product.variants.find((v) => v.id === line.variantId && v.stockQuantity > 0);
+    const variant = product.variants.find((v) => v.id === line.variantId);
     if (!variant || product.status === "OUT_OF_STOCK")
       throw new CommerceError("VARIANT_UNAVAILABLE", `${product.name} is currently unavailable.`);
-    const available = Math.min(product.stockQuantity, variant.stockQuantity);
-    if (line.quantity > available)
-      throw new CommerceError("INSUFFICIENT_STOCK", `Only ${available} of ${product.name} remain.`);
+    if (product.trackInventory !== false) {
+      const available = Math.min(product.stockQuantity, variant.stockQuantity);
+      if (available < 1) throw new CommerceError("VARIANT_UNAVAILABLE", `${product.name} is currently unavailable.`);
+      if (line.quantity > available)
+        throw new CommerceError("INSUFFICIENT_STOCK", `Only ${available} of ${product.name} remain.`);
+    }
     const unitPrice = (product.discountPrice ?? product.price) + variant.priceAdjustment;
     if (!Number.isSafeInteger(unitPrice) || unitPrice < 0)
       throw new CommerceError("INVALID_PRICE", "This item’s price needs review.");
