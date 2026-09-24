@@ -1,6 +1,6 @@
 # Project Progress and TODOs
 
-Last updated: 2026-09-23
+Last updated: 2026-09-24
 Active development branch: `develop`
 Baseline commit: `fc769b6` (`the initial push`)
 
@@ -18,9 +18,9 @@ The initial full-stack application is committed on `main`. The current `develop`
 - Incremental Biome linting and formatting for every changed file, locally and in CI.
 - A clean full-repository Biome lint baseline; the former 82-error/141-warning backlog is resolved.
 
-The active implementation checkpoint is now **G04 · Admin-controlled cake configuration**.
+The active implementation checkpoint is now **G08 · Order lifecycle**.
 
-The first-party admin OTP/SMTP security remediation is implemented and verified locally. Migrations `0004` and `0005` are applied to the project's single Supabase database. Deployment remains blocked on production environment configuration and revocation of legacy Supabase Auth sessions.
+The first-party admin OTP/SMTP security remediation is implemented and verified locally. Migrations `0003` through `0009` are applied to the project's configured Supabase database. Deployment remains blocked on production environment configuration and revocation of legacy Supabase Auth sessions.
 
 ## Implemented
 
@@ -50,6 +50,12 @@ The first-party admin OTP/SMTP security remediation is implemented and verified 
 - [x] Replaced process-local OTP throttling with database-backed recipient and requester limits suitable for multiple application instances.
 - [x] Replaced Resend-specific delivery code with a server-owned SMTP mail engine shared by admin OTP and customer notifications.
 - [x] Added transactional, expiring inventory reservations with payment-stage deduction, cancellation/refund restoration, protected admin adjustments, and database row locking against concurrent overselling.
+- [x] Removed runtime catalogue, coupon, review, and editorial demo fallbacks; customer-facing content now comes from Supabase records or presents an explicit empty state.
+- [x] Added database-managed business/storefront content, cake options and lead time, approved review display and submission, and functional admin editors.
+- [x] Added private validated cake-inspiration uploads with signed admin previews.
+- [x] Replaced the coupon draft-only control with persisted coupon editing, activation windows, monetary/percentage rules, total limits, and per-customer limits.
+- [x] Added store-wide and delivery-zone minimums, delivery/pickup availability controls, ordered delivery-zone administration, product/category coupon eligibility, and concurrency-safe expiring coupon holds.
+- [x] Added server-owned Stripe Checkout sessions, persisted payment attempts, signed webhook verification, atomic and idempotent payment transitions, payment-status polling, and safe payment resume/retry flows.
 
 ## Verification status
 
@@ -72,7 +78,15 @@ Checkpoint verification history:
 - `npm run check` — 33 regression tests, 16 functional tests, strict TypeScript, and the 44-route production build passed for G02.
 - `npm run check` — 34 regression tests, 20 functional tests, strict TypeScript, and the 44-route production build passed after the first-party OTP/SMTP security migration on 2026-09-20.
 - `npm run check` — 40 regression tests, 24 functional tests, strict TypeScript, and the 44-route production build passed for G03 on 2026-09-23.
+- `npm run check` — 40 regression tests, 28 functional tests, strict TypeScript, and the 37-page production build passed after the database-backed storefront sweep on 2026-09-23.
+- `npm run check` — 43 regression tests, 34 functional tests, strict TypeScript, and the 37-page production build passed for G06 on 2026-09-24.
+- `npm run check` — 45 regression tests, 40 functional tests, strict TypeScript, and the 40-page production build passed for G07 on 2026-09-24.
 - Migration `0005_inventory_integrity.sql` was transactionally validated and applied to the configured Supabase database on 2026-09-23; rollback-only lifecycle checks and a live two-connection race confirmed one winner, one rejected reservation, zero oversales, correct deduction/restoration, RLS, triggers, and role restrictions.
+- Migrations `0006_database_backed_storefront.sql`, `0007_cake_reference_images.sql`, and `0008_additive_storefront_content.sql` are applied to the configured Supabase database. The latter is additive and preserves content already customized in admin.
+- Migration `0003_product_media.sql` was applied to the configured Supabase database on 2026-09-23 after a runtime REST query exposed the missing `product_images.storage_path` column; the content record and column were then verified through Supabase REST.
+- Migration `0009_delivery_coupon_integrity.sql` was rollback-validated and applied on 2026-09-24. Live two-connection races confirmed one winner/one rejection for both global and per-customer coupon limits; paid orders committed holds and cancellation released them.
+- Migration `0010_stripe_payments.sql` was rollback-validated and applied on 2026-09-24. A rollback-only live database test confirmed amount-tampering rejection, duplicate-event idempotency, exactly-once stock deduction, paid order/payment transitions, and service-role RPC grants.
+- Runtime smoke checks returned HTTP 200 for the homepage, checkout, delivery information, and admin login against the running development server.
 
 CI command ownership:
 
@@ -94,7 +108,7 @@ CI command ownership:
 - [ ] Globally revoke existing Supabase Auth admin sessions and correct the Supabase Auth Site URL to an absolute `https://...` URL until every old deployment is retired.
 - [ ] Configure GitHub/Vercel deployment values, then set repository variable `VERCEL_CD_ENABLED=true`.
 - [ ] Add branch protection for `main` and `develop`, requiring all four CI jobs.
-- [ ] Apply `db/migrations/0003_product_media.sql` to each Supabase environment before deploying G02 image management.
+- [x] Apply `db/migrations/0003_product_media.sql` to the currently configured Supabase environment before deploying G02 image management.
 - [x] Commit and push the preserved email/SEO work plus the pipeline after review.
 
 ## Ordered implementation gap register
@@ -104,13 +118,13 @@ Complete these checkpoints in order unless a newly discovered dependency require
 - [x] **G01 · Phase 1 — Foundation quality:** add linting and incremental formatting enforcement to local scripts and CI.
 - [x] **G02 · Phase 5 — Product management:** complete product editing, duplication, variants, image management, visibility, and featured controls.
 - [x] **G03 · Phase 6 — Inventory integrity:** add transactional stock reservation/deduction/restoration and concurrent overselling protection.
-- [ ] **G04 · Phase 13 — Cake configuration:** move cake options and lead-time rules to admin-controlled data.
-- [ ] **G05 · Phase 13 — Cake uploads:** securely store and validate cake inspiration images.
-- [ ] **G06 · Phases 14–16 — Delivery and coupons:** complete minimum-order rules, coupon administration, and per-customer usage limits.
-- [ ] **G07 · Phase 17 — Stripe:** create server-owned payments, verified idempotent webhooks, and safe retry/failure flows.
+- [x] **G04 · Phase 13 — Cake configuration:** move cake options and lead-time rules to admin-controlled data.
+- [x] **G05 · Phase 13 — Cake uploads:** securely store and validate cake inspiration images.
+- [x] **G06 · Phases 14–16 — Delivery and coupons:** complete minimum-order rules, coupon administration, and per-customer usage limits.
+- [x] **G07 · Phase 17 — Stripe:** create server-owned payments, verified idempotent webhooks, and safe retry/failure flows.
 - [ ] **G08 · Phases 18–20 — Order lifecycle:** complete admin order operations, refunds, status notifications, and immutable lifecycle handling.
-- [ ] **G09 · Phase 21 — Reviews:** replace placeholder reviews with persisted submission, moderation, and approved public display.
-- [ ] **G10 · Phases 22–23 — Content and settings:** make saved admin content and centralized business settings drive the storefront.
+- [x] **G09 · Phase 21 — Reviews:** replace placeholder reviews with persisted submission, moderation, and approved public display.
+- [x] **G10 · Phases 22–23 — Content and settings:** make saved admin content and centralized business settings drive the storefront.
 - [ ] **G11 · Phase 24 — Audit logging:** record sensitive admin changes with before/after values and actor identity.
 - [ ] **G12 · Phase 25 — SEO:** add Twitter metadata and Product, Organization, and Breadcrumb structured data.
 - [ ] **G13 · Phase 26 — Analytics and monitoring:** add privacy-conscious commerce events, error monitoring, and structured operational logs.
@@ -122,22 +136,22 @@ Complete these checkpoints in order unless a newly discovered dependency require
 
 ## TODO — commerce-critical
 
-- [ ] Implement Stripe Checkout/payment intent creation.
-- [ ] Implement and verify signed Stripe webhooks.
-- [ ] Make payment/order processing idempotent.
+- [x] Implement Stripe Checkout/payment intent creation.
+- [x] Implement and verify signed Stripe webhooks.
+- [x] Make payment/order processing idempotent.
 - [x] Deduct and restore inventory transactionally after payment/refund events.
 - [x] Prevent overselling under concurrent checkouts.
-- [ ] Add customer-facing payment failure and retry states.
+- [x] Add customer-facing payment failure and retry states.
 - [ ] Complete admin order status transitions and customer status notifications.
-- [ ] Add image upload/storage for products and cake references.
+- [x] Add image upload/storage for products and cake references.
 
 ## TODO — test coverage
 
 - [ ] Add integration tests against an isolated Supabase test project or local database.
 - [ ] Add browser E2E coverage for homepage, catalogue, product, cart, checkout, cake builder, and order tracking.
 - [ ] Add browser E2E coverage for admin login, products, inventory, coupons, and order processing.
-- [ ] Add Stripe webhook, duplicate event, delayed event, and failed-payment tests.
-- [ ] Add coupon expiry, price change, and out-of-stock race-condition tests.
+- [x] Add Stripe webhook, duplicate event, delayed event, and failed-payment tests.
+- [x] Add coupon expiry, usage-limit, minimum-order, eligibility, per-customer, and out-of-stock race-condition tests.
 - [ ] Add accessibility checks for critical customer and admin journeys.
 - [x] Add an incremental lint/format policy and CI check for every changed file.
 - [x] Resolve the pre-existing full-repository Biome lint backlog (82 errors and 141 warnings).
@@ -146,7 +160,7 @@ Complete these checkpoints in order unless a newly discovered dependency require
 ## TODO — production readiness
 
 - [ ] Create and validate separate development, staging, and production Supabase/Stripe/SMTP environments.
-- [ ] Replace fallback catalogue content with approved production content and imagery.
+- [ ] Enter owner-approved business contact details, catalogue records, imagery, policy dates, and final editorial copy through admin before launch; runtime fallbacks have been removed.
 - [ ] Add analytics, error monitoring, and structured logs.
 - [ ] Review rate limiting for a multi-instance production deployment.
 - [ ] Add durable abuse protection for public contact, newsletter, cake-request, and order endpoints.

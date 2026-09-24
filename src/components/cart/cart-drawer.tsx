@@ -48,7 +48,11 @@ export function CartDrawer() {
             lines.map(({ line, product: p, variant: v }) => {
               return (
                 <div className="cart-line" key={`${line.productId}-${line.variantId}`}>
-                  <Image src={p.image} alt="" width={88} height={104} style={{ objectPosition: p.imagePosition }} />
+                  {p.image ? (
+                    <Image src={p.image} alt="" width={88} height={104} style={{ objectPosition: p.imagePosition }} />
+                  ) : (
+                    <span className="cart-image-empty missing-image">No image</span>
+                  )}
                   <div>
                     <Link href={`/product/${p.slug}`} onClick={() => cart.setOpen(false)}>
                       {p.name}

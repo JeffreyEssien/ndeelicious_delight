@@ -350,6 +350,13 @@
   height: 54px;
   border-radius: var(--radius-sm);
 }
+.admin-image-empty {
+  width: 48px;
+  height: 54px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
 .product-cell div {
   display: flex;
   flex-direction: column;
@@ -376,6 +383,10 @@
 .inventory-list img {
   height: 64px;
   border-radius: var(--radius-sm);
+}
+.inventory-list .admin-image-empty {
+  width: 56px;
+  height: 64px;
 }
 .inventory-list article > div:nth-child(2) {
   display: flex;
@@ -484,6 +495,18 @@
 .request-detail > .field {
   margin-bottom: 16px;
 }
+.cake-reference-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0 20px;
+}
+.cake-reference-grid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
 .review-admin-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -529,7 +552,7 @@
 }
 .zone-list article {
   display: grid;
-  grid-template-columns: 24px 1fr 180px 48px 48px;
+  grid-template-columns: 58px minmax(180px, 1fr) 180px 150px 170px 48px 48px;
   align-items: center;
   gap: 16px;
   padding: 16px 20px;
@@ -538,9 +561,58 @@
 .zone-list article:last-child {
   border: 0;
 }
-.drag {
+.admin-empty-copy {
+  margin: 0;
+  padding: 32px;
   color: var(--muted);
-  cursor: grab;
+  text-align: center;
+}
+.zone-list {
+  overflow-x: auto;
+}
+.zone-list article {
+  min-width: 1050px;
+}
+.zone-order-actions {
+  display: flex;
+  gap: 4px;
+}
+.zone-order-actions button {
+  width: 26px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.zone-order-actions button:disabled {
+  opacity: 0.35;
+}
+.coupon-restrictions {
+  min-width: 190px;
+}
+.coupon-restrictions summary {
+  cursor: pointer;
+  color: var(--berry);
+  font-weight: 700;
+}
+.coupon-restrictions fieldset {
+  display: grid;
+  gap: 6px;
+  max-height: 160px;
+  margin: 12px 0;
+  padding: 10px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.coupon-restrictions label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.coupon-restrictions small {
+  color: var(--muted);
 }
 .zone-list article > div {
   display: flex;
@@ -1298,7 +1370,7 @@ html[data-theme] .admin-sidebar {
     grid-column: 2;
   }
   .zone-list article {
-    grid-template-columns: 18px 1fr 40px 40px;
+    grid-template-columns: 58px minmax(180px, 1fr) 180px 150px 170px 48px 48px;
   }
   .zone-list label:not(.switch) {
     grid-column: 2;

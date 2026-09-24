@@ -1,6 +1,6 @@
 import nextEnv from "@next/env";
 import { createClient } from "@supabase/supabase-js";
-import { products, deliveryZones, cakeOptions } from "../src/lib/mock-data.ts";
+import { products, deliveryZones, cakeOptions } from "./catalog-seed-data.mjs";
 
 const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd());
@@ -28,7 +28,7 @@ for(const product of products){
 }
 
 for(const [index,zone] of deliveryZones.entries()){
-  const {error}=await db.from("delivery_zones").upsert({name:zone.name,fee:zone.fee,estimated_time:zone.estimate,active:zone.active,sort_order:index+1},{onConflict:"name"});if(error)throw error;
+  const {error}=await db.from("delivery_zones").upsert({name:zone.name,fee:zone.fee,minimum_order:zone.minimumOrder,estimated_time:zone.estimate,active:zone.active,sort_order:index+1},{onConflict:"name"});if(error)throw error;
 }
 
 const optionRows=[...cakeOptions.sizes.map((item,index)=>({type:"size",name:item.name,description:item.detail,price_adjustment:item.price,sort_order:index})),

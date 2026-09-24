@@ -49,15 +49,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             >
               <Icon name={l.icon} />
               <span>{l.label}</span>
-              {l.label === "Orders" && <b>4</b>}
             </Link>
           ))}
         </nav>
         <div className="admin-user">
-          <span>NA</span>
           <div>
-            <b>Ndeeelicious Admin</b>
-            <small>Owner</small>
+            <b>Admin session</b>
+            <small>Secure access</small>
           </div>
           <form action="/api/auth/admin/logout" method="post">
             <button type="submit" aria-label="Sign out">
@@ -76,17 +74,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           >
             <Icon name="menu" />
           </button>
-          <div className="admin-search">
-            <Icon name="search" />
-            <input aria-label="Search admin" placeholder="Search orders, products, customers…" />
-          </div>
+          <span />
           <div>
             <a href="/" target="_blank" rel="noopener">
               View storefront ↗
             </a>
-            <span className="notification-dot" title="3 notifications">
-              3
-            </span>
           </div>
         </header>
         <main>{children}</main>

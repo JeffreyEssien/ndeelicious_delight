@@ -1,7 +1,7 @@
 "use client";
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
-import { cakeOptions } from "@/lib/mock-data";
 import type { CakeConfiguration } from "@/types";
+import type { CakeConfigurationData, CakeOptionType } from "@/types/content";
 import { formatMoney } from "@/lib/format";
 import { Icon } from "@/components/ui/icons";
 import { Input, Textarea } from "@/components/ui/primitives";
@@ -32,33 +32,37 @@ const steps = [
   "Date",
   "Review",
 ];
-export function CakeBuilder() {
+export function CakeBuilder({ configuration }: { configuration: CakeConfigurationData }) {
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState(initial);
   const [ready, setReady] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const [requestNumber, setRequestNumber] = useState("");
   useEffect(() => {
     try {
       const saved = localStorage.getItem("ndee-cake-v1");
-      if (saved) setConfig(JSON.parse(saved));
+      if (saved) setConfig({ ...JSON.parse(saved), referenceName: "" });
     } catch {}
     setReady(true);
   }, []);
   useEffect(() => {
     if (ready) localStorage.setItem("ndee-cake-v1", JSON.stringify(config));
   }, [config, ready]);
+  const options = (type: CakeOptionType) =>
+    configuration.options.filter((option) => option.active && option.type === type);
   const pricing = useMemo(() => {
-    const size = cakeOptions.sizes.find((x) => x.name === config.size)?.price ?? 0;
-    const flavour = cakeOptions.flavours.find((x) => x.name === config.flavour)?.price ?? 0;
-    const filling = cakeOptions.fillings.find((x) => x.name === config.filling)?.price ?? 0;
-    const design = cakeOptions.designs.find((x) => x.name === config.design)?.price ?? 0;
-    return size + flavour + filling + design;
-  }, [config]);
-  const quote = config.size === "Two tier" || config.design === "Floral garden";
-  const minDate = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    return configuration.options
+      .filter((option) => [config.size, config.flavour, config.filling, config.design].includes(option.name))
+      .reduce((total, option) => total + option.priceAdjustment, 0);
+  }, [config, configuration.options]);
+  const quote = configuration.options.some(
+    (option) =>
+      option.quoteRequired && [config.size, config.flavour, config.filling, config.design].includes(option.name),
+  );
+  const minDate = new Date(Date.now() + configuration.leadTimeHours * 60 * 60 * 1000).toISOString().slice(0, 10);
   function choose(key: keyof CakeConfiguration, value: string) {
     setConfig((v) => ({ ...v, [key]: value }));
     setError("");
@@ -77,7 +81,7 @@ export function CakeBuilder() {
     ];
     if (step === 7) return true;
     if (step === 8 && config.deliveryDate < minDate) {
-      setError("Please choose a date at least 72 hours from now.");
+      setError(`Please choose a date at least ${configuration.leadTimeHours} hours from now.`);
       return false;
     }
     const key = keys[step];
@@ -97,21 +101,21 @@ export function CakeBuilder() {
       setError("Please choose an image smaller than 5 MB.");
       return;
     }
-    if (!file.type.startsWith("image/")) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setError("Please choose a JPG, PNG or WebP image.");
       return;
     }
+    setReferenceFile(file);
     choose("referenceName", file.name);
   }
   async function submit() {
     setSubmitting(true);
     setError("");
     try {
-      const response = await fetch("/api/cakes/quote", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(config),
-      });
+      const form = new FormData();
+      form.set("configuration", JSON.stringify(config));
+      if (referenceFile) form.set("reference", referenceFile);
+      const response = await fetch("/api/cakes/quote", { method: "POST", body: form });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "We couldn’t validate your cake.");
       setRequestNumber(payload.requestNumber);
@@ -141,6 +145,7 @@ export function CakeBuilder() {
             setSubmitted(false);
             setStep(0);
             setConfig(initial);
+            setReferenceFile(null);
             localStorage.removeItem("ndee-cake-v1");
           }}
         >
@@ -181,7 +186,7 @@ export function CakeBuilder() {
             <Choice
               title="What are we celebrating?"
               subtitle="Choose the occasion that feels closest."
-              values={cakeOptions.occasions}
+              values={options("occasion").map((option) => option.name)}
               selected={config.occasion}
               onChoose={(v) => choose("occasion", v)}
             />
@@ -190,9 +195,9 @@ export function CakeBuilder() {
             <Choice
               title="How many are we serving?"
               subtitle="Serving sizes are a guide—extra slices are never a bad idea."
-              values={cakeOptions.sizes.map((x) => x.name)}
-              details={cakeOptions.sizes.map((x) => x.detail)}
-              prices={cakeOptions.sizes.map((x) => x.price)}
+              values={options("size").map((option) => option.name)}
+              details={options("size").map((option) => option.description)}
+              prices={options("size").map((option) => option.priceAdjustment)}
               selected={config.size}
               onChoose={(v) => choose("size", v)}
             />
@@ -201,8 +206,8 @@ export function CakeBuilder() {
             <Choice
               title="Choose your cake flavour"
               subtitle="Every sponge is baked fresh for your date."
-              values={cakeOptions.flavours.map((x) => x.name)}
-              prices={cakeOptions.flavours.map((x) => x.price)}
+              values={options("flavour").map((option) => option.name)}
+              prices={options("flavour").map((option) => option.priceAdjustment)}
               selected={config.flavour}
               onChoose={(v) => choose("flavour", v)}
             />
@@ -211,8 +216,8 @@ export function CakeBuilder() {
             <Choice
               title="Choose a filling"
               subtitle="The lovely layer between every sponge."
-              values={cakeOptions.fillings.map((x) => x.name)}
-              prices={cakeOptions.fillings.map((x) => x.price)}
+              values={options("filling").map((option) => option.name)}
+              prices={options("filling").map((option) => option.priceAdjustment)}
               selected={config.filling}
               onChoose={(v) => choose("filling", v)}
             />
@@ -221,8 +226,8 @@ export function CakeBuilder() {
             <Choice
               title="Set the design direction"
               subtitle="We’ll interpret this in our signature considered style."
-              values={cakeOptions.designs.map((x) => x.name)}
-              prices={cakeOptions.designs.map((x) => x.price)}
+              values={options("design").map((option) => option.name)}
+              prices={options("design").map((option) => option.priceAdjustment)}
               selected={config.design}
               onChoose={(v) => choose("design", v)}
             />
@@ -268,7 +273,9 @@ export function CakeBuilder() {
           {step === 8 && (
             <div>
               <h2>When do you need your cake?</h2>
-              <p className="stage-intro">We need at least 72 hours to make something wonderful.</p>
+              <p className="stage-intro">
+                We need at least {configuration.leadTimeHours} hours to make something wonderful.
+              </p>
               <Input
                 label="Collection or delivery date"
                 type="date"

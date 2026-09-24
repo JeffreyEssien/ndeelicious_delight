@@ -1,6 +1,4 @@
-import type { Order, Product } from "@/types";
-
-export const products: Product[] = [
+export const products = [
   { id:"p1", slug:"signature-berry-cake", name:"Signature Berry Cake", shortDescription:"Vanilla bean sponge, berry preserve and silk buttercream.", description:"Our celebration favourite: three layers of fragrant vanilla bean sponge, bright house-made berry preserve and light, silky buttercream. Finished by hand for an effortlessly elegant table.", category:"CUSTOM_CAKES", price:3800000, image:"/custom-cake.jpg", imagePosition:"50% 52%", badge:"Bestseller", featured:true, status:"ACTIVE", stockQuantity:8, lowStockThreshold:3, variants:[{id:"v1",name:"6 inch · serves 10",priceAdjustment:0,stockQuantity:8},{id:"v2",name:"8 inch · serves 20",priceAdjustment:1400000,stockQuantity:5},{id:"v3",name:"10 inch · serves 35",priceAdjustment:2700000,stockQuantity:3}], ingredients:"Flour, cultured butter, eggs, vanilla bean, berries, sugar, cream", allergens:["Wheat","Eggs","Dairy"], storageInstructions:"Keep chilled. Bring to room temperature 45 minutes before serving." },
   { id:"p2", slug:"classic-butter-croissant", name:"Classic Butter Croissant", shortDescription:"Crisp, honeycombed and deeply buttery.", description:"A three-day laminated croissant made with cultured butter, slow-fermented dough and plenty of patience.", category:"PASTRIES", price:450000, image:"/pastries.jpg", imagePosition:"18% 60%", badge:"Fresh today", featured:true, status:"ACTIVE", stockQuantity:24, lowStockThreshold:8, variants:[{id:"v1",name:"Single",priceAdjustment:0,stockQuantity:24},{id:"v2",name:"Box of 6",priceAdjustment:2050000,stockQuantity:4}], ingredients:"Flour, cultured butter, milk, yeast, sugar, salt", allergens:["Wheat","Dairy","Eggs"], storageInstructions:"Best enjoyed on the day of delivery." },
   { id:"p3", slug:"chocolate-croissant", name:"Dark Chocolate Croissant", shortDescription:"Laminated pastry wrapped around two dark chocolate batons.", description:"Our classic croissant dough folded around rich dark chocolate and baked until crisp and bronzed.", category:"PASTRIES", price:550000, image:"/pastries.jpg", imagePosition:"51% 40%", featured:true, status:"ACTIVE", stockQuantity:12, lowStockThreshold:5, variants:[{id:"v1",name:"Single",priceAdjustment:0,stockQuantity:12},{id:"v2",name:"Box of 6",priceAdjustment:2500000,stockQuantity:3}], ingredients:"Flour, cultured butter, dark chocolate, milk, yeast, sugar", allergens:["Wheat","Dairy","Eggs","Soy"] },
@@ -12,11 +10,11 @@ export const products: Product[] = [
 ];
 
 export const deliveryZones = [
-  { id:"dz1", name:"Lekki Phase 1", fee:250000, estimate:"Next day · 10am–2pm", active:true },
-  { id:"dz2", name:"Ikoyi", fee:350000, estimate:"Next day · 10am–2pm", active:true },
-  { id:"dz3", name:"Victoria Island", fee:300000, estimate:"Next day · 10am–2pm", active:true },
-  { id:"dz4", name:"Ajah", fee:400000, estimate:"Next day · 12pm–4pm", active:true },
-  { id:"dz5", name:"Chevron", fee:300000, estimate:"Next day · 12pm–4pm", active:true },
+  { id:"dz1", name:"Lekki Phase 1", fee:250000, minimumOrder:0, estimate:"Next day · 10am–2pm", active:true },
+  { id:"dz2", name:"Ikoyi", fee:350000, minimumOrder:0, estimate:"Next day · 10am–2pm", active:true },
+  { id:"dz3", name:"Victoria Island", fee:300000, minimumOrder:0, estimate:"Next day · 10am–2pm", active:true },
+  { id:"dz4", name:"Ajah", fee:400000, minimumOrder:0, estimate:"Next day · 12pm–4pm", active:true },
+  { id:"dz5", name:"Chevron", fee:300000, minimumOrder:0, estimate:"Next day · 12pm–4pm", active:true },
 ];
 
 export const cakeOptions = {
@@ -26,13 +24,3 @@ export const cakeOptions = {
   fillings:[{name:"Vanilla buttercream",price:0},{name:"Berry preserve",price:250000},{name:"Salted caramel",price:300000},{name:"Chocolate ganache",price:400000}],
   designs:[{name:"Soft & minimal",price:0},{name:"Vintage piping",price:800000},{name:"Floral garden",price:1200000},{name:"Statement texture",price:600000}],
 };
-
-export const orders: Order[] = [
-  {id:"ND-1048",customer:"Dami Adebayo",email:"dami@example.com",total:4650000,status:"PREPARING",date:"2026-09-15",items:3,fulfilment:"delivery"},
-  {id:"ND-1047",customer:"Amara Okafor",email:"amara@example.com",total:3800000,status:"CONFIRMED",date:"2026-09-15",items:1,fulfilment:"pickup"},
-  {id:"ND-1046",customer:"Teni Balogun",email:"teni@example.com",total:9200000,status:"QUOTE_REQUIRED",date:"2026-09-14",items:1,fulfilment:"delivery"},
-  {id:"ND-1045",customer:"Seyi Cole",email:"seyi@example.com",total:7100000,status:"OUT_FOR_DELIVERY",date:"2026-09-14",items:4,fulfilment:"delivery"},
-  {id:"ND-1044",customer:"Nneka Obi",email:"nneka@example.com",total:2850000,status:"DELIVERED",date:"2026-09-13",items:2,fulfilment:"delivery"},
-];
-
-export function getProduct(slug: string) { return products.find((product) => product.slug === slug); }

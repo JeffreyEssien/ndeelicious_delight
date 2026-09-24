@@ -32,14 +32,14 @@ function conflict(error: { message?: string; details?: string; hint?: string }) 
       ? "Stock cannot be reduced below the quantity held for pending orders."
       : code === "INVENTORY_NOT_COMMITTED"
         ? "Mark the order as paid before moving it into fulfilment."
-      : undefined,
+        : undefined,
   );
 }
 
-export async function reserveOrderInventory(db: SupabaseClient, orderId: string) {
+export async function reserveOrderInventory(db: SupabaseClient, orderId: string, holdMinutes = 60) {
   const { data, error } = await db.rpc("reserve_order_inventory", {
     p_order_id: orderId,
-    p_hold_minutes: 15,
+    p_hold_minutes: holdMinutes,
   });
   if (error) {
     if (inventoryCode(error)) throw conflict(error);

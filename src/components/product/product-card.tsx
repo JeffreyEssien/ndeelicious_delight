@@ -12,13 +12,17 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <article className="product-card">
       <Link className="product-photo" href={`/product/${product.slug}`}>
-        <Image
-          src={product.image}
-          alt={product.name}
-          fill
-          sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 25vw"
-          style={{ objectPosition: product.imagePosition }}
-        />
+        {product.image ? (
+          <Image
+            src={product.image}
+            alt={product.name}
+            fill
+            sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 25vw"
+            style={{ objectPosition: product.imagePosition }}
+          />
+        ) : (
+          <span className="missing-image">No image uploaded</span>
+        )}
         {product.badge && <Badge tone="berry">{product.badge}</Badge>}
         {unavailable && <span className="sold-overlay">Sold out</span>}
       </Link>

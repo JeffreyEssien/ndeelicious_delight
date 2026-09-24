@@ -4,10 +4,15 @@ const mocks = vi.hoisted(() => ({
   customerUpsert: vi.fn(),
   cakeInsert: vi.fn(),
   sendEmail: vi.fn(),
+  imageUpload: vi.fn(),
+  imageRemove: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: () => ({
+    storage: {
+      from: () => ({ upload: mocks.imageUpload, remove: mocks.imageRemove }),
+    },
     from: (table: string) => {
       if (table === "customers") {
         return {
@@ -24,6 +29,64 @@ vi.mock("@/lib/supabase/service", () => ({
 vi.mock("@/lib/email/mailer", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/email/mailer")>()),
   sendTransactionalEmail: mocks.sendEmail,
+}));
+vi.mock("@/lib/data/settings", () => ({
+  getCakeConfiguration: () =>
+    Promise.resolve({
+      leadTimeHours: 72,
+      options: [
+        {
+          id: "o",
+          type: "occasion",
+          name: "Birthday",
+          description: "",
+          priceAdjustment: 0,
+          quoteRequired: false,
+          active: true,
+          sortOrder: 0,
+        },
+        {
+          id: "s",
+          type: "size",
+          name: "6 inch",
+          description: "",
+          priceAdjustment: 3000000,
+          quoteRequired: false,
+          active: true,
+          sortOrder: 0,
+        },
+        {
+          id: "f",
+          type: "flavour",
+          name: "Vanilla bean",
+          description: "",
+          priceAdjustment: 0,
+          quoteRequired: false,
+          active: true,
+          sortOrder: 0,
+        },
+        {
+          id: "i",
+          type: "filling",
+          name: "Vanilla buttercream",
+          description: "",
+          priceAdjustment: 0,
+          quoteRequired: false,
+          active: true,
+          sortOrder: 0,
+        },
+        {
+          id: "d",
+          type: "design",
+          name: "Soft & minimal",
+          description: "",
+          priceAdjustment: 0,
+          quoteRequired: false,
+          active: true,
+          sortOrder: 0,
+        },
+      ],
+    }),
 }));
 
 import { POST } from "./route";
@@ -53,6 +116,8 @@ describe("POST /api/cakes/quote", () => {
     mocks.customerUpsert.mockResolvedValue({ data: { id: "customer-id" }, error: null });
     mocks.cakeInsert.mockResolvedValue({ error: null });
     mocks.sendEmail.mockResolvedValue({ sent: true });
+    mocks.imageUpload.mockResolvedValue({ error: null });
+    mocks.imageRemove.mockResolvedValue({ error: null });
   });
 
   it("rejects incomplete cake requests", async () => {
@@ -87,5 +152,31 @@ describe("POST /api/cakes/quote", () => {
       expect(email.html).toContain("Ada &lt;baker&gt;");
       expect(email.html).not.toContain("Ada <baker>");
     }
+  });
+
+  it("stores a validated inspiration image privately and saves its storage path", async () => {
+    const form = new FormData();
+    form.set("configuration", JSON.stringify({ ...validCake, referenceName: "idea.png" }));
+    form.set("reference", new File([new Uint8Array([137, 80, 78, 71])], "idea.png", { type: "image/png" }));
+
+    const response = await POST(new Request("http://localhost/api/cakes/quote", { method: "POST", body: form }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.imageUpload).toHaveBeenCalledOnce();
+    expect(mocks.cakeInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ reference_urls: [expect.stringMatching(/^customer-id\/.+\.png$/)] }),
+    );
+  });
+
+  it("rejects unsupported inspiration files before writing customer data", async () => {
+    const form = new FormData();
+    form.set("configuration", JSON.stringify({ ...validCake, referenceName: "idea.svg" }));
+    form.set("reference", new File(["<svg />"], "idea.svg", { type: "image/svg+xml" }));
+
+    const response = await POST(new Request("http://localhost/api/cakes/quote", { method: "POST", body: form }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.customerUpsert).not.toHaveBeenCalled();
+    expect(mocks.imageUpload).not.toHaveBeenCalled();
   });
 });

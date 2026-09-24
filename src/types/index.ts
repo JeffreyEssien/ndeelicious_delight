@@ -3,6 +3,7 @@ export type ProductStatus = "ACTIVE" | "OUT_OF_STOCK" | "DRAFT" | "ARCHIVED";
 
 export type Product = {
   id: string;
+  categoryId?: string;
   slug: string;
   name: string;
   shortDescription: string;
@@ -45,7 +46,14 @@ export type ProductVariant = {
 };
 export type CartLine = { productId: string; variantId: string; quantity: number };
 export type Fulfilment = "delivery" | "pickup";
-export type DeliveryZone = { id: string; name: string; fee: number; estimate: string; active: boolean };
+export type DeliveryZone = {
+  id: string;
+  name: string;
+  fee: number;
+  minimumOrder: number;
+  estimate: string;
+  active: boolean;
+};
 
 export type CakeConfiguration = {
   occasion: string;

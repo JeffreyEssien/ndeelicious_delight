@@ -1,4 +1,5 @@
 import type { CartLine, Fulfilment, Product } from "@/types";
+import { formatMoney } from "@/lib/format";
 
 export type CouponRule = {
   id?: string;
@@ -11,6 +12,7 @@ export type CouponRule = {
   expiresAt?: Date;
   usageLimit?: number;
   usageCount?: number;
+  perCustomerLimit?: number;
   active: boolean;
   productIds?: string[];
   categoryIds?: string[];
@@ -43,14 +45,30 @@ export class CommerceError extends Error {
   }
 }
 
+export function assertFulfilmentAvailable(input: {
+  fulfilment: Fulfilment;
+  deliveryEnabled?: boolean;
+  pickupEnabled?: boolean;
+}) {
+  if (input.fulfilment === "delivery" && input.deliveryEnabled === false)
+    throw new CommerceError("DELIVERY_DISABLED", "Delivery is not currently available.");
+  if (input.fulfilment === "pickup" && input.pickupEnabled === false)
+    throw new CommerceError("PICKUP_DISABLED", "Pickup is not currently available.");
+}
+
 export function calculateOrderQuote(input: {
   cart: CartLine[];
   products: Product[];
   fulfilment: Fulfilment;
   deliveryFee?: number;
+  deliveryMinimum?: number;
+  orderMinimum?: number;
+  deliveryEnabled?: boolean;
+  pickupEnabled?: boolean;
   coupon?: CouponRule;
   now?: Date;
 }): OrderQuote {
+  assertFulfilmentAvailable(input);
   if (!input.cart.length) throw new CommerceError("EMPTY_CART", "Your basket is empty.");
   const lines = input.cart.map((line) => {
     if (!Number.isInteger(line.quantity) || line.quantity < 1)
@@ -81,6 +99,22 @@ export function calculateOrderQuote(input: {
     };
   });
   const subtotal = lines.reduce((total, line) => total + line.lineTotal, 0);
+  const orderMinimum = input.orderMinimum ?? 0;
+  if (!Number.isSafeInteger(orderMinimum) || orderMinimum < 0)
+    throw new CommerceError("INVALID_ORDER_MINIMUM", "The order minimum needs review.");
+  if (subtotal < orderMinimum)
+    throw new CommerceError(
+      "ORDER_MINIMUM",
+      `This order requires a subtotal of at least ${formatMoney(orderMinimum)}.`,
+    );
+  const deliveryMinimum = input.fulfilment === "delivery" ? (input.deliveryMinimum ?? 0) : 0;
+  if (!Number.isSafeInteger(deliveryMinimum) || deliveryMinimum < 0)
+    throw new CommerceError("INVALID_DELIVERY_MINIMUM", "The delivery minimum needs review.");
+  if (subtotal < deliveryMinimum)
+    throw new CommerceError(
+      "DELIVERY_MINIMUM",
+      `This delivery area requires a subtotal of at least ${formatMoney(deliveryMinimum)}.`,
+    );
   const discount = input.coupon
     ? calculateDiscount(input.coupon, subtotal, lines, input.products, input.now ?? new Date())
     : 0;
@@ -112,26 +146,19 @@ export function calculateDiscount(
     throw new CommerceError("COUPON_USED_UP", "That coupon has reached its usage limit.");
   if (subtotal < coupon.minimumOrder) throw new CommerceError("COUPON_MINIMUM", `Spend more to use ${coupon.code}.`);
   let eligible = subtotal;
-  const productIds = coupon.productIds;
-  if (productIds?.length)
+  const productIds = coupon.productIds ?? [];
+  const categoryIds = coupon.categoryIds ?? [];
+  if (productIds.length || categoryIds.length)
     eligible = lines
-      .filter((line) => productIds.includes(line.productId))
-      .reduce((sum, line) => sum + line.lineTotal, 0);
-  const categoryIds = coupon.categoryIds;
-  if (categoryIds?.length)
-    eligible = lines
-      .filter((line) => categoryIds.includes(products.find((product) => product.id === line.productId)?.category ?? ""))
+      .filter((line) => {
+        const product = products.find((item) => item.id === line.productId);
+        return (
+          (!productIds.length || productIds.includes(line.productId)) &&
+          (!categoryIds.length || (product?.categoryId ? categoryIds.includes(product.categoryId) : false))
+        );
+      })
       .reduce((sum, line) => sum + line.lineTotal, 0);
   if (eligible === 0) throw new CommerceError("COUPON_NOT_APPLICABLE", "That coupon does not apply to these items.");
   const raw = coupon.type === "PERCENTAGE" ? Math.floor((eligible * coupon.value) / 100) : coupon.value;
   return Math.min(raw, coupon.maximumDiscount ?? raw, eligible);
 }
-
-export const previewCoupon: CouponRule = {
-  code: "SWEET10",
-  type: "PERCENTAGE",
-  value: 10,
-  minimumOrder: 1000000,
-  maximumDiscount: 500000,
-  active: true,
-};

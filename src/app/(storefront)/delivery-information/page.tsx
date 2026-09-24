@@ -1,1 +1,79 @@
-import { getDeliveryZones } from "@/lib/data/catalog";import { formatMoney } from "@/lib/format";export default async function Page(){const deliveryZones=await getDeliveryZones();return <><header className="page-hero"><span className="overline">From our kitchen to your table</span><h1>Delivery, made clear.</h1><p>We prepare every order around an agreed date and handle it carefully on the journey.</p></header><section className="site-container delivery-page"><div className="delivery-zones"><div><span className="overline">Current delivery zones</span><h2>Where we go</h2><p>Fees are calculated from the zone selected at checkout.</p></div><div>{deliveryZones.map(z=><div key={z.id}><span><b>{z.name}</b><small>{z.estimate}</small></span><strong>{formatMoney(z.fee)}</strong></div>)}</div></div><div className="delivery-notes"><article><span>01</span><h3>Choose your date</h3><p>Available dates appear during ordering. Custom cakes require at least 72 hours.</p></article><article><span>02</span><h3>We confirm the window</h3><p>You’ll receive the expected delivery or collection time with your confirmation.</p></article><article><span>03</span><h3>Follow your order</h3><p>Status updates keep you informed from preparation through delivery.</p></article></div><div className="pickup-callout"><div><span className="overline">Prefer to collect?</span><h2>Pickup is always free.</h2><p>Select pickup at checkout. We’ll send the bakery address and collection window after confirmation.</p></div><span>Tuesday–Saturday<br/><b>Lekki, Lagos</b></span></div></section></>}
+import { ContentLines } from "@/components/ui/content-lines";
+import { getDeliveryZones } from "@/lib/data/catalog";
+import { getBusinessSettings, getStorefrontContent } from "@/lib/data/settings";
+import { formatMoney } from "@/lib/format";
+
+export default async function Page() {
+  const [deliveryZones, content, business] = await Promise.all([
+    getDeliveryZones(),
+    getStorefrontContent(),
+    getBusinessSettings(),
+  ]);
+  const page = content.delivery;
+  return (
+    <>
+      <header className="page-hero">
+        <span className="overline">{page.hero.eyebrow}</span>
+        <h1>
+          <ContentLines text={page.hero.headline} />
+        </h1>
+        <p>{page.hero.supportingText}</p>
+      </header>
+      <section className="site-container delivery-page">
+        <div className="delivery-zones">
+          <div>
+            <span className="overline">{page.intro.eyebrow}</span>
+            <h2>{page.intro.headline}</h2>
+            <p>{page.intro.body}</p>
+          </div>
+          <div>
+            {business.deliveryEnabled && deliveryZones.length ? (
+              deliveryZones.map((zone) => (
+                <div key={zone.id}>
+                  <span>
+                    <b>{zone.name}</b>
+                    <small>
+                      {zone.estimate}
+                      {zone.minimumOrder > 0 ? ` · ${formatMoney(zone.minimumOrder)} minimum` : ""}
+                    </small>
+                  </span>
+                  <strong>{formatMoney(zone.fee)}</strong>
+                </div>
+              ))
+            ) : (
+              <p>
+                {business.deliveryEnabled
+                  ? "No delivery zones are currently active."
+                  : "Delivery ordering is currently paused."}
+                {business.pickupEnabled ? " Pickup remains available." : ""}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="delivery-notes">
+          {page.steps.map((step, index) => (
+            <article key={step.title}>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <h3>{step.title}</h3>
+              <p>{step.body.replace("current bakery setting", `${business.cakeLeadHours}-hour minimum`)}</p>
+            </article>
+          ))}
+        </div>
+        {business.pickupEnabled && <div className="pickup-callout">
+          <div>
+            <span className="overline">{page.pickup.eyebrow}</span>
+            <h2>{page.pickup.headline}</h2>
+            <p>{page.pickup.body}</p>
+          </div>
+          {(business.openingHours || business.address) && (
+            <span>
+              {business.openingHours}
+              <br />
+              <b>{business.address}</b>
+            </span>
+          )}
+        </div>}
+      </section>
+    </>
+  );
+}

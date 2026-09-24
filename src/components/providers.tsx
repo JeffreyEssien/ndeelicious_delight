@@ -63,23 +63,36 @@ export function Providers({
       open,
       setOpen,
       add(product, variantId = product.variants[0]?.id ?? "", quantity = 1) {
-        if (!variantId) {
+        const variant = product.variants.find((item) => item.id === variantId);
+        if (!variant) {
           notify("This product does not have an available option.");
+          return;
+        }
+        const limit = product.trackInventory === false ? 50 : Math.min(50, variant.stockQuantity);
+        if (limit < 1) {
+          notify("This option is currently unavailable.");
           return;
         }
         setLines((current) => {
           const found = current.find((l) => l.productId === product.id && l.variantId === variantId);
           return found
-            ? current.map((l) => (l === found ? { ...l, quantity: l.quantity + quantity } : l))
-            : [...current, { productId: product.id, variantId, quantity }];
+            ? current.map((l) => (l === found ? { ...l, quantity: Math.min(limit, l.quantity + quantity) } : l))
+            : [...current, { productId: product.id, variantId, quantity: Math.min(limit, Math.max(1, quantity)) }];
         });
         notify("Added to your basket.");
       },
       update(productId, variantId, quantity) {
+        const product = products.find((item) => item.id === productId);
+        const variant = product?.variants.find((item) => item.id === variantId);
+        const limit = product?.trackInventory === false ? 50 : Math.min(50, variant?.stockQuantity ?? 0);
         setLines((v) =>
-          quantity < 1
+          quantity < 1 || limit < 1
             ? v.filter((l) => !(l.productId === productId && l.variantId === variantId))
-            : v.map((l) => (l.productId === productId && l.variantId === variantId ? { ...l, quantity } : l)),
+            : v.map((l) =>
+                l.productId === productId && l.variantId === variantId
+                  ? { ...l, quantity: Math.max(1, Math.min(limit, quantity)) }
+                  : l,
+              ),
         );
       },
       remove(productId, variantId) {

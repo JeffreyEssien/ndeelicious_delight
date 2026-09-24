@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
-import type { AdminCakeRequest, AdminCoupon, AdminReview } from "@/lib/data/admin";
+import type { AdminCakeRequest, AdminCategory, AdminCoupon, AdminReview } from "@/lib/data/admin";
+import type { Product } from "@/types";
 import { Badge, Button, EmptyState, Input } from "@/components/ui/primitives";
-import { formatMoney } from "@/lib/format";
 import { useToast } from "@/components/providers";
+import type { CakeConfigurationData, CakeOption, CakeOptionType } from "@/types/content";
 
 async function mutate(body: unknown) {
   return fetch("/api/admin/mutate", {
@@ -84,6 +85,18 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
             <dd>{selected.requestedDate}</dd>
           </div>
         </dl>
+        {selected.referenceUrls.length > 0 && (
+          <div>
+            <b>Inspiration</b>
+            <div className="cake-reference-grid">
+              {selected.referenceUrls.map((url) => (
+                // The signed URL is short-lived and only generated inside an authenticated admin page.
+                // biome-ignore lint/performance/noImgElement: private signed storage URLs are not Next image host allow-listed
+                <img key={url} src={url} alt="Customer cake inspiration" />
+              ))}
+            </div>
+          </div>
+        )}
         <Input label="Quote amount (₦)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
         <p>
           {selected.email} · {selected.phone}
@@ -96,20 +109,205 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
   );
 }
 
-export function Coupons({ initial }: { initial: AdminCoupon[] }) {
+const optionTypes: CakeOptionType[] = ["occasion", "size", "flavour", "filling", "design"];
+
+export function CakeConfigurationEditor({ initial }: { initial: CakeConfigurationData }) {
+  const [options, setOptions] = useState(initial.options);
+  const [busy, setBusy] = useState(false);
   const notify = useToast();
-  async function create() {
-    const response = await mutate({ action: "coupon-create" });
+  function update(index: number, values: Partial<CakeOption>) {
+    setOptions((current) =>
+      current.map((option, itemIndex) => (itemIndex === index ? { ...option, ...values } : option)),
+    );
+  }
+  async function save() {
+    setBusy(true);
+    const response = await mutate({ action: "cake-options", options });
+    setBusy(false);
     if (response.ok) {
-      notify("Coupon draft created.");
+      notify("Cake configuration saved.");
       window.location.reload();
-    } else notify("Coupon could not be created.");
+    } else {
+      const payload = await response.json().catch(() => null);
+      notify(payload?.error ?? "Cake configuration could not be saved.");
+    }
+  }
+  return (
+    <div className="admin-card form-stack">
+      <div className="card-head">
+        <div>
+          <h2>Cake builder configuration</h2>
+          <p>Live options, pricing adjustments, and quote rules.</p>
+        </div>
+        <Button disabled={busy} onClick={save}>
+          {busy ? "Saving…" : "Save options"}
+        </Button>
+      </div>
+      <div className="table-scroll">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Adjustment (₦)</th>
+              <th>Quote</th>
+              <th>Active</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {options.map((option, index) => (
+              <tr key={option.id}>
+                <td>
+                  <select
+                    className="status-select"
+                    value={option.type}
+                    onChange={(event) => update(index, { type: event.target.value as CakeOptionType })}
+                  >
+                    {optionTypes.map((type) => (
+                      <option key={type}>{type}</option>
+                    ))}
+                  </select>
+                </td>
+                <td>
+                  <input value={option.name} onChange={(event) => update(index, { name: event.target.value })} />
+                </td>
+                <td>
+                  <input
+                    value={option.description}
+                    onChange={(event) => update(index, { description: event.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    min="0"
+                    value={option.priceAdjustment / 100}
+                    onChange={(event) =>
+                      update(index, { priceAdjustment: Math.round(Number(event.target.value) * 100) })
+                    }
+                  />
+                </td>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={option.quoteRequired}
+                    onChange={(event) => update(index, { quoteRequired: event.target.checked })}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={option.active}
+                    onChange={(event) => update(index, { active: event.target.checked })}
+                  />
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => setOptions((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Button
+        variant="secondary"
+        onClick={() =>
+          setOptions((current) => [
+            ...current,
+            {
+              id: `new-${Date.now()}`,
+              type: "occasion",
+              name: "",
+              description: "",
+              priceAdjustment: 0,
+              quoteRequired: false,
+              active: true,
+              sortOrder: current.length,
+            },
+          ])
+        }
+      >
+        Add option
+      </Button>
+    </div>
+  );
+}
+
+export function Coupons({
+  initial,
+  products,
+  categories,
+}: {
+  initial: AdminCoupon[];
+  products: Product[];
+  categories: AdminCategory[];
+}) {
+  const [items, setItems] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const notify = useToast();
+  function update(index: number, values: Partial<AdminCoupon>) {
+    setItems((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...values } : item)));
+  }
+  async function save() {
+    if (items.some((item) => item.code.trim().length < 2 || item.value <= 0)) {
+      notify("Give every coupon a code and a valid discount value.");
+      return;
+    }
+    if (items.some((item) => item.startsAt && item.expiresAt && item.startsAt >= item.expiresAt)) {
+      notify("Each coupon expiry must be later than its start date.");
+      return;
+    }
+    setBusy(true);
+    const response = await mutate({ action: "coupons", coupons: items });
+    setBusy(false);
+    if (response.ok) {
+      notify("Coupons saved.");
+      window.location.reload();
+    } else {
+      const payload = await response.json().catch(() => null);
+      notify(payload?.error ?? "Coupons could not be saved.");
+    }
   }
   return (
     <>
       <div className="admin-page-head compact">
-        <span />
-        <Button onClick={create}>New coupon</Button>
+        <Button
+          variant="secondary"
+          onClick={() =>
+            setItems((current) => [
+              ...current,
+              {
+                id: `new-${Date.now()}`,
+                code: "",
+                type: "PERCENTAGE",
+                value: 10,
+                minimumOrder: 0,
+                maximumDiscount: null,
+                usageLimit: null,
+                perCustomerLimit: null,
+                active: false,
+                startsAt: null,
+                expiresAt: null,
+                productIds: [],
+                categoryIds: [],
+                usageCount: 0,
+              },
+            ])
+          }
+        >
+          New coupon
+        </Button>
+        <Button disabled={busy || !items.length} onClick={save}>
+          {busy ? "Saving…" : "Save coupons"}
+        </Button>
       </div>
       <div className="admin-card table-scroll">
         <table className="admin-table">
@@ -118,21 +316,174 @@ export function Coupons({ initial }: { initial: AdminCoupon[] }) {
               <th>Code</th>
               <th>Offer</th>
               <th>Minimum</th>
-              <th>Limit</th>
-              <th>Status</th>
+              <th>Max discount</th>
+              <th>Total limit</th>
+              <th>Per customer</th>
+              <th>Starts</th>
+              <th>Expires</th>
+              <th>Eligibility</th>
+              <th>Uses</th>
+              <th>Active</th>
+              <th />
             </tr>
           </thead>
           <tbody>
-            {initial.map((item) => (
+            {!items.length && (
+              <tr>
+                <td colSpan={12}>No coupons yet. Use “New coupon” to create the first promotion.</td>
+              </tr>
+            )}
+            {items.map((item, index) => (
               <tr key={item.id}>
                 <td>
-                  <b>{item.code}</b>
+                  <details className="coupon-restrictions">
+                    <summary>
+                      {item.productIds.length || item.categoryIds.length ? "Restricted" : "All products"}
+                    </summary>
+                    <fieldset>
+                      <legend>Categories</legend>
+                      {categories.map((category) => (
+                        <label key={category.id}>
+                          <input
+                            type="checkbox"
+                            checked={item.categoryIds.includes(category.id)}
+                            onChange={(event) =>
+                              update(index, {
+                                categoryIds: event.target.checked
+                                  ? [...item.categoryIds, category.id]
+                                  : item.categoryIds.filter((id) => id !== category.id),
+                              })
+                            }
+                          />
+                          {category.name}
+                        </label>
+                      ))}
+                    </fieldset>
+                    <fieldset>
+                      <legend>Specific products</legend>
+                      {products.map((product) => (
+                        <label key={product.id}>
+                          <input
+                            type="checkbox"
+                            checked={item.productIds.includes(product.id)}
+                            onChange={(event) =>
+                              update(index, {
+                                productIds: event.target.checked
+                                  ? [...item.productIds, product.id]
+                                  : item.productIds.filter((id) => id !== product.id),
+                              })
+                            }
+                          />
+                          {product.name}
+                        </label>
+                      ))}
+                    </fieldset>
+                    <small>
+                      Leave both groups empty for every product. When both are selected, products must match both.
+                    </small>
+                  </details>
                 </td>
-                <td>{item.type === "PERCENTAGE" ? `${item.value}%` : formatMoney(item.value)}</td>
-                <td>{formatMoney(item.minimumOrder)}</td>
-                <td>{item.usageLimit ?? "Unlimited"}</td>
+                <td>{item.usageCount}</td>
                 <td>
-                  <Badge tone={item.active ? "success" : "neutral"}>{item.active ? "Active" : "Draft"}</Badge>
+                  <input
+                    aria-label="Coupon code"
+                    value={item.code}
+                    onChange={(event) => update(index, { code: event.target.value.toUpperCase() })}
+                  />
+                </td>
+                <td>
+                  <select
+                    aria-label="Coupon type"
+                    value={item.type}
+                    onChange={(event) => {
+                      const type = event.target.value as AdminCoupon["type"];
+                      update(index, {
+                        type,
+                        value:
+                          type === "PERCENTAGE"
+                            ? Math.min(100, item.type === "FIXED" ? 10 : item.value)
+                            : item.type === "PERCENTAGE"
+                              ? item.value * 100
+                              : item.value,
+                      });
+                    }}
+                  >
+                    <option value="PERCENTAGE">Percentage</option>
+                    <option value="FIXED">Fixed amount</option>
+                  </select>
+                  <input
+                    aria-label="Coupon value"
+                    type="number"
+                    min="1"
+                    max={item.type === "PERCENTAGE" ? 100 : undefined}
+                    value={item.type === "PERCENTAGE" ? item.value : item.value / 100}
+                    onChange={(event) =>
+                      update(index, {
+                        value: Math.max(0, Number(event.target.value) * (item.type === "PERCENTAGE" ? 1 : 100)),
+                      })
+                    }
+                  />
+                </td>
+                <td>
+                  <MoneyInput
+                    label="Minimum order"
+                    value={item.minimumOrder}
+                    onChange={(value) => update(index, { minimumOrder: value ?? 0 })}
+                  />
+                </td>
+                <td>
+                  <MoneyInput
+                    label="Maximum discount"
+                    value={item.maximumDiscount}
+                    onChange={(value) => update(index, { maximumDiscount: value })}
+                  />
+                </td>
+                <td>
+                  <OptionalNumber
+                    label="Total usage limit"
+                    value={item.usageLimit}
+                    onChange={(value) => update(index, { usageLimit: value })}
+                  />
+                </td>
+                <td>
+                  <OptionalNumber
+                    label="Per customer limit"
+                    value={item.perCustomerLimit}
+                    onChange={(value) => update(index, { perCustomerLimit: value })}
+                  />
+                </td>
+                <td>
+                  <DateTimeInput
+                    label="Coupon start"
+                    value={item.startsAt}
+                    onChange={(startsAt) => update(index, { startsAt })}
+                  />
+                </td>
+                <td>
+                  <DateTimeInput
+                    label="Coupon expiry"
+                    value={item.expiresAt}
+                    onChange={(expiresAt) => update(index, { expiresAt })}
+                  />
+                </td>
+                <td>
+                  <input
+                    aria-label="Coupon active"
+                    type="checkbox"
+                    checked={item.active}
+                    onChange={(event) => update(index, { active: event.target.checked })}
+                  />
+                </td>
+                <td>
+                  {item.id.startsWith("new-") && (
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => setItems((v) => v.filter((_, i) => i !== index))}
+                    >
+                      Discard
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -140,6 +491,65 @@ export function Coupons({ initial }: { initial: AdminCoupon[] }) {
         </table>
       </div>
     </>
+  );
+}
+
+function MoneyInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (value: number | null) => void;
+}) {
+  return (
+    <input
+      aria-label={`${label} in naira`}
+      type="number"
+      min="0"
+      value={value === null ? "" : value / 100}
+      onChange={(event) => onChange(event.target.value === "" ? null : Math.round(Number(event.target.value) * 100))}
+    />
+  );
+}
+
+function OptionalNumber({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (value: number | null) => void;
+}) {
+  return (
+    <input
+      aria-label={label}
+      type="number"
+      min="1"
+      value={value ?? ""}
+      onChange={(event) => onChange(event.target.value === "" ? null : Number(event.target.value))}
+    />
+  );
+}
+
+function DateTimeInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string | null;
+  onChange: (value: string | null) => void;
+}) {
+  return (
+    <input
+      aria-label={label}
+      type="datetime-local"
+      value={value ? value.slice(0, 16) : ""}
+      onChange={(event) => onChange(event.target.value ? new Date(event.target.value).toISOString() : null)}
+    />
   );
 }
 

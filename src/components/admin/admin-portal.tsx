@@ -2,14 +2,20 @@
 import Image from "next/image";
 import Link from "next/link";
 import { type FormEvent, useMemo, useState } from "react";
-import type { AdminCakeRequest, AdminCoupon, AdminReview } from "@/lib/data/admin";
+import type { AdminCakeRequest, AdminCategory, AdminCoupon, AdminReview } from "@/lib/data/admin";
 import type { DeliveryZone, Order, OrderStatus, Product, ProductStatus } from "@/types";
 import { formatDate, formatMoney } from "@/lib/format";
 import { Badge, Button, EmptyState, Input, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 import { CakeRequests, Coupons, Reviews } from "@/components/admin/live-sections";
+import { CakeConfigurationEditor } from "@/components/admin/live-sections";
 import { ProductEditor } from "@/components/admin/product-editor";
 import { useStoreTheme, useToast, type StoreTheme } from "@/components/providers";
+import type {
+  BusinessSettings as BusinessSettingsData,
+  CakeConfigurationData,
+  StorefrontContent,
+} from "@/types/content";
 
 type Props = {
   section?: string;
@@ -18,7 +24,11 @@ type Props = {
   initialZones: DeliveryZone[];
   initialCakes: AdminCakeRequest[];
   initialCoupons: AdminCoupon[];
+  initialCategories: AdminCategory[];
   initialReviews: AdminReview[];
+  initialContent: StorefrontContent;
+  initialBusiness: BusinessSettingsData;
+  initialCakeConfiguration: CakeConfigurationData;
 };
 const titles: Record<string, string> = {
   dashboard: "Bakery overview",
@@ -68,7 +78,11 @@ export function AdminPortal({
   initialZones,
   initialCakes,
   initialCoupons,
+  initialCategories,
   initialReviews,
+  initialContent,
+  initialBusiness,
+  initialCakeConfiguration,
 }: Props) {
   const [products, setProducts] = useState(initialProducts);
   const [orders, setOrders] = useState(initialOrders);
@@ -76,6 +90,7 @@ export function AdminPortal({
   const [editor, setEditor] = useState<Product | null>();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ALL");
+  const [zoneBusy, setZoneBusy] = useState(false);
   const notify = useToast();
   const { theme, setTheme } = useStoreTheme();
   async function productStatus(id: string, value: ProductStatus) {
@@ -129,7 +144,13 @@ export function AdminPortal({
     }
   }
   async function saveZones() {
+    if (zones.some((zone) => zone.name.trim().length < 2 || zone.fee < 0 || zone.minimumOrder < 0)) {
+      notify("Give every delivery zone a name, fee, and valid minimum order.");
+      return;
+    }
+    setZoneBusy(true);
     const response = await mutate({ action: "delivery-zones", zones });
+    setZoneBusy(false);
     if (response.ok) {
       notify("Delivery zones saved.");
       window.location.reload();
@@ -161,13 +182,22 @@ export function AdminPortal({
                 onClick={() =>
                   setZones((v) => [
                     ...v,
-                    { id: `new-${Date.now()}`, name: "New Lagos zone", fee: 0, estimate: "Next day", active: true },
+                    {
+                      id: `new-${Date.now()}`,
+                      name: "",
+                      fee: 0,
+                      minimumOrder: 0,
+                      estimate: "",
+                      active: false,
+                    },
                   ])
                 }
               >
                 <Icon name="plus" /> Add zone
               </Button>
-              <Button onClick={saveZones}>Save zones</Button>
+              <Button disabled={zoneBusy} onClick={saveZones}>
+                {zoneBusy ? "Saving…" : "Save zones"}
+              </Button>
             </>
           )}
         </div>
@@ -204,7 +234,12 @@ export function AdminPortal({
           </div>
         </>
       )}
-      {section === "custom-cakes" && <CakeRequests initial={initialCakes} />}
+      {section === "custom-cakes" && (
+        <>
+          <CakeConfigurationEditor initial={initialCakeConfiguration} />
+          <CakeRequests initial={initialCakes} />
+        </>
+      )}
       {section === "products" && (
         <Products
           products={products}
@@ -219,11 +254,11 @@ export function AdminPortal({
       )}
       {section === "inventory" && <Inventory products={products} onChange={inventory} />}
       {section === "customers" && <Customers orders={orders} />}
-      {section === "coupons" && <Coupons initial={initialCoupons} />}
+      {section === "coupons" && <Coupons initial={initialCoupons} products={products} categories={initialCategories} />}
       {section === "reviews" && <Reviews initial={initialReviews} />}
-      {section === "content" && <ContentSettings />}
+      {section === "content" && <ContentSettings initial={initialContent} />}
       {section === "delivery" && <DeliveryZones zones={zones} setZones={setZones} />}
-      {section === "settings" && <BusinessSettings theme={theme} changeTheme={changeTheme} />}
+      {section === "settings" && <BusinessSettings initial={initialBusiness} theme={theme} changeTheme={changeTheme} />}
       {editor !== undefined && (
         <>
           <button
@@ -473,7 +508,11 @@ function Products({
               <tr key={product.id}>
                 <td>
                   <div className="product-cell">
-                    <Image src={product.image} alt="" width={48} height={54} />
+                    {product.image ? (
+                      <Image src={product.image} alt="" width={48} height={54} />
+                    ) : (
+                      <span className="admin-image-empty" role="img" aria-label="No product image" />
+                    )}
                     <div>
                       <b>{product.name}</b>
                       <small>{product.featured ? `Featured · ${product.slug}` : product.slug}</small>
@@ -522,7 +561,11 @@ function Inventory({ products, onChange }: { products: Product[]; onChange: (id:
       <div className="inventory-list">
         {products.map((product) => (
           <article key={product.id}>
-            <Image src={product.image} alt="" width={56} height={64} />
+            {product.image ? (
+              <Image src={product.image} alt="" width={56} height={64} />
+            ) : (
+              <span className="admin-image-empty" role="img" aria-label="No product image" />
+            )}
             <div>
               <b>{product.name}</b>
               <small>Alert at {product.lowStockThreshold} units</small>
@@ -617,9 +660,39 @@ function DeliveryZones({
 }) {
   return (
     <div className="admin-card zone-list">
-      {zones.map((zone) => (
+      {!zones.length && <p className="admin-empty-copy">No delivery zones yet. Add one to offer delivery.</p>}
+      {zones.map((zone, index) => (
         <article key={zone.id}>
-          <span className="drag">⋮⋮</span>
+          <span className="zone-order-actions">
+            <button
+              type="button"
+              disabled={index === 0}
+              onClick={() =>
+                setZones((current) =>
+                  current.map((item, itemIndex) =>
+                    itemIndex === index - 1 ? zone : itemIndex === index ? current[index - 1] : item,
+                  ),
+                )
+              }
+              aria-label={`Move ${zone.name || "new zone"} up`}
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              disabled={index === zones.length - 1}
+              onClick={() =>
+                setZones((current) =>
+                  current.map((item, itemIndex) =>
+                    itemIndex === index + 1 ? zone : itemIndex === index ? current[index + 1] : item,
+                  ),
+                )
+              }
+              aria-label={`Move ${zone.name || "new zone"} down`}
+            >
+              ↓
+            </button>
+          </span>
           <Input
             label="Zone"
             value={zone.name}
@@ -634,9 +707,27 @@ function DeliveryZones({
             <span>Fee (₦)</span>
             <input
               type="number"
+              min="0"
               value={zone.fee / 100}
               onChange={(e) =>
-                setZones((v) => v.map((x) => (x.id === zone.id ? { ...x, fee: Number(e.target.value) * 100 } : x)))
+                setZones((v) =>
+                  v.map((x) => (x.id === zone.id ? { ...x, fee: Math.round(Number(e.target.value) * 100) } : x)),
+                )
+              }
+            />
+          </label>
+          <label>
+            <span>Minimum order (₦)</span>
+            <input
+              type="number"
+              min="0"
+              value={zone.minimumOrder / 100}
+              onChange={(e) =>
+                setZones((v) =>
+                  v.map((x) =>
+                    x.id === zone.id ? { ...x, minimumOrder: Math.round(Number(e.target.value) * 100) } : x,
+                  ),
+                )
               }
             />
           </label>
@@ -650,25 +741,40 @@ function DeliveryZones({
             />
             <span />
           </label>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={() => setZones((v) => v.filter((x) => x.id !== zone.id))}
-            aria-label={`Remove ${zone.name}`}
-          >
-            <Icon name="close" />
-          </button>
+          {zone.id.startsWith("new-") && (
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => setZones((v) => v.filter((x) => x.id !== zone.id))}
+              aria-label="Discard new delivery zone"
+            >
+              <Icon name="close" />
+            </button>
+          )}
         </article>
       ))}
     </div>
   );
 }
 
-function ContentSettings() {
+function ContentSettings({ initial }: { initial: StorefrontContent }) {
   const notify = useToast();
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const value = Object.fromEntries(new FormData(e.currentTarget));
+    const fields = Object.fromEntries(new FormData(e.currentTarget));
+    const value = {
+      ...initial,
+      home: {
+        ...initial.home,
+        hero: {
+          ...initial.home.hero,
+          eyebrow: String(fields.eyebrow),
+          headline: String(fields.headline),
+          supportingText: String(fields.supportingText),
+          primaryLabel: String(fields.buttonLabel),
+        },
+      },
+    };
     const response = await mutate({ action: "settings", key: "content", value });
     notify(response.ok ? "Storefront content saved." : "Content could not be saved.");
   }
@@ -676,31 +782,45 @@ function ContentSettings() {
     <form className="settings-grid" onSubmit={save}>
       <div className="admin-card form-stack">
         <h2>Homepage hero</h2>
-        <Input name="eyebrow" label="Eyebrow" defaultValue="Handmade in Lagos" />
-        <Input name="headline" label="Headline" defaultValue="Made for life’s sweetest moments." />
+        <Input name="eyebrow" label="Eyebrow" defaultValue={initial.home.hero.eyebrow} />
+        <Input name="headline" label="Headline" defaultValue={initial.home.hero.headline} />
         <Textarea
           name="supportingText"
           label="Supporting text"
-          defaultValue="Celebration cakes, fresh pastries and oven-ready favourites, made slowly and shared joyfully."
+          defaultValue={initial.home.hero.supportingText}
           rows={4}
         />
-        <Input name="buttonLabel" label="Primary button label" defaultValue="Shop the bakery" />
+        <Input name="buttonLabel" label="Primary button label" defaultValue={initial.home.hero.primaryLabel} />
       </div>
       <div className="admin-card form-stack">
-        <h2>Contact & hours</h2>
-        <Input name="publicEmail" label="Public email" defaultValue="hello@ndeedelicious.com" />
-        <Input name="whatsapp" label="WhatsApp" defaultValue="+234 800 000 0000" />
-        <Textarea name="hours" label="Opening hours" defaultValue={"Tuesday–Saturday\n9am–5pm"} rows={4} />
+        <h2>Publishing</h2>
+        <p>Homepage copy above is loaded from and saved directly to the storefront content record.</p>
         <Button type="submit">Save content</Button>
       </div>
     </form>
   );
 }
-function BusinessSettings({ theme, changeTheme }: { theme: StoreTheme; changeTheme: (value: StoreTheme) => void }) {
+function BusinessSettings({
+  initial,
+  theme,
+  changeTheme,
+}: {
+  initial: BusinessSettingsData;
+  theme: StoreTheme;
+  changeTheme: (value: StoreTheme) => void;
+}) {
   const notify = useToast();
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const value = Object.fromEntries(new FormData(e.currentTarget));
+    const fields = Object.fromEntries(new FormData(e.currentTarget));
+    const value = {
+      ...initial,
+      ...fields,
+      cakeLeadHours: Number(fields.cakeLeadHours),
+      orderMinimum: Math.round(Number(fields.orderMinimum) * 100),
+      deliveryEnabled: fields.deliveryEnabled === "on",
+      pickupEnabled: fields.pickupEnabled === "on",
+    };
     const response = await mutate({ action: "settings", key: "business", value });
     notify(response.ok ? "Business settings saved." : "Settings could not be saved.");
   }
@@ -735,12 +855,36 @@ function BusinessSettings({ theme, changeTheme }: { theme: StoreTheme; changeThe
       </div>
       <form className="admin-card form-stack" onSubmit={save}>
         <h2>Business details</h2>
-        <Input name="businessName" label="Business name" defaultValue="Ndeeelicious Delight" />
-        <Input name="contactEmail" label="Contact email" type="email" defaultValue="hello@ndeedelicious.com" />
-        <Input name="phone" label="Phone" defaultValue="+234 800 000 0000" />
-        <Input name="address" label="Address" defaultValue="Lekki, Lagos" />
-        <Input name="currency" label="Currency" defaultValue="NGN" />
-        <Input name="cakeLeadHours" label="Custom cake lead time (hours)" type="number" defaultValue="72" />
+        <Input name="businessName" label="Business name" defaultValue={initial.businessName} />
+        <Input name="contactEmail" label="Contact email" type="email" defaultValue={initial.contactEmail} />
+        <Input name="phone" label="Phone" defaultValue={initial.phone} />
+        <Input name="whatsapp" label="WhatsApp" defaultValue={initial.whatsapp} />
+        <Input name="address" label="Address" defaultValue={initial.address} />
+        <Textarea name="openingHours" label="Opening hours" defaultValue={initial.openingHours} rows={3} />
+        <Input name="instagramUrl" label="Instagram URL" type="url" defaultValue={initial.instagramUrl} />
+        <Input name="currency" label="Currency" defaultValue={initial.currency} />
+        <Input
+          name="orderMinimum"
+          label="Store-wide minimum order (₦)"
+          type="number"
+          min="0"
+          defaultValue={initial.orderMinimum / 100}
+        />
+        <label className="check-row">
+          <input name="deliveryEnabled" type="checkbox" defaultChecked={initial.deliveryEnabled} />
+          <span>Offer delivery at checkout</span>
+        </label>
+        <label className="check-row">
+          <input name="pickupEnabled" type="checkbox" defaultChecked={initial.pickupEnabled} />
+          <span>Offer bakery pickup at checkout</span>
+        </label>
+        <Input
+          name="cakeLeadHours"
+          label="Custom cake lead time (hours)"
+          type="number"
+          min="1"
+          defaultValue={initial.cakeLeadHours}
+        />
         <Button type="submit">Save settings</Button>
       </form>
     </div>

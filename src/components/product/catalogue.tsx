@@ -11,7 +11,6 @@ export function Catalogue({ initialCategory }: { initialCategory?: Category }) {
   const products = useProducts();
   const [category, setCategory] = useState<Category | "ALL">(initialCategory ?? "ALL");
   const [available, setAvailable] = useState(false);
-  const [flavour, setFlavour] = useState("ALL");
   const [sort, setSort] = useState<Sort>("featured");
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState(false);
@@ -24,7 +23,6 @@ export function Catalogue({ initialCategory }: { initialCategory?: Category }) {
           (p) =>
             (category === "ALL" || p.category === category) &&
             (!available || p.status === "ACTIVE") &&
-            (flavour === "ALL" || `${p.name} ${p.ingredients}`.toLowerCase().includes(flavour.toLowerCase())) &&
             `${p.name} ${p.shortDescription}`.toLowerCase().includes(query.toLowerCase()),
         )
         .sort((a, b) =>
@@ -36,7 +34,7 @@ export function Catalogue({ initialCategory }: { initialCategory?: Category }) {
                 ? b.id.localeCompare(a.id)
                 : Number(!!b.featured) - Number(!!a.featured),
         ),
-    [category, available, flavour, sort, query, products],
+    [category, available, sort, query, products],
   );
   const visible = items.slice((page - 1) * perPage, page * perPage);
   const reset = () => setPage(1);
@@ -105,23 +103,6 @@ export function Catalogue({ initialCategory }: { initialCategory?: Category }) {
             ))}
           </fieldset>
           <fieldset>
-            <legend>Flavour</legend>
-            {["ALL", "Chocolate", "Vanilla", "Berry"].map((v) => (
-              <label key={v}>
-                <input
-                  type="radio"
-                  name="flavour"
-                  checked={flavour === v}
-                  onChange={() => {
-                    setFlavour(v);
-                    reset();
-                  }}
-                />
-                <span>{v === "ALL" ? "All flavours" : v}</span>
-              </label>
-            ))}
-          </fieldset>
-          <fieldset>
             <legend>Availability</legend>
             <label>
               <input
@@ -159,7 +140,6 @@ export function Catalogue({ initialCategory }: { initialCategory?: Category }) {
                   onClick={() => {
                     setQuery("");
                     setCategory("ALL");
-                    setFlavour("ALL");
                     setAvailable(false);
                   }}
                 >

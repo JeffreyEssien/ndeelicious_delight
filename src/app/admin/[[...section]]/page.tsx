@@ -14,7 +14,11 @@ export default async function Page({ params }: { params: Promise<{ section?: str
       initialZones={data.zones}
       initialCakes={data.cakes}
       initialCoupons={data.coupons}
+      initialCategories={data.categories}
       initialReviews={data.reviews}
+      initialContent={data.content}
+      initialBusiness={data.business}
+      initialCakeConfiguration={data.cakeConfiguration}
     />
   );
 }

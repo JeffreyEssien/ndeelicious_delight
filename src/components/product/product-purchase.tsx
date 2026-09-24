@@ -59,7 +59,7 @@ export function ProductPurchase({ product }: { product: Product }) {
           ? "This option is currently unavailable."
           : selected.stockQuantity <= product.lowStockThreshold
             ? `Only ${selected.stockQuantity} left for this bake.`
-            : "Available for next-day delivery."}
+            : "Available to add to your basket."}
       </p>
     </div>
   );

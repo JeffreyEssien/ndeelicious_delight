@@ -35,7 +35,17 @@ export function CartPage() {
         {lines.map(({ line, product: p, variant: v }) => {
           return (
             <article className="cart-page-line" key={`${p.id}-${v.id}`}>
-              <Image src={p.image} alt={p.name} width={140} height={168} style={{ objectPosition: p.imagePosition }} />
+              {p.image ? (
+                <Image
+                  src={p.image}
+                  alt={p.name}
+                  width={140}
+                  height={168}
+                  style={{ objectPosition: p.imagePosition }}
+                />
+              ) : (
+                <span className="cart-image-empty missing-image">No image</span>
+              )}
               <div>
                 <h3>{p.name}</h3>
                 <p>{v.name}</p>

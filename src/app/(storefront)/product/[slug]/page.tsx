@@ -9,9 +9,11 @@ import { formatMoney } from "@/lib/format";
 import { getProduct, getProducts } from "@/lib/data/catalog";
 import { Badge } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
-export async function generateStaticParams() {
-  return (await getProducts()).map((p) => ({ slug: p.slug }));
-}
+import { getStorefrontContent } from "@/lib/data/settings";
+import { getApprovedReviews } from "@/lib/data/reviews";
+
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const p = await getProduct((await params).slug);
   return p ? { title: p.name, description: p.shortDescription } : {};
@@ -19,9 +21,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const product = await getProduct((await params).slug);
   if (!product) notFound();
-  const related = (await getProducts())
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 3);
+  const [products, content, reviews] = await Promise.all([
+    getProducts(),
+    getStorefrontContent(),
+    getApprovedReviews(product.id),
+  ]);
+  const related = products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 3);
   return (
     <>
       <div className="site-container breadcrumbs">
@@ -45,15 +50,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             <p>
               <Icon name="truck" />
               <span>
-                <b>Careful Lagos delivery</b>
-                <small>Choose your zone at checkout</small>
+                <b>{content.product.deliveryTitle}</b>
+                <small>{content.product.deliveryText}</small>
               </span>
             </p>
             <p>
               <Icon name="clock" />
               <span>
-                <b>Made to order</b>
-                <small>Freshly prepared for your date</small>
+                <b>{content.product.preparationTitle}</b>
+                <small>{content.product.preparationText}</small>
               </span>
             </p>
           </div>
@@ -77,7 +82,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           )}
         </div>
       </section>
-      <ProductReviews productName={product.name} />
+      <ProductReviews productId={product.id} productName={product.name} reviews={reviews} />
       {!!related.length && (
         <section className="section section-tint">
           <div className="site-container">

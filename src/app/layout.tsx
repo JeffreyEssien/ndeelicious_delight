@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
 import { getDeliveryZones, getProducts } from "@/lib/data/catalog";
-import { getStoreTheme } from "@/lib/data/settings";
+import { getBusinessSettings, getStorefrontContent, getStoreTheme } from "@/lib/data/settings";
 import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 import "./store.css";
@@ -10,16 +10,22 @@ import "./extras.css";
 import "./gallery.css";
 import "./reviews.css";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(getSiteUrl()),
-  title: { default: "Ndeeelicious Delight — Cakes & Pastries in Lagos", template: "%s · Ndeeelicious Delight" },
-  description: "Celebration cakes, fresh pastries and ready-to-bake favourites, thoughtfully made in Lagos.",
-  openGraph: {
-    title: "Ndeeelicious Delight",
-    description: "Made for life’s sweetest moments.",
-    images: ["/hero-bakery.jpg"],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const [content, business] = await Promise.all([getStorefrontContent(), getBusinessSettings()]);
+  return {
+    metadataBase: new URL(getSiteUrl()),
+    title: {
+      default: `${business.businessName} — Cakes & Pastries in Lagos`,
+      template: `%s · ${business.businessName}`,
+    },
+    description: content.home.hero.supportingText,
+    openGraph: {
+      title: business.businessName,
+      description: content.home.hero.headline.replaceAll("\n", " "),
+      images: content.home.hero.image ? [content.home.hero.image] : [],
+    },
+  };
+}
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [products, deliveryZones, initialTheme] = await Promise.all([

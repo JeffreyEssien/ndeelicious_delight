@@ -1,5 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Product, ProductImage, ProductVariant } from "@/types";
-import { products as fallbackProducts, deliveryZones as fallbackZones } from "@/lib/mock-data";
 import { createClient } from "@/lib/supabase/server";
 
 type ProductRow = {
@@ -20,7 +20,7 @@ type ProductRow = {
   allergens: string[];
   storage_instructions: string | null;
   preparation_instructions: string | null;
-  categories: { slug: string } | { slug: string }[] | null;
+  categories: { id: string; slug: string } | { id: string; slug: string }[] | null;
   product_variants: {
     id: string;
     name: string;
@@ -61,6 +61,7 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
     }));
   return {
     id: row.id,
+    categoryId: relation?.id,
     slug: row.slug,
     name: row.name,
     shortDescription: row.short_description,
@@ -69,7 +70,7 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
     price: row.base_price,
     discountPrice: row.discount_price ?? undefined,
     sku: row.sku ?? undefined,
-    image: images[0]?.url || "/pastries.jpg",
+    image: images[0]?.url ?? "",
     images,
     featured: row.featured,
     status: row.status,
@@ -84,53 +85,42 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
   };
 }
 
-export async function getProducts(
-  options: { includeInactive?: boolean; fallback?: boolean; client?: SupabaseClient } = {},
-) {
-  try {
-    const supabase = options.client ?? (await createClient());
-    let query = supabase
-      .from("products")
-      .select(`
+export async function getProducts(options: { includeInactive?: boolean; client?: SupabaseClient } = {}) {
+  const supabase = options.client ?? (await createClient());
+  let query = supabase
+    .from("products")
+    .select(`
       id,slug,name,short_description,description,sku,base_price,discount_price,status,featured,
       track_inventory,stock_quantity,low_stock_threshold,ingredients,allergens,storage_instructions,preparation_instructions,
-      categories(slug),product_variants(id,name,sku,price_adjustment,stock_quantity,active),
+      categories(id,slug),product_variants(id,name,sku,price_adjustment,stock_quantity,active),
       product_images(id,url,alt_text,sort_order,storage_path)
     `)
-      .order("created_at", { ascending: false });
-    if (!options.includeInactive) query = query.in("status", ["ACTIVE", "OUT_OF_STOCK"]);
-    const { data, error } = await query;
-    if (error) throw error;
-    if (!data?.length) return [];
-    return (data as unknown as ProductRow[]).map((row) => mapProduct(row, options.includeInactive));
-  } catch {
-    return options.fallback === false ? [] : fallbackProducts;
-  }
+    .order("created_at", { ascending: false });
+  if (!options.includeInactive) query = query.in("status", ["ACTIVE", "OUT_OF_STOCK"]);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data as unknown as ProductRow[] | null)?.map((row) => mapProduct(row, options.includeInactive)) ?? [];
 }
 
 export async function getProduct(slug: string) {
   return (await getProducts()).find((product) => product.slug === slug);
 }
 
-export async function getDeliveryZones(client?: SupabaseClient) {
-  try {
-    const supabase = client ?? (await createClient());
-    const { data, error } = await supabase
-      .from("delivery_zones")
-      .select("id,name,fee,estimated_time,active")
-      .eq("active", true)
-      .order("sort_order");
-    if (error) throw error;
-    if (!data?.length) return fallbackZones;
-    return data.map((zone) => ({
-      id: zone.id,
-      name: zone.name,
-      fee: zone.fee,
-      estimate: zone.estimated_time ?? "Delivery time confirmed after ordering",
-      active: zone.active,
-    }));
-  } catch {
-    return fallbackZones;
-  }
+export async function getDeliveryZones(client?: SupabaseClient, includeInactive = false) {
+  const supabase = client ?? (await createClient());
+  let query = supabase
+    .from("delivery_zones")
+    .select("id,name,fee,minimum_order,estimated_time,active")
+    .order("sort_order");
+  if (!includeInactive) query = query.eq("active", true);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map((zone) => ({
+    id: zone.id,
+    name: zone.name,
+    fee: zone.fee,
+    minimumOrder: zone.minimum_order,
+    estimate: zone.estimated_time ?? "Awaiting a delivery estimate",
+    active: zone.active,
+  }));
 }
-import type { SupabaseClient } from "@supabase/supabase-js";

@@ -7,10 +7,18 @@ import type { Product } from "@/types";
 export function ProductGallery({ product }: { product: Product }) {
   const images = product.images?.length
     ? product.images
-    : [{ id: `${product.id}-primary`, url: product.image, altText: product.name, sortOrder: 0 }];
+    : product.image
+      ? [{ id: `${product.id}-primary`, url: product.image, altText: product.name, sortOrder: 0 }]
+      : [];
   const [selectedId, setSelectedId] = useState(images[0]?.id ?? "");
   const selected = images.find((image) => image.id === selectedId) ?? images[0];
-  if (!selected) return null;
+  if (!selected) {
+    return (
+      <div className="gallery gallery-empty">
+        <div className="gallery-main missing-image">No product image has been uploaded.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="gallery">

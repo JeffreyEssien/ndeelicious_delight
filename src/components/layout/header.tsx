@@ -5,14 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import { useCart, useProducts } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import type { BusinessSettings, StorefrontContent } from "@/types/content";
 
-const nav = [
-  { label: "Shop", href: "/shop" },
-  { label: "Custom cakes", href: "/custom-cakes" },
-  { label: "Ready to bake", href: "/ready-to-bake" },
-  { label: "Our story", href: "/about" },
-];
-export function Header() {
+export function Header({ content, business }: { content: StorefrontContent["global"]; business: BusinessSettings }) {
   const path = usePathname();
   const cart = useCart();
   const products = useProducts();
@@ -20,6 +15,7 @@ export function Header() {
   const [search, setSearch] = useState(false);
   const [query, setQuery] = useState("");
   const input = useRef<HTMLInputElement>(null);
+  const nav = content.navigation;
   // biome-ignore lint/correctness/useExhaustiveDependencies: Navigation should always close the mobile menu.
   useEffect(() => {
     setMenu(false);
@@ -35,7 +31,7 @@ export function Header() {
   return (
     <>
       <div className="announcement">
-        Next-day delivery available in select Lagos zones <Link href="/delivery-information">View details</Link>
+        {content.announcement.text} <Link href={content.announcement.href}>{content.announcement.linkLabel}</Link>
       </div>
       <header className="site-header">
         <div className="site-container nav-row">
@@ -47,7 +43,7 @@ export function Header() {
           >
             <Icon name="menu" />
           </button>
-          <Link className="brand" href="/" aria-label="Ndeeelicious Delight home">
+          <Link className="brand" href="/" aria-label={`${business.businessName} home`}>
             <BrandLogo compact />
           </Link>
           <nav className="desktop-nav" aria-label="Primary">
@@ -98,11 +94,13 @@ export function Header() {
             <Icon name="arrow" />
           </Link>
         </nav>
-        <p>
-          Handmade in Lagos.
-          <br />
-          Tuesday—Saturday, 9am—5pm
-        </p>
+        {(business.address || business.openingHours) && (
+          <p>
+            {business.address}
+            {business.address && business.openingHours && <br />}
+            {business.openingHours}
+          </p>
+        )}
       </div>
       {menu && <button type="button" className="scrim" onClick={() => setMenu(false)} aria-label="Close navigation" />}
       <div className={`search-overlay ${search ? "is-open" : ""}`} aria-hidden={!search}>
@@ -144,9 +142,13 @@ export function Header() {
                   }}
                 >
                   <span
-                    className="search-thumb"
-                    style={{ backgroundImage: `url(${p.image})`, backgroundPosition: p.imagePosition }}
-                  />
+                    className={`search-thumb ${p.image ? "" : "missing-image"}`}
+                    style={
+                      p.image ? { backgroundImage: `url(${p.image})`, backgroundPosition: p.imagePosition } : undefined
+                    }
+                  >
+                    {!p.image && <span className="sr-only">No image uploaded</span>}
+                  </span>
                   <span>
                     <b>{p.name}</b>
                     <small>{p.shortDescription}</small>

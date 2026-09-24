@@ -4,19 +4,46 @@ import { cakeConfigurationSchema } from "@/validations/cake";
 import { isSameOrigin } from "@/lib/auth/validation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
+import { getCakeConfiguration } from "@/lib/data/settings";
+
+const imageExtensions: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
+async function requestPayload(request: Request) {
+  if (!request.headers.get("content-type")?.includes("multipart/form-data")) {
+    return { body: (await request.json()) as unknown, reference: null };
+  }
+  const form = await request.formData();
+  const raw = form.get("configuration");
+  const reference = form.get("reference");
+  return {
+    body: typeof raw === "string" ? (JSON.parse(raw) as unknown) : null,
+    reference: reference instanceof File && reference.size > 0 ? reference : null,
+  };
+}
 
 export async function POST(request: Request) {
   try {
     if (!isSameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
-    const body: unknown = await request.json();
+    const { body, reference } = await requestPayload(request);
     const parsed = cakeConfigurationSchema.safeParse(body);
     if (!parsed.success)
       return Response.json(
         { error: "Please complete the cake details.", issues: parsed.error.flatten() },
         { status: 400 },
       );
-    const quote = calculateCakeQuote(parsed.data);
+    const extension = reference ? imageExtensions[reference.type] : undefined;
+    if (reference && (!extension || reference.size > 5 * 1024 * 1024)) {
+      return Response.json({ error: "Use a JPG, PNG, or WebP image up to 5 MB." }, { status: 400 });
+    }
     const service = createServiceClient();
+    const configuration = await getCakeConfiguration(service);
+    const quote = calculateCakeQuote(parsed.data, configuration.options, {
+      leadTimeHours: configuration.leadTimeHours,
+    });
     const customerEmail = parsed.data.email.toLowerCase();
     const { data: customer, error: customerError } = await service
       .from("customers")
@@ -28,6 +55,16 @@ export async function POST(request: Request) {
       .single();
     if (customerError) throw customerError;
     const requestNumber = `CC-${Date.now().toString().slice(-7)}`;
+    const referencePath = reference ? `${customer.id}/${crypto.randomUUID()}.${extension}` : null;
+    if (reference && referencePath) {
+      const { error: uploadError } = await service.storage
+        .from("cake-reference-images")
+        .upload(referencePath, reference, {
+          contentType: reference.type,
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
+    }
     const { error } = await service.from("custom_cake_orders").insert({
       request_number: requestNumber,
       customer_id: customer.id,
@@ -38,9 +75,13 @@ export async function POST(request: Request) {
       requested_date: parsed.data.deliveryDate,
       estimated_total: quote.estimatedTotal,
       status: quote.quoteRequired ? "QUOTE_REQUIRED" : "DRAFT",
+      reference_urls: referencePath ? [referencePath] : [],
       customer_note: parsed.data.customerNote,
     });
-    if (error) throw error;
+    if (error) {
+      if (referencePath) await service.storage.from("cake-reference-images").remove([referencePath]);
+      throw error;
+    }
     const adminEmail = process.env.ADMIN_EMAIL;
     await Promise.all([
       sendTransactionalEmail({

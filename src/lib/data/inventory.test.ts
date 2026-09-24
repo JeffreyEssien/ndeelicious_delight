@@ -7,13 +7,13 @@ function client(result: { data: unknown; error: null | { message: string } }) {
 }
 
 describe("database inventory operations", () => {
-  it("creates a fifteen-minute database reservation", async () => {
+  it("creates a payment-window database reservation", async () => {
     const db = client({ data: "2026-09-23T10:00:00.000Z", error: null });
 
     await expect(reserveOrderInventory(db, "order-id")).resolves.toEqual(new Date("2026-09-23T10:00:00.000Z"));
     expect(db.rpc).toHaveBeenCalledWith("reserve_order_inventory", {
       p_order_id: "order-id",
-      p_hold_minutes: 15,
+      p_hold_minutes: 60,
     });
   });
 
