@@ -1,6 +1,6 @@
 # Project Progress and TODOs
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 Active development branch: `develop`
 Baseline commit: `fc769b6` (`the initial push`)
 
@@ -18,9 +18,9 @@ The initial full-stack application is committed on `main`. The current `develop`
 - Incremental Biome linting and formatting for every changed file, locally and in CI.
 - A clean full-repository Biome lint baseline; the former 82-error/141-warning backlog is resolved.
 
-The Canada commerce, owner-managed storefront settings, and complete order lifecycle are implemented. The active implementation checkpoint is now **G11 · Audit logging**.
+The Canada commerce, owner-managed storefront settings, complete order lifecycle, and immutable admin audit ledger are implemented. The active implementation checkpoint is now **G12 · SEO**.
 
-The first-party admin OTP/SMTP security remediation is implemented and verified locally. Migrations `0003` through `0009` are applied to the project's configured Supabase database. Deployment remains blocked on production environment configuration and revocation of legacy Supabase Auth sessions.
+The first-party admin OTP/SMTP security remediation is implemented and verified locally. Migrations `0003` through `0017` are applied to the project's configured Supabase database. Deployment remains blocked on production environment configuration and revocation of legacy Supabase Auth sessions.
 
 ## Implemented
 
@@ -59,6 +59,9 @@ The first-party admin OTP/SMTP security remediation is implemented and verified 
 - [x] Converted checkout, order snapshots, Stripe currency, customer/admin formatting, address collection, and transactional copy to Canadian settings with province, postal-code, timezone, and configurable tax support.
 - [x] Added runtime-validated business, storefront-content, and appearance settings; the admin can edit every stored storefront text/link/list and choose safe theme colours, width, spacing, corner, and product-grid controls without code changes.
 - [x] Enforced the order status graph in PostgreSQL, added immutable order activity, detailed admin order inspection/printing/notes, idempotent full and partial Stripe refunds, refund concurrency protection, and durable customer-notification delivery with retry controls.
+- [x] Added an immutable service-role-only admin audit ledger with validated actor/session identity, server-read before/after values for sensitive mutations, and an authorized Audit Log screen.
+- [x] Made every product variant a SKU-bearing inventory unit with database-generated immutable identifiers, variant-level admin adjustments, derived product totals, and SKU snapshots on order lines.
+- [x] Reworked the owner-facing Delivery, Inventory, Products, Audit Log, Custom Cakes, Settings, and Website Text workspaces for responsive task-focused use; added custom-cake workflow status management and grouped database-backed option editing.
 
 ## Verification status
 
@@ -86,6 +89,9 @@ Checkpoint verification history:
 - `npm run check` — 45 regression tests, 40 functional tests, strict TypeScript, and the 40-page production build passed for G07 on 2026-09-24.
 - `npm run check` — 48 regression tests, 43 functional tests, strict TypeScript, and the 40-page production build passed after the Canada commerce and owner-managed settings foundation on 2026-09-24.
 - `npm run check` — 49 regression tests, 47 functional tests, strict TypeScript, and the 40-page production build passed for G08 on 2026-09-24.
+- `npm run check` — 53 regression tests, 47 functional tests, strict TypeScript, and the 40-page production build passed for G11 on 2026-09-25.
+- `npm run check` — 54 regression tests, 47 functional tests, strict TypeScript, and the 40-page production build passed after inventory-unit SKU automation on 2026-09-25.
+- `npm run check` — 54 regression tests, 48 functional tests, strict TypeScript, and the 40-page production build passed after the owner-facing admin usability pass on 2026-09-25.
 - Migration `0005_inventory_integrity.sql` was transactionally validated and applied to the configured Supabase database on 2026-09-23; rollback-only lifecycle checks and a live two-connection race confirmed one winner, one rejected reservation, zero oversales, correct deduction/restoration, RLS, triggers, and role restrictions.
 - Migrations `0006_database_backed_storefront.sql`, `0007_cake_reference_images.sql`, and `0008_additive_storefront_content.sql` are applied to the configured Supabase database. The latter is additive and preserves content already customized in admin.
 - Migration `0003_product_media.sql` was applied to the configured Supabase database on 2026-09-23 after a runtime REST query exposed the missing `product_images.storage_path` column; the content record and column were then verified through Supabase REST.
@@ -94,6 +100,9 @@ Checkpoint verification history:
 - Migration `0011_canada_commerce_settings.sql` was rollback-validated, applied, and live-verified on 2026-09-24. Business settings now use CA/CAD defaults, Canadian address and tax snapshots exist, appearance settings are database-owned, and legacy Nigerian delivery zones are inactive.
 - Migrations `0012_order_lifecycle.sql`, `0013_notification_outbox_leases.sql`, and `0014_refund_concurrency.sql` were rollback-validated and applied on 2026-09-24. Live transactional checks rejected invalid status jumps, proved order-event immutability/admin attribution, completed an atomic full refund, queued the refund email, and prevented pending concurrent refunds from exceeding the paid amount.
 - Migration `0015_async_refund_events.sql` was rollback-validated and applied on 2026-09-24. A live rollback-only check confirmed pending provider refunds are not completed early and duplicate signed refund webhooks finalize the order exactly once.
+- Migration `0016_admin_audit_logs.sql` was rollback-validated and applied on 2026-09-25. A live rollback-only check confirmed active admin/session attribution and append-only enforcement without retaining test rows or sessions.
+- Migration `0017_inventory_unit_skus.sql` was rollback-validated and applied on 2026-09-25. It backfilled 13 variant SKUs, reconciled five product/variant stock mismatches with no active reservations, and passed rollback-only generation, immutability, aggregation, adjustment, and service-role permission checks.
+- A read-only readiness check on 2026-09-25 found one active bootstrapped first-party admin, zero active first-party admin sessions, one legacy Supabase Auth user, and zero legacy Supabase Auth sessions in the currently configured environment.
 - Runtime smoke checks returned HTTP 200 for the homepage, checkout, delivery information, and admin login against the running development server.
 - Runtime smoke checks returned HTTP 200 for the homepage, shop, checkout, and delivery information with no Nigerian locale/currency copy in their rendered HTML; unauthenticated admin access correctly redirected to login.
 
@@ -135,7 +144,7 @@ Complete these checkpoints in order unless a newly discovered dependency require
 - [x] **G08 · Phases 18–20 — Order lifecycle:** complete admin order operations, refunds, status notifications, and immutable lifecycle handling.
 - [x] **G09 · Phase 21 — Reviews:** replace placeholder reviews with persisted submission, moderation, and approved public display.
 - [x] **G10 · Phases 22–23 — Content and settings:** make saved admin content and centralized business settings drive the storefront.
-- [ ] **G11 · Phase 24 — Audit logging:** record sensitive admin changes with before/after values and actor identity.
+- [x] **G11 · Phase 24 — Audit logging:** record sensitive admin changes with before/after values and actor identity.
 - [ ] **G12 · Phase 25 — SEO:** add Twitter metadata and Product, Organization, and Breadcrumb structured data.
 - [ ] **G13 · Phase 26 — Analytics and monitoring:** add privacy-conscious commerce events, error monitoring, and structured operational logs.
 - [ ] **G14 · Phases 27–28 — Performance and accessibility:** measure targets, fix material issues, and automate critical accessibility checks.

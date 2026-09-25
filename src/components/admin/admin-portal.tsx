@@ -2,13 +2,19 @@
 import Image from "next/image";
 import Link from "next/link";
 import { type FormEvent, useMemo, useState } from "react";
-import type { AdminCakeRequest, AdminCategory, AdminCoupon, AdminOrder, AdminReview } from "@/lib/data/admin";
+import type {
+  AdminAuditLog,
+  AdminCakeRequest,
+  AdminCategory,
+  AdminCoupon,
+  AdminOrder,
+  AdminReview,
+} from "@/lib/data/admin";
 import type { DeliveryZone, OrderStatus, Product, ProductStatus } from "@/types";
 import { formatDate } from "@/lib/format";
 import { Badge, Button, EmptyState, Input, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
-import { CakeRequests, Coupons, Reviews } from "@/components/admin/live-sections";
-import { CakeConfigurationEditor } from "@/components/admin/live-sections";
+import { CakeWorkspace, Coupons, Reviews } from "@/components/admin/live-sections";
 import { ProductEditor } from "@/components/admin/product-editor";
 import { ContentSettings } from "@/components/admin/content-settings";
 import { useBusinessSettings, useMoney, useStoreTheme, useToast, type StoreTheme } from "@/components/providers";
@@ -32,6 +38,7 @@ type Props = {
   initialBusiness: BusinessSettingsData;
   initialCakeConfiguration: CakeConfigurationData;
   initialAppearance: StoreAppearance;
+  initialAuditLogs: AdminAuditLog[];
 };
 const titles: Record<string, string> = {
   dashboard: "Bakery overview",
@@ -45,6 +52,7 @@ const titles: Record<string, string> = {
   content: "Storefront content",
   delivery: "Delivery zones",
   settings: "Business settings",
+  audit: "Audit log",
 };
 const themes: { id: StoreTheme; name: string; description: string; colors: string[] }[] = [
   {
@@ -87,6 +95,7 @@ export function AdminPortal({
   initialBusiness,
   initialCakeConfiguration,
   initialAppearance,
+  initialAuditLogs,
 }: Props) {
   const [products, setProducts] = useState(initialProducts);
   const [orders, setOrders] = useState(initialOrders);
@@ -127,20 +136,29 @@ export function AdminPortal({
       notify(payload?.error ?? "Order update could not be saved.");
     }
   }
-  async function inventory(id: string, quantity: number) {
+  async function inventory(productId: string, variantId: string, quantity: number) {
     const before = products;
     setProducts((v) =>
       v.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              stockQuantity: quantity,
-              status: quantity === 0 ? "OUT_OF_STOCK" : p.status === "OUT_OF_STOCK" ? "ACTIVE" : p.status,
-            }
+        p.id === productId
+          ? (() => {
+              const variants = p.variants.map((variant) =>
+                variant.id === variantId ? { ...variant, stockQuantity: quantity } : variant,
+              );
+              const stockQuantity = variants
+                .filter((variant) => variant.active)
+                .reduce((sum, variant) => sum + variant.stockQuantity, 0);
+              return {
+                ...p,
+                variants,
+                stockQuantity,
+                status: stockQuantity === 0 ? "OUT_OF_STOCK" : p.status === "OUT_OF_STOCK" ? "ACTIVE" : p.status,
+              };
+            })()
           : p,
       ),
     );
-    const response = await mutate({ action: "inventory", id, quantity });
+    const response = await mutate({ action: "inventory", id: productId, variantId, quantity });
     if (response.ok) notify("Inventory updated.");
     else {
       setProducts(before);
@@ -186,31 +204,6 @@ export function AdminPortal({
               <Icon name="plus" /> Add product
             </Button>
           )}
-          {section === "delivery" && (
-            <>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  setZones((v) => [
-                    ...v,
-                    {
-                      id: `new-${Date.now()}`,
-                      name: "",
-                      fee: 0,
-                      minimumOrder: 0,
-                      estimate: "",
-                      active: false,
-                    },
-                  ])
-                }
-              >
-                <Icon name="plus" /> Add zone
-              </Button>
-              <Button disabled={zoneBusy} onClick={saveZones}>
-                {zoneBusy ? "Saving…" : "Save zones"}
-              </Button>
-            </>
-          )}
         </div>
       </div>
       {section === "dashboard" && <Dashboard products={products} orders={orders} cakes={initialCakes} />}
@@ -246,12 +239,7 @@ export function AdminPortal({
           </div>
         </>
       )}
-      {section === "custom-cakes" && (
-        <>
-          <CakeConfigurationEditor initial={initialCakeConfiguration} />
-          <CakeRequests initial={initialCakes} />
-        </>
-      )}
+      {section === "custom-cakes" && <CakeWorkspace requests={initialCakes} configuration={initialCakeConfiguration} />}
       {section === "products" && (
         <Products
           products={products}
@@ -269,7 +257,8 @@ export function AdminPortal({
       {section === "coupons" && <Coupons initial={initialCoupons} products={products} categories={initialCategories} />}
       {section === "reviews" && <Reviews initial={initialReviews} />}
       {section === "content" && <ContentSettings initial={initialContent} />}
-      {section === "delivery" && <DeliveryZones zones={zones} setZones={setZones} />}
+      {section === "delivery" && <DeliveryZones zones={zones} setZones={setZones} busy={zoneBusy} onSave={saveZones} />}
+      {section === "audit" && <AuditLog entries={initialAuditLogs} />}
       {section === "settings" && (
         <BusinessSettings
           initial={initialBusiness}
@@ -304,6 +293,115 @@ export function AdminPortal({
           onStatus={orderStatus}
         />
       )}
+    </div>
+  );
+}
+
+function auditLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+const auditMessages: Record<string, string> = {
+  PRODUCT_CREATED: "created a product",
+  PRODUCT_UPDATED: "updated a product",
+  PRODUCT_DUPLICATED: "duplicated a product",
+  PRODUCT_IMAGE_ADDED: "added a product photo",
+  PRODUCT_STATUS_CHANGED: "changed a product’s visibility",
+  STOCK_CHANGED: "adjusted inventory",
+  ORDER_STATUS_CHANGED: "moved an order to its next stage",
+  ORDER_NOTE_CHANGED: "updated an internal order note",
+  ORDER_NOTIFICATION_RETRY_REQUESTED: "retried an order email",
+  REFUND_INITIATED: "started a refund",
+  CAKE_QUOTE_SENT: "sent a custom cake quote",
+  CAKE_REQUEST_STATUS_CHANGED: "updated a cake request",
+  CAKE_OPTIONS_CHANGED: "updated cake builder choices",
+  REVIEW_STATUS_CHANGED: "moderated a customer review",
+  COUPONS_CHANGED: "updated promotions",
+  DELIVERY_ZONES_CHANGED: "updated delivery areas",
+  SITE_SETTING_CHANGED: "updated store settings",
+  THEME_CHANGED: "changed the storefront theme",
+};
+
+function auditEntity(entry: AdminAuditLog) {
+  const friendlyType: Record<string, string> = {
+    product: "Product",
+    order: "Order",
+    order_refund: "Refund",
+    custom_cake_order: "Cake request",
+    custom_cake_options: "Cake builder",
+    review: "Review",
+    coupons: "Promotions",
+    delivery_zones: "Delivery",
+    site_setting: "Settings",
+  };
+  return `${friendlyType[entry.entityType] ?? auditLabel(entry.entityType)}${entry.entityId && entry.entityId !== "all" ? ` · ${entry.entityId}` : ""}`;
+}
+
+function changedFields(entry: AdminAuditLog) {
+  if (!entry.previousValue) return "A new record was added.";
+  const before = entry.previousValue;
+  const after = entry.newValue;
+  if (
+    typeof before !== "object" ||
+    before === null ||
+    Array.isArray(before) ||
+    typeof after !== "object" ||
+    after === null ||
+    Array.isArray(after)
+  )
+    return "The saved information changed.";
+  const changed = Object.keys({ ...before, ...after }).filter(
+    (key) => JSON.stringify(before[key as keyof typeof before]) !== JSON.stringify(after[key as keyof typeof after]),
+  );
+  if (!changed.length) return "The action was recorded successfully.";
+  return `Changed ${changed.slice(0, 3).map(auditLabel).join(", ")}${changed.length > 3 ? ` and ${changed.length - 3} more` : ""}.`;
+}
+
+function AuditLog({ entries }: { entries: AdminAuditLog[] }) {
+  const business = useBusinessSettings();
+  if (!entries.length) {
+    return <EmptyState title="No audited changes yet" body="Sensitive admin changes will appear here." />;
+  }
+  return (
+    <div className="audit-workspace">
+      <div className="audit-intro">
+        <div>
+          <span className="overline">Store history</span>
+          <h2>What changed in your store</h2>
+          <p>A simple record of important changes, who made them, and when.</p>
+        </div>
+        <span className="audit-count">Latest {entries.length} changes</span>
+      </div>
+      <ol className="audit-feed">
+        {entries.map((entry) => (
+          <li className="admin-card" key={entry.id}>
+            <span className="audit-avatar">{entry.actorName.slice(0, 1).toUpperCase()}</span>
+            <div className="audit-copy">
+              <p>
+                <b>{entry.actorName}</b> {auditMessages[entry.action] ?? auditLabel(entry.action).toLowerCase()}.
+              </p>
+              <span>{changedFields(entry)}</span>
+              <small>
+                {auditEntity(entry)} · {formatDate(entry.createdAt, business.locale, business.timezone)}
+              </small>
+            </div>
+            <details className="audit-details">
+              <summary>See details</summary>
+              <div>
+                <p>Use this detail only when you need to check exactly what changed.</p>
+                <b>Before</b>
+                <pre>{JSON.stringify(entry.previousValue, null, 2) ?? "None"}</pre>
+                <b>After</b>
+                <pre>{JSON.stringify(entry.newValue, null, 2) ?? "None"}</pre>
+              </div>
+            </details>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
@@ -775,10 +873,28 @@ function Products({
 }) {
   const money = useMoney();
   const visible = products.filter(
-    (p) => (status === "ALL" || p.status === status) && p.name.toLowerCase().includes(query.toLowerCase()),
+    (p) =>
+      (status === "ALL" || p.status === status) &&
+      `${p.name} ${p.category} ${p.slug} ${p.variants.map((variant) => variant.sku).join(" ")}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
   );
+  const lowStock = products.filter(
+    (product) => product.trackInventory !== false && product.stockQuantity <= product.lowStockThreshold,
+  ).length;
   return (
     <>
+      <div className="admin-summary-strip">
+        <span>
+          <b>{products.length}</b> products
+        </span>
+        <span>
+          <b>{products.filter((product) => product.status === "ACTIVE").length}</b> live in the shop
+        </span>
+        <span className={lowStock ? "needs-attention" : ""}>
+          <b>{lowStock}</b> need stock attention
+        </span>
+      </div>
       <AdminFilters
         query={query}
         setQuery={setQuery}
@@ -794,6 +910,7 @@ function Products({
               <th>Category</th>
               <th>Price</th>
               <th>Stock</th>
+              <th>Options</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -820,6 +937,11 @@ function Products({
                   <b className={product.stockQuantity <= product.lowStockThreshold ? "danger-text" : ""}>
                     {product.stockQuantity}
                   </b>
+                  <small>Alert at {product.lowStockThreshold}</small>
+                </td>
+                <td>
+                  <b>{product.variants.length}</b>
+                  <small>{product.variants[0]?.sku ?? "No SKU"}</small>
                 </td>
                 <td>
                   <select
@@ -850,12 +972,70 @@ function Products({
     </>
   );
 }
-function Inventory({ products, onChange }: { products: Product[]; onChange: (id: string, quantity: number) => void }) {
+function Inventory({
+  products,
+  onChange,
+}: {
+  products: Product[];
+  onChange: (productId: string, variantId: string, quantity: number) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [view, setView] = useState<"ALL" | "LOW" | "OUT">("ALL");
+  const units = products.flatMap((product) => product.variants.map((variant) => ({ product, variant })));
+  const visible = units.filter(({ product, variant }) => {
+    const matchesQuery = `${product.name} ${variant.name} ${variant.sku ?? ""}`
+      .toLowerCase()
+      .includes(query.toLowerCase());
+    const matchesView =
+      view === "ALL" ||
+      (view === "OUT" && variant.stockQuantity === 0) ||
+      (view === "LOW" && variant.stockQuantity > 0 && variant.stockQuantity <= product.lowStockThreshold);
+    return matchesQuery && matchesView;
+  });
+  const low = units.filter(
+    ({ product, variant }) => variant.stockQuantity > 0 && variant.stockQuantity <= product.lowStockThreshold,
+  ).length;
+  const out = units.filter(({ variant }) => variant.stockQuantity === 0).length;
   return (
-    <div className="admin-card">
-      <div className="inventory-list">
-        {products.map((product) => (
-          <article key={product.id}>
+    <div className="inventory-workspace">
+      <div className="inventory-overview">
+        <div>
+          <span>Inventory units</span>
+          <b>{units.length}</b>
+          <small>Every sellable product option</small>
+        </div>
+        <div className={low ? "warning" : ""}>
+          <span>Running low</span>
+          <b>{low}</b>
+          <small>At or below their alert level</small>
+        </div>
+        <div className={out ? "danger" : ""}>
+          <span>Out of stock</span>
+          <b>{out}</b>
+          <small>Unavailable to customers</small>
+        </div>
+      </div>
+      <div className="inventory-toolbar">
+        <label>
+          <Icon name="search" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search product, option or SKU"
+          />
+        </label>
+        <fieldset aria-label="Filter inventory">
+          {(["ALL", "LOW", "OUT"] as const).map((item) => (
+            <button key={item} type="button" className={view === item ? "active" : ""} onClick={() => setView(item)}>
+              {item === "ALL" ? "All stock" : item === "LOW" ? "Low stock" : "Out of stock"}
+            </button>
+          ))}
+        </fieldset>
+      </div>
+      <div className="admin-card inventory-list">
+        {!visible.length && <EmptyState title="No inventory matched" body="Try another search or stock filter." />}
+        {visible.map(({ product, variant }) => (
+          <article key={variant.id}>
             {product.image ? (
               <Image src={product.image} alt="" width={56} height={64} />
             ) : (
@@ -863,24 +1043,42 @@ function Inventory({ products, onChange }: { products: Product[]; onChange: (id:
             )}
             <div>
               <b>{product.name}</b>
-              <small>Alert at {product.lowStockThreshold} units</small>
+              <small>
+                {variant.name} · {variant.sku ?? "SKU pending"}
+              </small>
             </div>
             <div className="stock-control">
-              <button type="button" onClick={() => onChange(product.id, Math.max(0, product.stockQuantity - 1))}>
+              <button
+                type="button"
+                onClick={() => onChange(product.id, variant.id, Math.max(0, variant.stockQuantity - 1))}
+              >
                 −
               </button>
-              <b className={product.stockQuantity <= product.lowStockThreshold ? "danger-text" : ""}>
-                {product.stockQuantity}
+              <b className={variant.stockQuantity <= product.lowStockThreshold ? "danger-text" : ""}>
+                {variant.stockQuantity}
               </b>
-              <button type="button" onClick={() => onChange(product.id, product.stockQuantity + 1)}>
+              <button type="button" onClick={() => onChange(product.id, variant.id, variant.stockQuantity + 1)}>
                 +
               </button>
             </div>
+            <label className="inventory-exact">
+              <span>Set exact</span>
+              <input
+                key={`${variant.id}-${variant.stockQuantity}`}
+                type="number"
+                min="0"
+                defaultValue={variant.stockQuantity}
+                onBlur={(event) => {
+                  const quantity = Math.max(0, Number(event.currentTarget.value));
+                  if (quantity !== variant.stockQuantity) onChange(product.id, variant.id, quantity);
+                }}
+              />
+            </label>
             <StatusBadge
               status={
-                product.stockQuantity === 0
+                variant.stockQuantity === 0
                   ? "OUT_OF_STOCK"
-                  : product.stockQuantity <= product.lowStockThreshold
+                  : variant.stockQuantity <= product.lowStockThreshold
                     ? "LOW_STOCK"
                     : "HEALTHY"
               }
@@ -951,106 +1149,153 @@ function Customers({ orders }: { orders: AdminOrder[] }) {
 function DeliveryZones({
   zones,
   setZones,
+  busy,
+  onSave,
 }: {
   zones: DeliveryZone[];
   setZones: React.Dispatch<React.SetStateAction<DeliveryZone[]>>;
+  busy: boolean;
+  onSave: () => void;
 }) {
   const { currency } = useBusinessSettings();
+  const money = useMoney();
+  const active = zones.filter((zone) => zone.active);
+  const update = (id: string, values: Partial<DeliveryZone>) =>
+    setZones((current) => current.map((zone) => (zone.id === id ? { ...zone, ...values } : zone)));
+  const move = (index: number, direction: -1 | 1) =>
+    setZones((current) => {
+      const next = [...current];
+      const target = index + direction;
+      if (target < 0 || target >= next.length) return current;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  const add = () =>
+    setZones((current) => [
+      ...current,
+      { id: `new-${crypto.randomUUID()}`, name: "", fee: 0, minimumOrder: 0, estimate: "", active: false },
+    ]);
   return (
-    <div className="admin-card zone-list">
-      {!zones.length && <p className="admin-empty-copy">No delivery zones yet. Add one to offer delivery.</p>}
-      {zones.map((zone, index) => (
-        <article key={zone.id}>
-          <span className="zone-order-actions">
-            <button
-              type="button"
-              disabled={index === 0}
-              onClick={() =>
-                setZones((current) =>
-                  current.map((item, itemIndex) =>
-                    itemIndex === index - 1 ? zone : itemIndex === index ? current[index - 1] : item,
-                  ),
-                )
-              }
-              aria-label={`Move ${zone.name || "new zone"} up`}
-            >
-              ↑
-            </button>
-            <button
-              type="button"
-              disabled={index === zones.length - 1}
-              onClick={() =>
-                setZones((current) =>
-                  current.map((item, itemIndex) =>
-                    itemIndex === index + 1 ? zone : itemIndex === index ? current[index + 1] : item,
-                  ),
-                )
-              }
-              aria-label={`Move ${zone.name || "new zone"} down`}
-            >
-              ↓
-            </button>
-          </span>
-          <Input
-            label="Zone"
-            value={zone.name}
-            onChange={(e) => setZones((v) => v.map((x) => (x.id === zone.id ? { ...x, name: e.target.value } : x)))}
-          />
-          <Input
-            label="Estimate"
-            value={zone.estimate}
-            onChange={(e) => setZones((v) => v.map((x) => (x.id === zone.id ? { ...x, estimate: e.target.value } : x)))}
-          />
-          <label>
-            <span>Fee ({currency})</span>
-            <input
-              type="number"
-              min="0"
-              value={zone.fee / 100}
-              onChange={(e) =>
-                setZones((v) =>
-                  v.map((x) => (x.id === zone.id ? { ...x, fee: Math.round(Number(e.target.value) * 100) } : x)),
-                )
-              }
-            />
-          </label>
-          <label>
-            <span>Minimum order ({currency})</span>
-            <input
-              type="number"
-              min="0"
-              value={zone.minimumOrder / 100}
-              onChange={(e) =>
-                setZones((v) =>
-                  v.map((x) =>
-                    x.id === zone.id ? { ...x, minimumOrder: Math.round(Number(e.target.value) * 100) } : x,
-                  ),
-                )
-              }
-            />
-          </label>
-          <label className="switch">
-            <input
-              type="checkbox"
-              checked={zone.active}
-              onChange={(e) =>
-                setZones((v) => v.map((x) => (x.id === zone.id ? { ...x, active: e.target.checked } : x)))
-              }
-            />
-            <span />
-          </label>
-          {zone.id.startsWith("new-") && (
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => setZones((v) => v.filter((x) => x.id !== zone.id))}
-              aria-label="Discard new delivery zone"
-            >
-              <Icon name="close" />
-            </button>
-          )}
-        </article>
-      ))}
+    <div className="delivery-workspace">
+      <div className="delivery-overview">
+        <div>
+          <span>Available areas</span>
+          <b>{active.length}</b>
+          <small>Shown to customers at checkout</small>
+        </div>
+        <div>
+          <span>Lowest delivery fee</span>
+          <b>{active.length ? money(Math.min(...active.map((zone) => zone.fee))) : "—"}</b>
+          <small>{active.some((zone) => zone.fee === 0) ? "Free delivery is available" : "Across active areas"}</small>
+        </div>
+        <div>
+          <span>Highest minimum</span>
+          <b>{active.length ? money(Math.max(...active.map((zone) => zone.minimumOrder))) : "—"}</b>
+          <small>Customers must meet this subtotal</small>
+        </div>
+      </div>
+      <div className="delivery-help">
+        <div>
+          <b>Delivery areas</b>
+          <p>
+            Customers choose one of the active areas below. The fee, minimum order, and estimate appear at checkout.
+          </p>
+        </div>
+        <Button variant="secondary" onClick={add}>
+          <Icon name="plus" /> Add delivery area
+        </Button>
+      </div>
+      {!zones.length && <EmptyState title="No delivery areas yet" body="Add the first area to offer local delivery." />}
+      <div className="zone-grid">
+        {zones.map((zone, index) => (
+          <article className="admin-card zone-card" key={zone.id}>
+            <header>
+              <span className="zone-position">{index + 1}</span>
+              <div>
+                <b>{zone.name || "New delivery area"}</b>
+                <small>{zone.active ? "Available at checkout" : "Hidden from customers"}</small>
+              </div>
+              <label className="switch labeled-switch">
+                <input
+                  type="checkbox"
+                  checked={zone.active}
+                  onChange={(event) => update(zone.id, { active: event.target.checked })}
+                />
+                <span />
+                <b>{zone.active ? "Active" : "Off"}</b>
+              </label>
+            </header>
+            <div className="zone-fields">
+              <Input
+                label="Area name"
+                value={zone.name}
+                onChange={(event) => update(zone.id, { name: event.target.value })}
+              />
+              <Input
+                label="Delivery estimate"
+                value={zone.estimate}
+                placeholder="For example: Next day"
+                onChange={(event) => update(zone.id, { estimate: event.target.value })}
+              />
+              <Input
+                label={`Delivery fee (${currency})`}
+                type="number"
+                min="0"
+                step="0.01"
+                value={zone.fee / 100}
+                onChange={(event) => update(zone.id, { fee: Math.round(Number(event.target.value) * 100) })}
+              />
+              <Input
+                label={`Minimum order (${currency})`}
+                type="number"
+                min="0"
+                step="0.01"
+                value={zone.minimumOrder / 100}
+                onChange={(event) => update(zone.id, { minimumOrder: Math.round(Number(event.target.value) * 100) })}
+              />
+            </div>
+            <footer>
+              <div className="zone-order-actions">
+                <button type="button" disabled={index === 0} onClick={() => move(index, -1)}>
+                  ↑ Move up
+                </button>
+                <button type="button" disabled={index === zones.length - 1} onClick={() => move(index, 1)}>
+                  ↓ Move down
+                </button>
+              </div>
+              <div className="zone-card-actions">
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() =>
+                    setZones((current) => [
+                      ...current,
+                      { ...zone, id: `new-${crypto.randomUUID()}`, name: `${zone.name} copy`, active: false },
+                    ])
+                  }
+                >
+                  Duplicate
+                </button>
+                {zone.id.startsWith("new-") && (
+                  <button
+                    type="button"
+                    className="text-button danger-text"
+                    onClick={() => setZones((current) => current.filter((item) => item.id !== zone.id))}
+                  >
+                    Discard
+                  </button>
+                )}
+              </div>
+            </footer>
+          </article>
+        ))}
+      </div>
+      <div className="admin-save-bar">
+        <span>Changes stay in draft until you save them.</span>
+        <Button disabled={busy} onClick={onSave}>
+          {busy ? "Saving delivery areas…" : "Save delivery areas"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1111,7 +1356,22 @@ function BusinessSettings({
   }
   return (
     <div className="settings-grid">
-      <div className="admin-card theme-settings">
+      <div className="settings-start admin-card">
+        <div>
+          <span className="overline">Store controls</span>
+          <h2>Choose what you want to manage</h2>
+          <p>Business details, ordering rules, and your storefront look are grouped below.</p>
+        </div>
+        <nav aria-label="Settings sections">
+          <a href="#business-settings">Business & ordering</a>
+          <a href="#brand-settings">Brand theme</a>
+          <a href="#layout-settings">Colours & layout</a>
+          <Link href="/admin/content">Website text & pages</Link>
+          <Link href="/admin/delivery">Delivery areas</Link>
+          <Link href="/admin/custom-cakes">Cake builder</Link>
+        </nav>
+      </div>
+      <div className="admin-card theme-settings" id="brand-settings">
         <div className="theme-settings-copy">
           <span className="overline">Brand appearance</span>
           <h2>Storefront theme</h2>
@@ -1138,7 +1398,7 @@ function BusinessSettings({
           ))}
         </fieldset>
       </div>
-      <form className="admin-card form-stack" onSubmit={saveAppearance}>
+      <form className="admin-card form-stack" id="layout-settings" onSubmit={saveAppearance}>
         <h2>Store colours and layout</h2>
         <p>
           These safe controls update the customer storefront immediately. Mobile layouts remain optimized automatically.
@@ -1199,7 +1459,7 @@ function BusinessSettings({
         </label>
         <Button type="submit">Save store appearance</Button>
       </form>
-      <form className="admin-card form-stack" onSubmit={save}>
+      <form className="admin-card form-stack business-settings-form" id="business-settings" onSubmit={save}>
         <h2>Business details</h2>
         <Input name="businessName" label="Business name" defaultValue={initial.businessName} />
         <Input name="contactEmail" label="Contact email" type="email" defaultValue={initial.contactEmail} />

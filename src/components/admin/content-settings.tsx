@@ -97,16 +97,31 @@ function ContentField({
   onChange: (path: Path, value: JsonValue) => void;
 }) {
   if (typeof value === "string") {
-    const props = { label: humanize(name), value, onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(path, event.target.value) };
-    return multilineField(name, value) ? <Textarea {...props} rows={name === "body" || name === "answer" ? 5 : 3} /> : <Input {...props} />;
+    const props = {
+      label: humanize(name),
+      value,
+      onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+        onChange(path, event.target.value),
+    };
+    return multilineField(name, value) ? (
+      <Textarea {...props} rows={name === "body" || name === "answer" ? 5 : 3} />
+    ) : (
+      <Input {...props} />
+    );
   }
   if (Array.isArray(value)) {
     return (
       <fieldset className="content-array">
         <legend>{humanize(name)}</legend>
         {value.map((item, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: Content items have no persisted IDs and all inputs are controlled.
           <div className="content-array-item" key={`${name}-${index}`}>
-            <ContentField name={`${humanize(name)} ${index + 1}`} value={item} path={[...path, index]} onChange={onChange} />
+            <ContentField
+              name={`${humanize(name)} ${index + 1}`}
+              value={item}
+              path={[...path, index]}
+              onChange={onChange}
+            />
             <div className="content-item-actions">
               <button
                 type="button"
@@ -130,14 +145,27 @@ function ContentField({
               >
                 Move down
               </button>
-              <button type="button" disabled={value.length === 1} onClick={() => onChange(path, value.filter((_, itemIndex) => itemIndex !== index))}>
+              <button
+                type="button"
+                disabled={value.length === 1}
+                onClick={() =>
+                  onChange(
+                    path,
+                    value.filter((_, itemIndex) => itemIndex !== index),
+                  )
+                }
+              >
                 Remove
               </button>
             </div>
           </div>
         ))}
         {value.length > 0 && (
-          <Button type="button" variant="secondary" onClick={() => onChange(path, [...value, blankLike(value.at(-1) as JsonValue)])}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => onChange(path, [...value, blankLike(value.at(-1) as JsonValue)])}
+          >
             Add {humanize(name).toLowerCase().replace(/s$/, "")}
           </Button>
         )}
@@ -157,6 +185,7 @@ function ContentField({
 export function ContentSettings({ initial }: { initial: StorefrontContent }) {
   const [content, setContent] = useState(initial);
   const [busy, setBusy] = useState(false);
+  const [section, setSection] = useState(Object.keys(initial)[0]);
   const notify = useToast();
   function update(path: Path, value: JsonValue) {
     setContent((current) => updateAtPath(current as JsonObject, path, value) as StorefrontContent);
@@ -188,12 +217,34 @@ export function ContentSettings({ initial }: { initial: StorefrontContent }) {
           {busy ? "Saving…" : "Save all content"}
         </Button>
       </div>
-      {Object.entries(content).map(([section, value], index) => (
-        <details className="admin-card content-section" key={section} open={index === 0}>
-          <summary>{sectionNames[section] ?? humanize(section)}</summary>
-          <ContentField name={section} value={value as JsonValue} path={[section]} onChange={update} />
-        </details>
-      ))}
+      <div className="content-editor-layout">
+        <nav className="admin-card content-page-nav" aria-label="Website pages">
+          {Object.keys(content).map((key) => (
+            <button key={key} type="button" className={section === key ? "active" : ""} onClick={() => setSection(key)}>
+              {sectionNames[key] ?? humanize(key)}
+            </button>
+          ))}
+        </nav>
+        <section className="admin-card content-section">
+          <div className="content-section-heading">
+            <span className="overline">Editing</span>
+            <h2>{sectionNames[section] ?? humanize(section)}</h2>
+            <p>These words and links are shown directly to customers.</p>
+          </div>
+          <ContentField
+            name={section}
+            value={content[section as keyof StorefrontContent] as JsonValue}
+            path={[section]}
+            onChange={update}
+          />
+        </section>
+      </div>
+      <div className="admin-save-bar content-save-bar">
+        <span>Review your changes, then publish them to the storefront.</span>
+        <Button disabled={busy} onClick={save}>
+          {busy ? "Publishing…" : "Publish website text"}
+        </Button>
+      </div>
     </div>
   );
 }

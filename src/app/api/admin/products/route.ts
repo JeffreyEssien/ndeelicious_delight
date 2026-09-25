@@ -1,3 +1,5 @@
+import { recordAdminAudit } from "@/lib/audit/admin-audit";
+import { readAdminAuditState } from "@/lib/audit/admin-audit-state";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 import { productRow } from "@/lib/data/product-write";
 import { categorySlug, productInputSchema } from "@/validations/product";
@@ -35,7 +37,6 @@ export async function POST(request: Request) {
     parsed.data.variants.map((variant) => ({
       product_id: product.id,
       name: variant.name,
-      sku: variant.sku || null,
       price_adjustment: variant.priceAdjustment,
       stock_quantity: variant.stockQuantity,
       active: variant.active,
@@ -44,6 +45,21 @@ export async function POST(request: Request) {
   if (variantError) {
     await db.from("products").delete().eq("id", product.id);
     return Response.json({ error: "Product variants could not be saved." }, { status: 500 });
+  }
+  try {
+    const newValue = await readAdminAuditState(db, { type: "product", id: product.id });
+    await recordAdminAudit(db, auth, {
+      action: "PRODUCT_CREATED",
+      entityType: "product",
+      entityId: product.id,
+      previousValue: null,
+      newValue,
+    });
+  } catch {
+    return Response.json(
+      { error: "The product was saved, but its audit record could not be verified." },
+      { status: 500 },
+    );
   }
   return Response.json({ ok: true, id: product.id }, { status: 201 });
 }

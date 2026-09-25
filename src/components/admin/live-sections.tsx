@@ -19,6 +19,7 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
   const [items, setItems] = useState(initial);
   const [selected, setSelected] = useState(initial[0]);
   const [amount, setAmount] = useState(selected?.quotedTotal ? String(selected.quotedTotal / 100) : "");
+  const [filter, setFilter] = useState("OPEN");
   const notify = useToast();
   if (!selected) return <EmptyState title="No cake requests" body="New customer requests will appear here." />;
   async function save() {
@@ -33,83 +34,145 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
       notify("Cake quote saved.");
     } else notify("Quote could not be saved.");
   }
+  async function changeStatus(status: string) {
+    const response = await mutate({ action: "cake-status", id: selected.id, status });
+    if (!response.ok) {
+      notify("Cake request status could not be updated.");
+      return;
+    }
+    setItems((current) => current.map((item) => (item.id === selected.id ? { ...item, status } : item)));
+    setSelected((current) => (current ? { ...current, status } : current));
+    notify("Cake request updated.");
+  }
+  const visible = items.filter((item) =>
+    filter === "ALL"
+      ? true
+      : filter === "OPEN"
+        ? !["DELIVERED", "CANCELLED"].includes(item.status)
+        : item.status === filter,
+  );
   return (
-    <div className="admin-split">
-      <div className="admin-card request-list">
-        {items.map((item) => (
-          <button
-            type="button"
-            className={item.id === selected.id ? "selected" : ""}
-            key={item.id}
-            onClick={() => {
-              setSelected(item);
-              setAmount(item.quotedTotal ? String(item.quotedTotal / 100) : "");
-            }}
-          >
-            <span className="avatar">
-              {item.customerName
-                .split(" ")
-                .map((x) => x[0])
-                .join("")
-                .slice(0, 2)}
-            </span>
-            <div>
-              <b>
-                {item.requestNumber} · {item.customerName}
-              </b>
-              <small>
-                {item.configuration.occasion} · {item.configuration.size} · {item.requestedDate}
-              </small>
-            </div>
-            <Badge tone={item.status === "QUOTE_REQUIRED" ? "warning" : "success"}>
-              {item.status.replaceAll("_", " ")}
-            </Badge>
+    <div className="cake-request-workspace">
+      <div className="cake-request-summary">
+        <span>
+          <b>{items.filter((item) => item.status === "QUOTE_REQUIRED").length}</b> need a quote
+        </span>
+        <span>
+          <b>{items.filter((item) => ["CUSTOMER_APPROVED", "CONFIRMED", "PREPARING"].includes(item.status)).length}</b>{" "}
+          being planned
+        </span>
+        <span>
+          <b>{items.filter((item) => item.status === "READY").length}</b> ready
+        </span>
+      </div>
+      <fieldset className="cake-request-filters" aria-label="Filter cake requests">
+        {["OPEN", "QUOTE_REQUIRED", "READY", "ALL"].map((item) => (
+          <button key={item} type="button" className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>
+            {item === "OPEN"
+              ? "Open requests"
+              : item === "QUOTE_REQUIRED"
+                ? "Needs quote"
+                : item === "READY"
+                  ? "Ready"
+                  : "All"}
           </button>
         ))}
-      </div>
-      <div className="admin-card request-detail">
-        <span className="overline">
-          {selected.requestNumber} · {selected.status.replaceAll("_", " ")}
-        </span>
-        <h2>
-          {selected.configuration.occasion} cake for {selected.customerName}
-        </h2>
-        <dl>
-          {["size", "flavour", "filling", "design", "colours"].map((key) => (
-            <div key={key}>
-              <dt>{key}</dt>
-              <dd>{selected.configuration[key] || "—"}</dd>
-            </div>
+      </fieldset>
+      <div className="admin-split cake-request-split">
+        <div className="admin-card request-list">
+          {!visible.length && <p className="admin-empty-copy">No requests match this view.</p>}
+          {visible.map((item) => (
+            <button
+              type="button"
+              className={item.id === selected.id ? "selected" : ""}
+              key={item.id}
+              onClick={() => {
+                setSelected(item);
+                setAmount(item.quotedTotal ? String(item.quotedTotal / 100) : "");
+              }}
+            >
+              <span className="avatar">
+                {item.customerName
+                  .split(" ")
+                  .map((x) => x[0])
+                  .join("")
+                  .slice(0, 2)}
+              </span>
+              <div>
+                <b>
+                  {item.requestNumber} · {item.customerName}
+                </b>
+                <small>
+                  {item.configuration.occasion} · {item.configuration.size} · {item.requestedDate}
+                </small>
+              </div>
+              <Badge tone={item.status === "QUOTE_REQUIRED" ? "warning" : "success"}>
+                {item.status.replaceAll("_", " ")}
+              </Badge>
+            </button>
           ))}
-          <div>
-            <dt>Date</dt>
-            <dd>{selected.requestedDate}</dd>
-          </div>
-        </dl>
-        {selected.referenceUrls.length > 0 && (
-          <div>
-            <b>Inspiration</b>
-            <div className="cake-reference-grid">
-              {selected.referenceUrls.map((url) => (
-                // The signed URL is short-lived and only generated inside an authenticated admin page.
-                // biome-ignore lint/performance/noImgElement: private signed storage URLs are not Next image host allow-listed
-                <img key={url} src={url} alt="Customer cake inspiration" />
-              ))}
+        </div>
+        <div className="admin-card request-detail">
+          <span className="overline">
+            {selected.requestNumber} · {selected.status.replaceAll("_", " ")}
+          </span>
+          <h2>
+            {selected.configuration.occasion} cake for {selected.customerName}
+          </h2>
+          <dl>
+            {["size", "flavour", "filling", "design", "colours"].map((key) => (
+              <div key={key}>
+                <dt>{key}</dt>
+                <dd>{selected.configuration[key] || "—"}</dd>
+              </div>
+            ))}
+            <div>
+              <dt>Date</dt>
+              <dd>{selected.requestedDate}</dd>
             </div>
+          </dl>
+          {selected.referenceUrls.length > 0 && (
+            <div>
+              <b>Inspiration</b>
+              <div className="cake-reference-grid">
+                {selected.referenceUrls.map((url) => (
+                  // The signed URL is short-lived and only generated inside an authenticated admin page.
+                  // biome-ignore lint/performance/noImgElement: private signed storage URLs are not Next image host allow-listed
+                  <img key={url} src={url} alt="Customer cake inspiration" />
+                ))}
+              </div>
+            </div>
+          )}
+          <Input
+            label={`Quote amount (${currency})`}
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+          <p>
+            {selected.email} · {selected.phone}
+          </p>
+          {selected.customerNote && <p className="cake-customer-note">“{selected.customerNote}”</p>}
+          <div className="cake-request-actions">
+            <Button disabled={!Number(amount)} onClick={save}>
+              Save quote
+            </Button>
+            <label className="field">
+              <span>Request stage</span>
+              <select value={selected.status} onChange={(event) => changeStatus(event.target.value)}>
+                <option value="QUOTE_REQUIRED">Needs quote</option>
+                <option value="QUOTE_SENT">Quote sent</option>
+                <option value="CUSTOMER_APPROVED">Customer approved</option>
+                <option value="CONFIRMED">Confirmed</option>
+                <option value="PREPARING">In preparation</option>
+                <option value="READY">Ready</option>
+                <option value="OUT_FOR_DELIVERY">Out for delivery</option>
+                <option value="DELIVERED">Delivered</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </label>
           </div>
-        )}
-        <Input
-          label={`Quote amount (${currency})`}
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-        <p>
-          {selected.email} · {selected.phone}
-        </p>
-        <Button disabled={!Number(amount)} onClick={save}>
-          Save quote
-        </Button>
+        </div>
       </div>
     </div>
   );
@@ -120,6 +183,7 @@ const optionTypes: CakeOptionType[] = ["occasion", "size", "flavour", "filling",
 export function CakeConfigurationEditor({ initial }: { initial: CakeConfigurationData }) {
   const { currency } = useBusinessSettings();
   const [options, setOptions] = useState(initial.options);
+  const [selectedType, setSelectedType] = useState<CakeOptionType>("occasion");
   const [busy, setBusy] = useState(false);
   const notify = useToast();
   function update(index: number, values: Partial<CakeOption>) {
@@ -129,7 +193,11 @@ export function CakeConfigurationEditor({ initial }: { initial: CakeConfiguratio
   }
   async function save() {
     setBusy(true);
-    const response = await mutate({ action: "cake-options", options });
+    const normalized = options.map((option) => ({
+      ...option,
+      sortOrder: options.filter((item) => item.type === option.type).findIndex((item) => item.id === option.id),
+    }));
+    const response = await mutate({ action: "cake-options", options: normalized });
     setBusy(false);
     if (response.ok) {
       notify("Cake configuration saved.");
@@ -150,79 +218,72 @@ export function CakeConfigurationEditor({ initial }: { initial: CakeConfiguratio
           {busy ? "Saving…" : "Save options"}
         </Button>
       </div>
-      <div className="table-scroll">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>Name</th>
-              <th>Description</th>
-              <th>Adjustment ({currency})</th>
-              <th>Quote</th>
-              <th>Active</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {options.map((option, index) => (
-              <tr key={option.id}>
-                <td>
-                  <select
-                    className="status-select"
-                    value={option.type}
-                    onChange={(event) => update(index, { type: event.target.value as CakeOptionType })}
-                  >
-                    {optionTypes.map((type) => (
-                      <option key={type}>{type}</option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <input value={option.name} onChange={(event) => update(index, { name: event.target.value })} />
-                </td>
-                <td>
-                  <input
-                    value={option.description}
-                    onChange={(event) => update(index, { description: event.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    min="0"
-                    value={option.priceAdjustment / 100}
-                    onChange={(event) =>
-                      update(index, { priceAdjustment: Math.round(Number(event.target.value) * 100) })
-                    }
-                  />
-                </td>
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={option.quoteRequired}
-                    onChange={(event) => update(index, { quoteRequired: event.target.checked })}
-                  />
-                </td>
-                <td>
+      <div className="cake-option-types" role="tablist" aria-label="Cake option type">
+        {optionTypes.map((type) => (
+          <button
+            key={type}
+            type="button"
+            role="tab"
+            aria-selected={selectedType === type}
+            className={selectedType === type ? "active" : ""}
+            onClick={() => setSelectedType(type)}
+          >
+            {type.charAt(0).toUpperCase() + type.slice(1)}
+            <span>{options.filter((option) => option.type === type && option.active).length}</span>
+          </button>
+        ))}
+      </div>
+      <div className="cake-option-list">
+        {options.map((option, index) =>
+          option.type === selectedType ? (
+            <article key={option.id}>
+              <div className="cake-option-main">
+                <Input
+                  label="Option name"
+                  value={option.name}
+                  onChange={(event) => update(index, { name: event.target.value })}
+                />
+                <Input
+                  label="Customer description"
+                  value={option.description}
+                  onChange={(event) => update(index, { description: event.target.value })}
+                />
+                <Input
+                  label={`Price adjustment (${currency})`}
+                  type="number"
+                  min="0"
+                  value={option.priceAdjustment / 100}
+                  onChange={(event) => update(index, { priceAdjustment: Math.round(Number(event.target.value) * 100) })}
+                />
+              </div>
+              <div className="cake-option-controls">
+                <label className="check-row">
                   <input
                     type="checkbox"
                     checked={option.active}
                     onChange={(event) => update(index, { active: event.target.checked })}
                   />
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    className="text-button"
-                    onClick={() => setOptions((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                  >
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <span>Available to customers</span>
+                </label>
+                <label className="check-row">
+                  <input
+                    type="checkbox"
+                    checked={option.quoteRequired}
+                    onChange={(event) => update(index, { quoteRequired: event.target.checked })}
+                  />
+                  <span>Needs a custom quote</span>
+                </label>
+                <button
+                  type="button"
+                  className="text-button danger-text"
+                  onClick={() => setOptions((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                >
+                  Remove option
+                </button>
+              </div>
+            </article>
+          ) : null,
+        )}
       </div>
       <Button
         variant="secondary"
@@ -231,7 +292,7 @@ export function CakeConfigurationEditor({ initial }: { initial: CakeConfiguratio
             ...current,
             {
               id: `new-${Date.now()}`,
-              type: "occasion",
+              type: selectedType,
               name: "",
               description: "",
               priceAdjustment: 0,
@@ -244,6 +305,41 @@ export function CakeConfigurationEditor({ initial }: { initial: CakeConfiguratio
       >
         Add option
       </Button>
+    </div>
+  );
+}
+
+export function CakeWorkspace({
+  requests,
+  configuration,
+}: {
+  requests: AdminCakeRequest[];
+  configuration: CakeConfigurationData;
+}) {
+  const [view, setView] = useState<"requests" | "options">("requests");
+  return (
+    <div className="cake-workspace">
+      <div className="admin-section-tabs" role="tablist" aria-label="Custom cake workspace">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "requests"}
+          className={view === "requests" ? "active" : ""}
+          onClick={() => setView("requests")}
+        >
+          Customer requests <span>{requests.filter((item) => item.status === "QUOTE_REQUIRED").length}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "options"}
+          className={view === "options" ? "active" : ""}
+          onClick={() => setView("options")}
+        >
+          Cake builder options <span>{configuration.options.filter((option) => option.active).length}</span>
+        </button>
+      </div>
+      {view === "requests" ? <CakeRequests initial={requests} /> : <CakeConfigurationEditor initial={configuration} />}
     </div>
   );
 }

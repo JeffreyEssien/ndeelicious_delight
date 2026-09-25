@@ -6,7 +6,12 @@ const mocks = vi.hoisted(() => ({
   productInsert: vi.fn(),
   variantInsert: vi.fn(),
   productDelete: vi.fn(),
+  readAuditState: vi.fn(),
+  recordAudit: vi.fn(),
 }));
+
+vi.mock("@/lib/audit/admin-audit-state", () => ({ readAdminAuditState: mocks.readAuditState }));
+vi.mock("@/lib/audit/admin-audit", () => ({ recordAdminAudit: mocks.recordAudit }));
 
 const db = {
   from(table: string) {
@@ -27,7 +32,9 @@ const db = {
   },
 };
 
-vi.mock("@/lib/auth/admin-request", () => ({ requireAdminRequest: () => Promise.resolve({ ok: true, db }) }));
+vi.mock("@/lib/auth/admin-request", () => ({
+  requireAdminRequest: () => Promise.resolve({ ok: true, db, admin: { id: "admin-id" }, sessionId: "session-id" }),
+}));
 
 import { POST } from "./route";
 
@@ -39,17 +46,15 @@ const validProduct = {
   category: "PASTRIES",
   price: 450_000,
   discountPrice: null,
-  sku: "CRO-ALM",
   status: "DRAFT",
   featured: false,
   trackInventory: true,
-  stockQuantity: 12,
   lowStockThreshold: 3,
   ingredients: "Flour, butter, almonds",
   allergens: ["Wheat", "Milk", "Nuts"],
   storageInstructions: "Keep cool.",
   preparationInstructions: "Serve at room temperature.",
-  variants: [{ name: "Single", sku: "CRO-ALM-1", priceAdjustment: 0, stockQuantity: 12, active: true }],
+  variants: [{ name: "Single", priceAdjustment: 0, stockQuantity: 12, active: true }],
   images: [],
 };
 
@@ -59,6 +64,8 @@ describe("POST /api/admin/products", () => {
     mocks.categorySingle.mockResolvedValue({ data: { id: "category-id" }, error: null });
     mocks.productSingle.mockResolvedValue({ data: { id: "product-id" }, error: null });
     mocks.variantInsert.mockResolvedValue({ error: null });
+    mocks.readAuditState.mockResolvedValue({ id: "product-id", name: "Almond Croissant" });
+    mocks.recordAudit.mockResolvedValue(undefined);
   });
 
   it("creates a complete product and its variants", async () => {
@@ -71,9 +78,12 @@ describe("POST /api/admin/products", () => {
     expect(mocks.productInsert).toHaveBeenCalledWith(
       expect.objectContaining({ name: "Almond Croissant", category_id: "category-id", base_price: 450_000 }),
     );
-    expect(mocks.variantInsert).toHaveBeenCalledWith([
-      expect.objectContaining({ product_id: "product-id", name: "Single", sku: "CRO-ALM-1" }),
-    ]);
+    expect(mocks.variantInsert).toHaveBeenCalledWith([expect.not.objectContaining({ sku: expect.anything() })]);
+    expect(mocks.recordAudit).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({ sessionId: "session-id" }),
+      expect.objectContaining({ action: "PRODUCT_CREATED", entityId: "product-id", previousValue: null }),
+    );
   });
 
   it("rejects an active product without an active variant", async () => {

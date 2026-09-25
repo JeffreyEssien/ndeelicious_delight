@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { InventoryConflictError, reserveOrderInventory, setProductInventory, transitionOrderStatus } from "./inventory";
+import { InventoryConflictError, reserveOrderInventory, setVariantInventory, transitionOrderStatus } from "./inventory";
 
 function client(result: { data: unknown; error: null | { message: string } }) {
   return { rpc: vi.fn().mockResolvedValue(result) } as unknown as SupabaseClient;
@@ -36,8 +36,13 @@ describe("database inventory operations", () => {
   it("prevents an admin adjustment from consuming stock held by pending orders", async () => {
     const db = client({ data: null, error: { message: "STOCK_BELOW_RESERVED" } });
 
-    await expect(setProductInventory(db, "product-id", 1)).rejects.toMatchObject({
+    await expect(setVariantInventory(db, "product-id", "variant-id", 1)).rejects.toMatchObject({
       code: "STOCK_BELOW_RESERVED",
+    });
+    expect(db.rpc).toHaveBeenCalledWith("set_variant_inventory", {
+      p_product_id: "product-id",
+      p_variant_id: "variant-id",
+      p_quantity: 1,
     });
   });
 });

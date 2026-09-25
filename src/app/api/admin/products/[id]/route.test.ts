@@ -7,7 +7,12 @@ const mocks = vi.hoisted(() => ({
   relationInsert: vi.fn(),
   categorySingle: vi.fn(),
   productUpdate: vi.fn(),
+  readAuditState: vi.fn(),
+  recordAudit: vi.fn(),
 }));
+
+vi.mock("@/lib/audit/admin-audit-state", () => ({ readAdminAuditState: mocks.readAuditState }));
+vi.mock("@/lib/audit/admin-audit", () => ({ recordAdminAudit: mocks.recordAudit }));
 
 const source = {
   category_id: "category-id",
@@ -62,7 +67,9 @@ const db = {
   },
 };
 
-vi.mock("@/lib/auth/admin-request", () => ({ requireAdminRequest: () => Promise.resolve({ ok: true, db }) }));
+vi.mock("@/lib/auth/admin-request", () => ({
+  requireAdminRequest: () => Promise.resolve({ ok: true, db, admin: { id: "admin-id" }, sessionId: "session-id" }),
+}));
 
 import { PATCH, POST } from "./route";
 
@@ -72,6 +79,8 @@ describe("/api/admin/products/[id]", () => {
     mocks.sourceSingle.mockResolvedValue({ data: source, error: null });
     mocks.copySingle.mockResolvedValue({ data: { id: "copy-id" }, error: null });
     mocks.categorySingle.mockResolvedValue({ data: { id: "category-id" }, error: null });
+    mocks.readAuditState.mockResolvedValue(source);
+    mocks.recordAudit.mockResolvedValue(undefined);
   });
 
   it("duplicates products as unfeatured drafts without conflicting SKUs", async () => {
@@ -84,8 +93,13 @@ describe("/api/admin/products/[id]", () => {
       expect.objectContaining({ name: "Almond Croissant (Copy)", status: "DRAFT", featured: false, sku: null }),
     );
     expect(mocks.relationInsert).toHaveBeenCalledWith("product_variants", [
-      expect.objectContaining({ product_id: "copy-id", sku: null }),
+      expect.not.objectContaining({ sku: expect.anything() }),
     ]);
+    expect(mocks.recordAudit).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({ sessionId: "session-id" }),
+      expect.objectContaining({ action: "PRODUCT_DUPLICATED", entityId: "copy-id" }),
+    );
   });
 
   it("rejects a variant ID owned by another product", async () => {
@@ -100,11 +114,9 @@ describe("/api/admin/products/[id]", () => {
           category: "PASTRIES",
           price: 450_000,
           discountPrice: null,
-          sku: "CRO-ALM",
           status: "DRAFT",
           featured: false,
           trackInventory: true,
-          stockQuantity: 12,
           lowStockThreshold: 3,
           ingredients: "Flour",
           allergens: ["Wheat"],
@@ -114,7 +126,6 @@ describe("/api/admin/products/[id]", () => {
             {
               id: "22222222-2222-4222-8222-222222222222",
               name: "Single",
-              sku: "",
               priceAdjustment: 0,
               stockQuantity: 12,
               active: true,

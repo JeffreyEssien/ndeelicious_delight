@@ -43,6 +43,18 @@ export type AdminReview = {
   status: string;
   productName: string;
 };
+export type AdminAuditLog = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  previousValue: unknown;
+  newValue: unknown;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  actorName: string;
+  actorEmail: string;
+};
 export type AdminOrder = Order & {
   phone: string;
   currency: string;
@@ -87,6 +99,7 @@ export async function getAdminData(supabase: SupabaseClient) {
     business,
     cakeConfiguration,
     appearance,
+    auditResult,
   ] = await Promise.all([
     getProducts({ includeInactive: true, client: supabase }),
     getDeliveryZones(supabase, true),
@@ -122,6 +135,11 @@ export async function getAdminData(supabase: SupabaseClient) {
     getBusinessSettings(supabase),
     getCakeConfiguration(supabase),
     getStoreAppearance(supabase),
+    supabase
+      .from("admin_audit_logs")
+      .select("id,action,entity_type,entity_id,previous_value,new_value,metadata,created_at,admins(name,email)")
+      .order("created_at", { ascending: false })
+      .limit(200),
   ]);
   const orders: AdminOrder[] = (orderResult.data ?? []).map((row) => ({
     id: row.order_number,
@@ -218,6 +236,21 @@ export async function getAdminData(supabase: SupabaseClient) {
     status: row.status,
     productName: row.products?.[0]?.name ?? "Product",
   }));
+  const auditLogs: AdminAuditLog[] = (auditResult.data ?? []).map((row) => {
+    const actor = Array.isArray(row.admins) ? row.admins[0] : row.admins;
+    return {
+      id: row.id,
+      action: row.action,
+      entityType: row.entity_type,
+      entityId: row.entity_id,
+      previousValue: row.previous_value,
+      newValue: row.new_value,
+      metadata: (row.metadata ?? {}) as Record<string, unknown>,
+      createdAt: row.created_at,
+      actorName: actor?.name ?? "Admin",
+      actorEmail: actor?.email ?? "",
+    };
+  });
   return {
     products,
     zones,
@@ -230,5 +263,6 @@ export async function getAdminData(supabase: SupabaseClient) {
     business,
     cakeConfiguration,
     appearance,
+    auditLogs,
   };
 }

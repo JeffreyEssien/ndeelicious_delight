@@ -1,3 +1,5 @@
+import { recordAdminAudit } from "@/lib/audit/admin-audit";
+import { readAdminAuditState } from "@/lib/audit/admin-audit-state";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 import { productRow } from "@/lib/data/product-write";
 import { categorySlug, productInputSchema } from "@/validations/product";
@@ -15,6 +17,12 @@ export async function PATCH(request: Request, context: Context) {
   }
   const { id } = await context.params;
   const { db } = auth;
+  let previousValue: unknown;
+  try {
+    previousValue = await readAdminAuditState(db, { type: "product", id });
+  } catch {
+    return Response.json({ error: "The current product could not be verified for auditing." }, { status: 500 });
+  }
   const [{ data: category }, { data: existingVariants }, { data: existingImages }] = await Promise.all([
     db.from("categories").select("id").eq("slug", categorySlug(parsed.data.category)).single(),
     db.from("product_variants").select("id").eq("product_id", id),
@@ -45,7 +53,6 @@ export async function PATCH(request: Request, context: Context) {
     const values = {
       product_id: id,
       name: variant.name,
-      sku: variant.sku || null,
       price_adjustment: variant.priceAdjustment,
       stock_quantity: variant.stockQuantity,
       active: variant.active,
@@ -81,6 +88,22 @@ export async function PATCH(request: Request, context: Context) {
       const { error } = await db.from("product_images").delete().eq("id", imageId).eq("product_id", id);
       if (error) return Response.json({ error: "A product image could not be removed." }, { status: 500 });
     }
+  }
+
+  try {
+    const newValue = await readAdminAuditState(db, { type: "product", id });
+    await recordAdminAudit(db, auth, {
+      action: "PRODUCT_UPDATED",
+      entityType: "product",
+      entityId: id,
+      previousValue,
+      newValue,
+    });
+  } catch {
+    return Response.json(
+      { error: "The product was saved, but its audit record could not be verified." },
+      { status: 500 },
+    );
   }
 
   return Response.json({ ok: true, id });
@@ -132,7 +155,6 @@ export async function POST(request: Request, context: Context) {
       variants.map((variant) => ({
         product_id: copy.id,
         name: variant.name,
-        sku: null,
         price_adjustment: variant.price_adjustment,
         stock_quantity: variant.stock_quantity,
         active: variant.active,
@@ -154,6 +176,22 @@ export async function POST(request: Request, context: Context) {
     );
     if (imageError)
       return Response.json({ error: "The product copy was created without its images." }, { status: 500 });
+  }
+  try {
+    const newValue = await readAdminAuditState(db, { type: "product", id: copy.id });
+    await recordAdminAudit(db, auth, {
+      action: "PRODUCT_DUPLICATED",
+      entityType: "product",
+      entityId: copy.id,
+      previousValue: null,
+      newValue,
+      metadata: { sourceProductId: id },
+    });
+  } catch {
+    return Response.json(
+      { error: "The product copy was saved, but its audit record could not be verified." },
+      { status: 500 },
+    );
   }
   return Response.json({ ok: true, id: copy.id }, { status: 201 });
 }

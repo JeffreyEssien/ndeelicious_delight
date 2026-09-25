@@ -9,11 +9,13 @@ export function productRow(input: ProductInput, categoryId: string) {
     description: input.description,
     base_price: input.price,
     discount_price: input.discountPrice,
-    sku: input.sku || null,
+    sku: null,
     status: input.status,
     featured: input.featured,
     track_inventory: input.trackInventory,
-    stock_quantity: input.stockQuantity,
+    stock_quantity: input.variants
+      .filter((variant) => variant.active)
+      .reduce((sum, variant) => sum + variant.stockQuantity, 0),
     low_stock_threshold: input.lowStockThreshold,
     ingredients: input.ingredients || null,
     allergens: input.allergens,

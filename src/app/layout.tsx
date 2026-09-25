@@ -18,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase: new URL(getSiteUrl()),
     title: {
-      default: `${business.businessName} — Cakes & Pastries in Canada`,
+      default: `${business.businessName} — Cakes & Pastries`,
       template: `%s · ${business.businessName}`,
     },
     description: content.home.hero.supportingText,

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { recordAdminAudit } from "@/lib/audit/admin-audit";
+import { readAdminAuditState } from "@/lib/audit/admin-audit-state";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 
 const metadataSchema = z.object({
@@ -32,6 +34,12 @@ export async function POST(request: Request) {
   }
 
   const { db } = auth;
+  let previousValue: unknown;
+  try {
+    previousValue = await readAdminAuditState(db, { type: "product", id: parsed.data.productId });
+  } catch {
+    return Response.json({ error: "The current product could not be verified for auditing." }, { status: 500 });
+  }
   const [{ data: product }, { count: imageCount }] = await Promise.all([
     db.from("products").select("id").eq("id", parsed.data.productId).maybeSingle(),
     db.from("product_images").select("id", { count: "exact", head: true }).eq("product_id", parsed.data.productId),
@@ -57,6 +65,22 @@ export async function POST(request: Request) {
   if (error || !image) {
     await bucket.remove([path]);
     return Response.json({ error: "Image metadata could not be saved." }, { status: 500 });
+  }
+  try {
+    const newValue = await readAdminAuditState(db, { type: "product", id: parsed.data.productId });
+    await recordAdminAudit(db, auth, {
+      action: "PRODUCT_IMAGE_ADDED",
+      entityType: "product",
+      entityId: parsed.data.productId,
+      previousValue,
+      newValue,
+      metadata: { imageId: image.id },
+    });
+  } catch {
+    return Response.json(
+      { error: "The image was saved, but its audit record could not be verified." },
+      { status: 500 },
+    );
   }
   return Response.json(
     {

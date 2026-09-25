@@ -125,6 +125,7 @@ export async function POST(request: Request) {
         variant_id: uuidPattern.test(line.variantId) ? line.variantId : null,
         product_name: line.name,
         variant_name: line.variantName,
+        sku: line.sku,
         unit_price: line.unitPrice,
         quantity: line.quantity,
         final_price: line.lineTotal,

@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  setProductInventory: vi.fn(),
+  setVariantInventory: vi.fn(),
   transitionAdminOrderStatus: vi.fn(),
   saveOrderInternalNote: vi.fn(),
   upsert: vi.fn(),
+  readAuditState: vi.fn(),
+  recordAudit: vi.fn(),
+  update: vi.fn(),
+  eq: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({ after: (callback: () => unknown) => callback() }));
@@ -13,18 +17,28 @@ vi.mock("@/lib/auth/admin-request", () => ({
   requireAdminRequest: () =>
     Promise.resolve({
       ok: true,
-      db: { from: () => ({ upsert: mocks.upsert }) },
+      db: {
+        from: () => ({
+          upsert: mocks.upsert,
+          update: (value: unknown) => {
+            mocks.update(value);
+            return { eq: mocks.eq };
+          },
+        }),
+      },
       admin: { id: "22222222-2222-4222-8222-222222222222" },
       sessionId: "session-id",
     }),
 }));
 vi.mock("@/lib/data/inventory", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/data/inventory")>()),
-  setProductInventory: mocks.setProductInventory,
+  setVariantInventory: mocks.setVariantInventory,
   transitionAdminOrderStatus: mocks.transitionAdminOrderStatus,
   saveOrderInternalNote: mocks.saveOrderInternalNote,
 }));
 vi.mock("@/lib/orders/notifications", () => ({ deliverPendingOrderNotifications: vi.fn() }));
+vi.mock("@/lib/audit/admin-audit-state", () => ({ readAdminAuditState: mocks.readAuditState }));
+vi.mock("@/lib/audit/admin-audit", () => ({ recordAdminAudit: mocks.recordAudit }));
 
 import { POST } from "./route";
 
@@ -39,22 +53,36 @@ function request(body: unknown) {
 describe("POST /api/admin/mutate inventory operations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.setProductInventory.mockResolvedValue(undefined);
+    mocks.setVariantInventory.mockResolvedValue(undefined);
     mocks.transitionAdminOrderStatus.mockResolvedValue(undefined);
     mocks.saveOrderInternalNote.mockResolvedValue(undefined);
     mocks.upsert.mockResolvedValue({ error: null });
+    mocks.readAuditState.mockResolvedValue({ value: "snapshot" });
+    mocks.recordAudit.mockResolvedValue(undefined);
+    mocks.eq.mockResolvedValue({ error: null });
   });
 
   it("updates inventory through the reservation-aware database function", async () => {
     const response = await POST(
-      request({ action: "inventory", id: "11111111-1111-4111-8111-111111111111", quantity: 8 }),
+      request({
+        action: "inventory",
+        id: "11111111-1111-4111-8111-111111111111",
+        variantId: "33333333-3333-4333-8333-333333333333",
+        quantity: 8,
+      }),
     );
 
     expect(response.status).toBe(200);
-    expect(mocks.setProductInventory).toHaveBeenCalledWith(
+    expect(mocks.setVariantInventory).toHaveBeenCalledWith(
       expect.anything(),
       "11111111-1111-4111-8111-111111111111",
+      "33333333-3333-4333-8333-333333333333",
       8,
+    );
+    expect(mocks.recordAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ sessionId: "session-id" }),
+      expect.objectContaining({ action: "STOCK_CHANGED", entityId: "11111111-1111-4111-8111-111111111111" }),
     );
   });
 
@@ -70,9 +98,23 @@ describe("POST /api/admin/mutate inventory operations", () => {
     );
   });
 
+  it("moves a custom cake request through its owner-managed workflow", async () => {
+    const response = await POST(
+      request({ action: "cake-status", id: "11111111-1111-4111-8111-111111111111", status: "PREPARING" }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: "PREPARING" }));
+    expect(mocks.recordAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ action: "CAKE_REQUEST_STATUS_CHANGED" }),
+    );
+  });
+
   it("reports a conflict when an adjustment would consume reserved units", async () => {
     const { InventoryConflictError } = await import("@/lib/data/inventory");
-    mocks.setProductInventory.mockRejectedValueOnce(
+    mocks.setVariantInventory.mockRejectedValueOnce(
       new InventoryConflictError(
         "STOCK_BELOW_RESERVED",
         "Stock cannot be reduced below the quantity held for pending orders.",
@@ -80,7 +122,12 @@ describe("POST /api/admin/mutate inventory operations", () => {
     );
 
     const response = await POST(
-      request({ action: "inventory", id: "11111111-1111-4111-8111-111111111111", quantity: 0 }),
+      request({
+        action: "inventory",
+        id: "11111111-1111-4111-8111-111111111111",
+        variantId: "33333333-3333-4333-8333-333333333333",
+        quantity: 0,
+      }),
     );
 
     expect(response.status).toBe(409);

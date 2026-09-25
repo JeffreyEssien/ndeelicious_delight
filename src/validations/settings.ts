@@ -2,7 +2,8 @@ import { z } from "zod";
 
 const text = (maximum = 2_000) => z.string().trim().max(maximum);
 const href = text(2_000).refine(
-  (value) => value.startsWith("/") || value.startsWith("https://") || value.startsWith("mailto:") || value.startsWith("tel:"),
+  (value) =>
+    value.startsWith("/") || value.startsWith("https://") || value.startsWith("mailto:") || value.startsWith("tel:"),
   "Use a site path or a secure web, email, or phone link.",
 );
 
@@ -21,7 +22,11 @@ export const businessSettingsSchema = z.object({
   currency: text(3)
     .length(3)
     .transform((value) => value.toUpperCase()),
-  cakeLeadHours: z.number().int().min(1).max(24 * 30),
+  cakeLeadHours: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 30),
   instagramUrl: z.union([z.literal(""), z.url().max(500)]),
   deliveryEnabled: z.boolean(),
   pickupEnabled: z.boolean(),

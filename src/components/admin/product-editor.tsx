@@ -34,7 +34,7 @@ export function ProductEditor({
   const [variants, setVariants] = useState<DraftVariant[]>(
     product?.variants.length
       ? product.variants.map((variant) => ({ ...variant, active: variant.active ?? true }))
-      : [{ name: "Standard", sku: "", priceAdjustment: 0, stockQuantity: product?.stockQuantity ?? 0, active: true }],
+      : [{ name: "Standard", priceAdjustment: 0, stockQuantity: 0, active: true }],
   );
   const [images, setImages] = useState<ProductImage[]>(product?.images ?? []);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
@@ -78,11 +78,9 @@ export function ProductEditor({
       category: String(form.get("category")),
       price: Math.round(Number(form.get("price")) * 100),
       discountPrice: form.get("discountPrice") ? Math.round(Number(form.get("discountPrice")) * 100) : null,
-      sku: String(form.get("sku")),
       status: String(form.get("status")) as ProductStatus,
       featured: form.get("featured") === "on",
       trackInventory: form.get("trackInventory") === "on",
-      stockQuantity: Number(form.get("stockQuantity")),
       lowStockThreshold: Number(form.get("lowStockThreshold")),
       ingredients: String(form.get("ingredients")),
       allergens: String(form.get("allergens"))
@@ -91,7 +89,13 @@ export function ProductEditor({
         .filter(Boolean),
       storageInstructions: String(form.get("storageInstructions")),
       preparationInstructions: String(form.get("preparationInstructions")),
-      variants,
+      variants: variants.map(({ id, name: variantName, priceAdjustment, stockQuantity, active }) => ({
+        id,
+        name: variantName,
+        priceAdjustment,
+        stockQuantity,
+        active,
+      })),
       images: images.map((image, index) => ({ id: image.id, altText: image.altText, sortOrder: index })),
     };
 
@@ -165,7 +169,6 @@ export function ProductEditor({
               defaultValue={product?.discountPrice ? product.discountPrice / 100 : ""}
             />
           </div>
-          <Input label="Product SKU" name="sku" defaultValue={product?.sku} />
           <Select label="Storefront visibility" name="status" defaultValue={product?.status ?? "DRAFT"}>
             <option value="DRAFT">Draft — hidden</option>
             <option value="ACTIVE">Active — visible</option>
@@ -181,11 +184,10 @@ export function ProductEditor({
           <div className="field-row">
             <Input
               label="Total stock"
-              name="stockQuantity"
-              type="number"
-              min="0"
-              defaultValue={product?.stockQuantity ?? 0}
-              required
+              value={variants
+                .filter((variant) => variant.active)
+                .reduce((sum, variant) => sum + variant.stockQuantity, 0)}
+              readOnly
             />
             <Input
               label="Low-stock alert"
@@ -204,10 +206,7 @@ export function ProductEditor({
             <Button
               variant="secondary"
               onClick={() =>
-                setVariants((current) => [
-                  ...current,
-                  { name: "", sku: "", priceAdjustment: 0, stockQuantity: 0, active: true },
-                ])
+                setVariants((current) => [...current, { name: "", priceAdjustment: 0, stockQuantity: 0, active: true }])
               }
             >
               <Icon name="plus" /> Add variant
@@ -227,17 +226,7 @@ export function ProductEditor({
                 }
                 required
               />
-              <Input
-                label="SKU"
-                value={variant.sku ?? ""}
-                onChange={(event) =>
-                  setVariants((current) =>
-                    current.map((item, itemIndex) =>
-                      itemIndex === index ? { ...item, sku: event.target.value } : item,
-                    ),
-                  )
-                }
-              />
+              <Input label="SKU" value={variant.sku ?? "Generated after save"} readOnly />
               <Input
                 label={`Price adjustment (${currency})`}
                 type="number"

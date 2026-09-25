@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   stripeRefund: vi.fn(),
   deliverNotifications: vi.fn(),
+  readAuditState: vi.fn(),
+  recordAudit: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({ after: (callback: () => unknown) => callback() }));
@@ -24,6 +26,8 @@ vi.mock("@/lib/payments/stripe", async (importOriginal) => ({
 vi.mock("@/lib/orders/notifications", () => ({
   deliverPendingOrderNotifications: mocks.deliverNotifications,
 }));
+vi.mock("@/lib/audit/admin-audit-state", () => ({ readAdminAuditState: mocks.readAuditState }));
+vi.mock("@/lib/audit/admin-audit", () => ({ recordAdminAudit: mocks.recordAudit }));
 
 import { POST } from "./route";
 
@@ -48,6 +52,8 @@ describe("POST /api/admin/orders/[orderNumber]/refund", () => {
       .mockResolvedValueOnce({ data: { status: "REFUNDED", alreadyProcessed: false }, error: null });
     mocks.stripeRefund.mockResolvedValue({ id: "re_123", status: "succeeded" });
     mocks.deliverNotifications.mockResolvedValue(undefined);
+    mocks.readAuditState.mockResolvedValue({ order_number: "ND-12345678", status: "PAID" });
+    mocks.recordAudit.mockResolvedValue(undefined);
   });
 
   it("uses a server-verified refund record and Stripe idempotency key", async () => {
@@ -78,6 +84,11 @@ describe("POST /api/admin/orders/[orderNumber]/refund", () => {
       p_provider_refund_id: "re_123",
     });
     expect(mocks.deliverNotifications).toHaveBeenCalledWith(expect.anything(), "ND-12345678");
+    expect(mocks.recordAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ sessionId: "session-id" }),
+      expect.objectContaining({ action: "REFUND_INITIATED", entityId: "refund-row" }),
+    );
   });
 
   it("rejects an invalid amount before creating a refund record", async () => {
