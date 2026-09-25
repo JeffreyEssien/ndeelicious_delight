@@ -5,22 +5,29 @@ vi.mock("@/lib/data/catalog", () => ({
   getProducts: () => Promise.resolve(testProducts),
   getDeliveryZones: () =>
     Promise.resolve([
-      { id: "dz1", name: "Central Lagos", fee: 250000, minimumOrder: 0, estimate: "Scheduled", active: true },
-      { id: "dz2", name: "Outer Lagos", fee: 400000, minimumOrder: 2000000, estimate: "Scheduled", active: true },
+      { id: "dz1", name: "Central", fee: 250000, minimumOrder: 0, estimate: "Scheduled", active: true },
+      { id: "dz2", name: "Outer", fee: 400000, minimumOrder: 2000000, estimate: "Scheduled", active: true },
     ]),
 }));
 
 vi.mock("@/lib/data/settings", () => ({
   getBusinessSettings: () =>
-    Promise.resolve({ orderMinimum: 0, deliveryEnabled: true, pickupEnabled: true }),
+    Promise.resolve({
+      orderMinimum: 0,
+      deliveryEnabled: true,
+      pickupEnabled: true,
+      currency: "CAD",
+      locale: "en-CA",
+      taxEnabled: false,
+      taxRateBps: 0,
+      taxDelivery: true,
+    }),
 }));
 
 vi.mock("@/lib/data/coupons", () => ({
   getCoupon: (code?: string) =>
     Promise.resolve(
-      code === "SWEET10"
-        ? { code, type: "PERCENTAGE", value: 10, minimumOrder: 0, active: true }
-        : undefined,
+      code === "SWEET10" ? { code, type: "PERCENTAGE", value: 10, minimumOrder: 0, active: true } : undefined,
     ),
 }));
 
@@ -28,7 +35,15 @@ import { POST } from "./route";
 
 const valid = {
   customer: { name: "Amara O", email: "amara@example.com", phone: "08012345678" },
-  delivery: { fulfilment: "delivery", zoneId: "dz1", street: "12 Admiralty Way", city: "Lagos" },
+  delivery: {
+    fulfilment: "delivery",
+    zoneId: "dz1",
+    street: "12 King Street",
+    city: "Toronto",
+    province: "ON",
+    postalCode: "M5H 1A1",
+    country: "CA",
+  },
   cart: [{ productId: "p2", variantId: "v1", quantity: 3 }],
   couponCode: "SWEET10",
 };

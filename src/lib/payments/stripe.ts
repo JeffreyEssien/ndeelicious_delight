@@ -60,6 +60,24 @@ export async function expireStripeCheckout(sessionId: string) {
   }
 }
 
+export async function createStripeRefund(input: {
+  paymentIntentId: string;
+  amount: number;
+  reason: string;
+  idempotencyKey: string;
+}) {
+  const refund = await stripeClient().refunds.create(
+    {
+      payment_intent: input.paymentIntentId,
+      amount: input.amount,
+      reason: "requested_by_customer",
+      metadata: { internal_reason: input.reason.slice(0, 500) },
+    },
+    { idempotencyKey: `refund:${input.idempotencyKey}` },
+  );
+  return { id: refund.id, status: refund.status ?? "pending" };
+}
+
 export function constructStripeEvent(payload: string, signature: string) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
   if (!webhookSecret) throw new PaymentConfigurationError("Stripe webhook verification is not configured.");

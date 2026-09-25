@@ -5,7 +5,13 @@ import { InventoryConflictError, transitionOrderStatus } from "@/lib/data/invent
 import { createStripeCheckout, expireStripeCheckout, PaymentConfigurationError } from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 
-const schema = z.object({ sessionId: z.string().trim().regex(/^cs_(test_|live_)?[A-Za-z0-9_]+$/).max(255) });
+const schema = z.object({
+  sessionId: z
+    .string()
+    .trim()
+    .regex(/^cs_(test_|live_)?[A-Za-z0-9_]+$/)
+    .max(255),
+});
 
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
@@ -55,7 +61,11 @@ export async function POST(request: Request) {
       amount: order.grand_total,
       currency: order.currency,
       idempotency_key: attemptKey,
-      provider_payload: { checkout_session_id: checkout.id, checkout_url: checkout.url, expires_at: checkout.expiresAt },
+      provider_payload: {
+        checkout_session_id: checkout.id,
+        checkout_url: checkout.url,
+        expires_at: checkout.expiresAt,
+      },
     });
     if (insertError) throw insertError;
     return Response.json({ payment: { checkoutUrl: checkout.url } });

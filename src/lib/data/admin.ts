@@ -1,7 +1,7 @@
 import type { Order } from "@/types";
 import { getDeliveryZones, getProducts } from "./catalog";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getBusinessSettings, getCakeConfiguration, getStorefrontContent } from "./settings";
+import { getBusinessSettings, getCakeConfiguration, getStoreAppearance, getStorefrontContent } from "./settings";
 
 export type AdminCakeRequest = {
   id: string;
@@ -43,6 +43,36 @@ export type AdminReview = {
   status: string;
   productName: string;
 };
+export type AdminOrder = Order & {
+  phone: string;
+  currency: string;
+  subtotal: number;
+  discountTotal: number;
+  deliveryFee: number;
+  taxTotal: number;
+  internalNote: string;
+  customerNote: string;
+  address: Record<string, string> | null;
+  payment: { status: string; amount: number; refundedAmount: number; paidAt: string | null } | null;
+  lines: Array<{
+    id: string;
+    productName: string;
+    variantName: string;
+    sku: string;
+    unitPrice: number;
+    quantity: number;
+    discount: number;
+    finalPrice: number;
+  }>;
+  events: Array<{
+    id: string;
+    eventType: string;
+    fromStatus: string | null;
+    toStatus: string | null;
+    note: string | null;
+    createdAt: string;
+  }>;
+};
 
 export async function getAdminData(supabase: SupabaseClient) {
   const [
@@ -56,12 +86,16 @@ export async function getAdminData(supabase: SupabaseClient) {
     content,
     business,
     cakeConfiguration,
+    appearance,
   ] = await Promise.all([
     getProducts({ includeInactive: true, client: supabase }),
     getDeliveryZones(supabase, true),
     supabase
       .from("orders")
-      .select("id,order_number,customer_name,email,grand_total,status,created_at,fulfilment,order_items(count)")
+      .select(
+        "id,order_number,customer_name,email,phone,grand_total,subtotal,discount_total,delivery_fee,tax_total,currency,status,created_at,fulfilment,delivery_address_snapshot,customer_note,internal_note,order_items(id,product_name,variant_name,sku,unit_price,quantity,discount,final_price),payments(status,amount,refunded_amount,paid_at),order_events(id,event_type,from_status,to_status,note,created_at)",
+      )
+      .order("created_at", { referencedTable: "payments", ascending: false })
       .order("created_at", { ascending: false })
       .limit(100),
     supabase
@@ -87,16 +121,54 @@ export async function getAdminData(supabase: SupabaseClient) {
     getStorefrontContent(supabase),
     getBusinessSettings(supabase),
     getCakeConfiguration(supabase),
+    getStoreAppearance(supabase),
   ]);
-  const orders: Order[] = (orderResult.data ?? []).map((row) => ({
+  const orders: AdminOrder[] = (orderResult.data ?? []).map((row) => ({
     id: row.order_number,
     customer: row.customer_name,
     email: row.email,
     total: row.grand_total,
     status: row.status as Order["status"],
     date: row.created_at,
-    items: Array.isArray(row.order_items) ? Number(row.order_items[0]?.count ?? 0) : 0,
+    items: row.order_items?.reduce((total, item) => total + item.quantity, 0) ?? 0,
     fulfilment: row.fulfilment as Order["fulfilment"],
+    phone: row.phone,
+    currency: row.currency,
+    subtotal: row.subtotal,
+    discountTotal: row.discount_total,
+    deliveryFee: row.delivery_fee,
+    taxTotal: row.tax_total,
+    internalNote: row.internal_note ?? "",
+    customerNote: row.customer_note ?? "",
+    address: row.delivery_address_snapshot as Record<string, string> | null,
+    payment: row.payments?.[0]
+      ? {
+          status: row.payments[0].status,
+          amount: row.payments[0].amount,
+          refundedAmount: row.payments[0].refunded_amount,
+          paidAt: row.payments[0].paid_at,
+        }
+      : null,
+    lines: (row.order_items ?? []).map((item) => ({
+      id: item.id,
+      productName: item.product_name,
+      variantName: item.variant_name ?? "Standard",
+      sku: item.sku ?? "",
+      unitPrice: item.unit_price,
+      quantity: item.quantity,
+      discount: item.discount,
+      finalPrice: item.final_price,
+    })),
+    events: (row.order_events ?? [])
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map((event) => ({
+        id: event.id,
+        eventType: event.event_type,
+        fromStatus: event.from_status,
+        toStatus: event.to_status,
+        note: event.note,
+        createdAt: event.created_at,
+      })),
   }));
   const cakes: AdminCakeRequest[] = await Promise.all(
     (cakeResult.data ?? []).map(async (row) => {
@@ -146,5 +218,17 @@ export async function getAdminData(supabase: SupabaseClient) {
     status: row.status,
     productName: row.products?.[0]?.name ?? "Product",
   }));
-  return { products, zones, orders, cakes, coupons, categories, reviews, content, business, cakeConfiguration };
+  return {
+    products,
+    zones,
+    orders,
+    cakes,
+    coupons,
+    categories,
+    reviews,
+    content,
+    business,
+    cakeConfiguration,
+    appearance,
+  };
 }

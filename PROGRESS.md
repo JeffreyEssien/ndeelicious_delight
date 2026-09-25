@@ -18,7 +18,7 @@ The initial full-stack application is committed on `main`. The current `develop`
 - Incremental Biome linting and formatting for every changed file, locally and in CI.
 - A clean full-repository Biome lint baseline; the former 82-error/141-warning backlog is resolved.
 
-The active implementation checkpoint is now **G08 · Order lifecycle**.
+The Canada commerce, owner-managed storefront settings, and complete order lifecycle are implemented. The active implementation checkpoint is now **G11 · Audit logging**.
 
 The first-party admin OTP/SMTP security remediation is implemented and verified locally. Migrations `0003` through `0009` are applied to the project's configured Supabase database. Deployment remains blocked on production environment configuration and revocation of legacy Supabase Auth sessions.
 
@@ -56,6 +56,9 @@ The first-party admin OTP/SMTP security remediation is implemented and verified 
 - [x] Replaced the coupon draft-only control with persisted coupon editing, activation windows, monetary/percentage rules, total limits, and per-customer limits.
 - [x] Added store-wide and delivery-zone minimums, delivery/pickup availability controls, ordered delivery-zone administration, product/category coupon eligibility, and concurrency-safe expiring coupon holds.
 - [x] Added server-owned Stripe Checkout sessions, persisted payment attempts, signed webhook verification, atomic and idempotent payment transitions, payment-status polling, and safe payment resume/retry flows.
+- [x] Converted checkout, order snapshots, Stripe currency, customer/admin formatting, address collection, and transactional copy to Canadian settings with province, postal-code, timezone, and configurable tax support.
+- [x] Added runtime-validated business, storefront-content, and appearance settings; the admin can edit every stored storefront text/link/list and choose safe theme colours, width, spacing, corner, and product-grid controls without code changes.
+- [x] Enforced the order status graph in PostgreSQL, added immutable order activity, detailed admin order inspection/printing/notes, idempotent full and partial Stripe refunds, refund concurrency protection, and durable customer-notification delivery with retry controls.
 
 ## Verification status
 
@@ -81,12 +84,18 @@ Checkpoint verification history:
 - `npm run check` — 40 regression tests, 28 functional tests, strict TypeScript, and the 37-page production build passed after the database-backed storefront sweep on 2026-09-23.
 - `npm run check` — 43 regression tests, 34 functional tests, strict TypeScript, and the 37-page production build passed for G06 on 2026-09-24.
 - `npm run check` — 45 regression tests, 40 functional tests, strict TypeScript, and the 40-page production build passed for G07 on 2026-09-24.
+- `npm run check` — 48 regression tests, 43 functional tests, strict TypeScript, and the 40-page production build passed after the Canada commerce and owner-managed settings foundation on 2026-09-24.
+- `npm run check` — 49 regression tests, 47 functional tests, strict TypeScript, and the 40-page production build passed for G08 on 2026-09-24.
 - Migration `0005_inventory_integrity.sql` was transactionally validated and applied to the configured Supabase database on 2026-09-23; rollback-only lifecycle checks and a live two-connection race confirmed one winner, one rejected reservation, zero oversales, correct deduction/restoration, RLS, triggers, and role restrictions.
 - Migrations `0006_database_backed_storefront.sql`, `0007_cake_reference_images.sql`, and `0008_additive_storefront_content.sql` are applied to the configured Supabase database. The latter is additive and preserves content already customized in admin.
 - Migration `0003_product_media.sql` was applied to the configured Supabase database on 2026-09-23 after a runtime REST query exposed the missing `product_images.storage_path` column; the content record and column were then verified through Supabase REST.
 - Migration `0009_delivery_coupon_integrity.sql` was rollback-validated and applied on 2026-09-24. Live two-connection races confirmed one winner/one rejection for both global and per-customer coupon limits; paid orders committed holds and cancellation released them.
 - Migration `0010_stripe_payments.sql` was rollback-validated and applied on 2026-09-24. A rollback-only live database test confirmed amount-tampering rejection, duplicate-event idempotency, exactly-once stock deduction, paid order/payment transitions, and service-role RPC grants.
+- Migration `0011_canada_commerce_settings.sql` was rollback-validated, applied, and live-verified on 2026-09-24. Business settings now use CA/CAD defaults, Canadian address and tax snapshots exist, appearance settings are database-owned, and legacy Nigerian delivery zones are inactive.
+- Migrations `0012_order_lifecycle.sql`, `0013_notification_outbox_leases.sql`, and `0014_refund_concurrency.sql` were rollback-validated and applied on 2026-09-24. Live transactional checks rejected invalid status jumps, proved order-event immutability/admin attribution, completed an atomic full refund, queued the refund email, and prevented pending concurrent refunds from exceeding the paid amount.
+- Migration `0015_async_refund_events.sql` was rollback-validated and applied on 2026-09-24. A live rollback-only check confirmed pending provider refunds are not completed early and duplicate signed refund webhooks finalize the order exactly once.
 - Runtime smoke checks returned HTTP 200 for the homepage, checkout, delivery information, and admin login against the running development server.
+- Runtime smoke checks returned HTTP 200 for the homepage, shop, checkout, and delivery information with no Nigerian locale/currency copy in their rendered HTML; unauthenticated admin access correctly redirected to login.
 
 CI command ownership:
 
@@ -107,6 +116,7 @@ CI command ownership:
 - [ ] Run `npm run admin:bootstrap` in each intended environment after its variables and migration are ready.
 - [ ] Globally revoke existing Supabase Auth admin sessions and correct the Supabase Auth Site URL to an absolute `https://...` URL until every old deployment is retired.
 - [ ] Configure GitHub/Vercel deployment values, then set repository variable `VERCEL_CD_ENABLED=true`.
+- [ ] Subscribe each Stripe webhook endpoint to `refund.created`, `refund.updated`, and `refund.failed` in addition to the Checkout Session events before enabling live refunds.
 - [ ] Add branch protection for `main` and `develop`, requiring all four CI jobs.
 - [x] Apply `db/migrations/0003_product_media.sql` to the currently configured Supabase environment before deploying G02 image management.
 - [x] Commit and push the preserved email/SEO work plus the pipeline after review.
@@ -122,7 +132,7 @@ Complete these checkpoints in order unless a newly discovered dependency require
 - [x] **G05 · Phase 13 — Cake uploads:** securely store and validate cake inspiration images.
 - [x] **G06 · Phases 14–16 — Delivery and coupons:** complete minimum-order rules, coupon administration, and per-customer usage limits.
 - [x] **G07 · Phase 17 — Stripe:** create server-owned payments, verified idempotent webhooks, and safe retry/failure flows.
-- [ ] **G08 · Phases 18–20 — Order lifecycle:** complete admin order operations, refunds, status notifications, and immutable lifecycle handling.
+- [x] **G08 · Phases 18–20 — Order lifecycle:** complete admin order operations, refunds, status notifications, and immutable lifecycle handling.
 - [x] **G09 · Phase 21 — Reviews:** replace placeholder reviews with persisted submission, moderation, and approved public display.
 - [x] **G10 · Phases 22–23 — Content and settings:** make saved admin content and centralized business settings drive the storefront.
 - [ ] **G11 · Phase 24 — Audit logging:** record sensitive admin changes with before/after values and actor identity.
@@ -142,7 +152,7 @@ Complete these checkpoints in order unless a newly discovered dependency require
 - [x] Deduct and restore inventory transactionally after payment/refund events.
 - [x] Prevent overselling under concurrent checkouts.
 - [x] Add customer-facing payment failure and retry states.
-- [ ] Complete admin order status transitions and customer status notifications.
+- [x] Complete admin order status transitions and customer status notifications.
 - [x] Add image upload/storage for products and cake references.
 
 ## TODO — test coverage
@@ -161,6 +171,7 @@ Complete these checkpoints in order unless a newly discovered dependency require
 
 - [ ] Create and validate separate development, staging, and production Supabase/Stripe/SMTP environments.
 - [ ] Enter owner-approved business contact details, catalogue records, imagery, policy dates, and final editorial copy through admin before launch; runtime fallbacks have been removed.
+- [ ] Confirm the owner-approved province, timezone, delivery areas, tax registration/rates, and CAD catalogue prices in admin before accepting live orders; migration defaults intentionally do not invent these business facts.
 - [ ] Add analytics, error monitoring, and structured logs.
 - [ ] Review rate limiting for a multi-instance production deployment.
 - [ ] Add durable abuse protection for public contact, newsletter, cake-request, and order endpoints.

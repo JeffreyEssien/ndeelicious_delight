@@ -51,12 +51,12 @@ begin
 
   perform public.reserve_order_inventory(v_order, 60);
   insert into public.payments(order_id, provider_payment_id, amount, currency, idempotency_key)
-  values (v_order, v_session, 250000, 'NGN', 'g07:' || v_suffix);
+  values (v_order, v_session, 250000, 'CAD', 'g07:' || v_suffix);
 
   begin
     perform public.process_stripe_checkout_event(
       'evt_bad_' || v_suffix, 'checkout.session.completed', v_session,
-      'pi_bad', 'paid', 1, 'ngn', '{}'::jsonb
+      'pi_bad', 'paid', 1, 'cad', '{}'::jsonb
     );
     raise exception 'amount mismatch was accepted';
   exception
@@ -68,7 +68,7 @@ begin
 
   select public.process_stripe_checkout_event(
     'evt_paid_' || v_suffix, 'checkout.session.completed', v_session,
-    'pi_paid', 'paid', 250000, 'ngn', '{}'::jsonb
+    'pi_paid', 'paid', 250000, 'cad', '{}'::jsonb
   ) into v_result;
   if not coalesce((v_result ->> 'becamePaid')::boolean, false) then
     raise exception 'paid event did not transition the order';
@@ -87,7 +87,7 @@ begin
 
   select public.process_stripe_checkout_event(
     'evt_paid_' || v_suffix, 'checkout.session.completed', v_session,
-    'pi_paid', 'paid', 250000, 'ngn', '{}'::jsonb
+    'pi_paid', 'paid', 250000, 'cad', '{}'::jsonb
   ) into v_result;
   if coalesce((v_result ->> 'processed')::boolean, true) then
     raise exception 'duplicate webhook was not ignored';

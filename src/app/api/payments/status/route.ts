@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
 
-const schema = z.string().trim().regex(/^cs_(test_|live_)?[A-Za-z0-9_]+$/).max(255);
+const schema = z
+  .string()
+  .trim()
+  .regex(/^cs_(test_|live_)?[A-Za-z0-9_]+$/)
+  .max(255);
 
 export async function GET(request: Request) {
   const sessionId = new URL(request.url).searchParams.get("session");

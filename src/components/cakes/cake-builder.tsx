@@ -2,7 +2,7 @@
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import type { CakeConfiguration } from "@/types";
 import type { CakeConfigurationData, CakeOptionType } from "@/types/content";
-import { formatMoney } from "@/lib/format";
+import { useMoney } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 import { Input, Textarea } from "@/components/ui/primitives";
 const initial: CakeConfiguration = {
@@ -33,6 +33,7 @@ const steps = [
   "Review",
 ];
 export function CakeBuilder({ configuration }: { configuration: CakeConfigurationData }) {
+  const formatMoney = useMoney();
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState(initial);
   const [ready, setReady] = useState(false);
@@ -427,6 +428,7 @@ function Choice({
   selected: string;
   onChoose: (v: string) => void;
 }) {
+  const formatMoney = useMoney();
   return (
     <div>
       <h2>{title}</h2>

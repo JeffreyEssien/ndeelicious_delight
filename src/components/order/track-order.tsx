@@ -2,6 +2,7 @@
 import { type FormEvent, useState } from "react";
 import { Input } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
+import { useBusinessSettings } from "@/components/providers";
 
 const stages = ["Order confirmed", "Preparing", "Ready", "Out for delivery", "Delivered"];
 const statusStep: Record<string, number> = {
@@ -16,6 +17,7 @@ const statusStep: Record<string, number> = {
 type TrackedOrder = { order_number: string; status: string; fulfilment: string; updated_at: string };
 
 export function TrackOrder({ initial = "" }: { initial?: string }) {
+  const business = useBusinessSettings();
   const [id, setId] = useState(initial);
   const [email, setEmail] = useState("");
   const [order, setOrder] = useState<TrackedOrder | null>(null);
@@ -78,7 +80,11 @@ export function TrackOrder({ initial = "" }: { initial?: string }) {
             <span>{index < current ? <Icon name="check" /> : index + 1}</span>
             <div>
               <b>{stage}</b>
-              {index === current && <small>Updated {new Date(order.updated_at).toLocaleString("en-NG")}</small>}
+              {index === current && (
+                <small>
+                  Updated {new Date(order.updated_at).toLocaleString(business.locale, { timeZone: business.timezone })}
+                </small>
+              )}
             </div>
           </div>
         ))}

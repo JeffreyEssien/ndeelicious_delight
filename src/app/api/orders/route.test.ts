@@ -31,7 +31,11 @@ const mocks = vi.hoisted(() => ({
   claimOrderCoupon: vi.fn(),
   createStripeCheckout: vi.fn(),
   expireStripeCheckout: vi.fn(),
+  queueNotification: vi.fn(),
+  deliverNotification: vi.fn(),
 }));
+
+vi.mock("next/server", () => ({ after: (callback: () => unknown) => callback() }));
 
 vi.mock("@/lib/data/catalog", () => ({
   getProducts: () => Promise.resolve([product]),
@@ -42,7 +46,17 @@ vi.mock("@/lib/data/coupons", () => ({
   claimOrderCoupon: mocks.claimOrderCoupon,
 }));
 vi.mock("@/lib/data/settings", () => ({
-  getBusinessSettings: () => Promise.resolve({ orderMinimum: 0, deliveryEnabled: true, pickupEnabled: true }),
+  getBusinessSettings: () =>
+    Promise.resolve({
+      orderMinimum: 0,
+      deliveryEnabled: true,
+      pickupEnabled: true,
+      currency: "CAD",
+      locale: "en-CA",
+      taxEnabled: false,
+      taxRateBps: 0,
+      taxDelivery: true,
+    }),
 }));
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: () => ({
@@ -79,6 +93,10 @@ vi.mock("@/lib/payments/stripe", async (importOriginal) => ({
   createStripeCheckout: mocks.createStripeCheckout,
   expireStripeCheckout: mocks.expireStripeCheckout,
 }));
+vi.mock("@/lib/orders/notifications", () => ({
+  queueOrderNotification: mocks.queueNotification,
+  deliverOrderNotification: mocks.deliverNotification,
+}));
 
 import { POST } from "./route";
 
@@ -104,6 +122,8 @@ describe("POST /api/orders", () => {
       expiresAt: 1_800_000_000,
     });
     mocks.expireStripeCheckout.mockResolvedValue(undefined);
+    mocks.queueNotification.mockResolvedValue("notification-id");
+    mocks.deliverNotification.mockResolvedValue(true);
   });
 
   it("returns the specific safe validation error instead of an opaque 400", async () => {
@@ -147,9 +167,11 @@ describe("POST /api/orders", () => {
     expect(mocks.itemInsert).toHaveBeenCalledOnce();
     expect(mocks.reserveInventory).toHaveBeenCalledWith(expect.anything(), "order-id", 60);
     expect(mocks.createStripeCheckout).toHaveBeenCalledWith(
-      expect.objectContaining({ orderId: "order-id", amount: 1_000_000, currency: "NGN" }),
+      expect.objectContaining({ orderId: "order-id", amount: 1_000_000, currency: "CAD" }),
     );
     expect(mocks.paymentInsert).toHaveBeenCalledOnce();
+    expect(mocks.queueNotification).toHaveBeenCalledWith(expect.anything(), "order-id", "ORDER_RECEIVED");
+    expect(mocks.deliverNotification).toHaveBeenCalledWith(expect.anything(), "notification-id");
     expect(mocks.sendEmail).not.toHaveBeenCalled();
   });
 

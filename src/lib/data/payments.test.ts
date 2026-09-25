@@ -12,7 +12,7 @@ describe("Stripe payment database operations", () => {
       paymentIntentId: "pi_123",
       paymentStatus: "paid",
       amountTotal: 250_000,
-      currency: "ngn",
+      currency: "cad",
     });
 
     expect(result).toEqual({ processed: true, becamePaid: true });
@@ -22,7 +22,7 @@ describe("Stripe payment database operations", () => {
         p_event_id: "evt_123",
         p_session_id: "cs_test_123",
         p_amount_total: 250_000,
-        p_currency: "ngn",
+        p_currency: "cad",
       }),
     );
   });
@@ -37,7 +37,7 @@ describe("Stripe payment database operations", () => {
         paymentIntentId: "pi_123",
         paymentStatus: "paid",
         amountTotal: 1,
-        currency: "ngn",
+        currency: "cad",
       }),
     ).rejects.toMatchObject({ message: "PAYMENT_AMOUNT_MISMATCH" });
   });

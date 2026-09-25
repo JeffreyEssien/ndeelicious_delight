@@ -59,6 +59,32 @@ export async function transitionOrderStatus(db: SupabaseClient, orderNumber: str
   }
 }
 
+export async function transitionAdminOrderStatus(
+  db: SupabaseClient,
+  orderNumber: string,
+  status: string,
+  adminId: string,
+) {
+  const { error } = await db.rpc("admin_transition_order_status", {
+    p_order_number: orderNumber,
+    p_status: status,
+    p_admin_id: adminId,
+  });
+  if (error) {
+    if (inventoryCode(error)) throw conflict(error);
+    throw error;
+  }
+}
+
+export async function saveOrderInternalNote(db: SupabaseClient, orderNumber: string, note: string, adminId: string) {
+  const { error } = await db.rpc("add_order_internal_note", {
+    p_order_number: orderNumber,
+    p_note: note,
+    p_admin_id: adminId,
+  });
+  if (error) throw error;
+}
+
 export async function setProductInventory(db: SupabaseClient, productId: string, quantity: number) {
   const { error } = await db.rpc("set_product_inventory", {
     p_product_id: productId,

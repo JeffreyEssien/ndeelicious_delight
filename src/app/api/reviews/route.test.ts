@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({ productResult: vi.fn(), reviewInsert: vi.fn() 
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: () => ({
     from: (table: string) => {
-      if (table === "products") return { select: () => ({ eq: () => ({ in: () => ({ maybeSingle: mocks.productResult }) }) }) };
+      if (table === "products")
+        return { select: () => ({ eq: () => ({ in: () => ({ maybeSingle: mocks.productResult }) }) }) };
       if (table === "reviews") return { insert: mocks.reviewInsert };
       throw new Error(`Unexpected table: ${table}`);
     },
@@ -30,7 +31,9 @@ describe("POST /api/reviews", () => {
   });
 
   it("persists a valid review for moderation", async () => {
-    const response = await POST(new Request("http://localhost/api/reviews", { method: "POST", body: JSON.stringify(review) }));
+    const response = await POST(
+      new Request("http://localhost/api/reviews", { method: "POST", body: JSON.stringify(review) }),
+    );
     expect(response.status).toBe(201);
     expect(mocks.reviewInsert).toHaveBeenCalledWith(expect.objectContaining({ status: "PENDING", rating: 5 }));
   });

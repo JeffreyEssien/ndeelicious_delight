@@ -1,29 +1,14 @@
 import { z } from "zod";
+import { after } from "next/server";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
-import { InventoryConflictError, setProductInventory, transitionOrderStatus } from "@/lib/data/inventory";
-
-const businessSettingsSchema = z.object({
-  businessName: z.string().trim().min(2).max(120),
-  contactEmail: z.union([z.literal(""), z.email().max(200)]),
-  phone: z.string().trim().max(40),
-  whatsapp: z.string().trim().max(40),
-  address: z.string().trim().max(300),
-  openingHours: z.string().trim().max(500),
-  currency: z
-    .string()
-    .trim()
-    .length(3)
-    .transform((value) => value.toUpperCase()),
-  cakeLeadHours: z
-    .number()
-    .int()
-    .min(1)
-    .max(24 * 30),
-  instagramUrl: z.union([z.literal(""), z.url().max(500)]),
-  deliveryEnabled: z.boolean(),
-  pickupEnabled: z.boolean(),
-  orderMinimum: z.number().int().min(0).max(100_000_000),
-});
+import {
+  InventoryConflictError,
+  saveOrderInternalNote,
+  setProductInventory,
+  transitionAdminOrderStatus,
+} from "@/lib/data/inventory";
+import { deliverPendingOrderNotifications } from "@/lib/orders/notifications";
+import { businessSettingsSchema, storeAppearanceSchema, storefrontContentSchema } from "@/validations/settings";
 
 const schema = z.discriminatedUnion("action", [
   z.object({
@@ -35,18 +20,10 @@ const schema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("order-status"),
     orderNumber: z.string(),
-    status: z.enum([
-      "PAID",
-      "CONFIRMED",
-      "PREPARING",
-      "READY",
-      "OUT_FOR_DELIVERY",
-      "DELIVERED",
-      "CANCELLED",
-      "REFUNDED",
-      "FAILED",
-    ]),
+    status: z.enum(["CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"]),
   }),
+  z.object({ action: z.literal("order-note"), orderNumber: z.string(), note: z.string().trim().max(2_000) }),
+  z.object({ action: z.literal("notification-retry"), orderNumber: z.string() }),
   z.object({ action: z.literal("theme"), theme: z.enum(["berry", "purple", "sunrise"]) }),
   z.object({ action: z.literal("cake-quote"), id: z.uuid(), quotedTotal: z.number().int().positive() }),
   z.object({
@@ -112,7 +89,7 @@ const schema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("settings"),
-    key: z.enum(["content", "business"]),
+    key: z.enum(["content", "business", "appearance"]),
     value: z.record(z.string(), z.unknown()),
   }),
 ]);
@@ -141,13 +118,22 @@ export async function POST(request: Request) {
   }
   if (input.action === "order-status") {
     try {
-      await transitionOrderStatus(supabase, input.orderNumber, input.status);
+      await transitionAdminOrderStatus(supabase, input.orderNumber, input.status, auth.admin.id);
+      after(() => deliverPendingOrderNotifications(supabase, input.orderNumber));
     } catch (reason) {
       if (reason instanceof InventoryConflictError)
         return Response.json({ error: reason.message, code: reason.code }, { status: 409 });
       error = { message: "Order status transition failed." };
     }
   }
+  if (input.action === "order-note") {
+    try {
+      await saveOrderInternalNote(supabase, input.orderNumber, input.note, auth.admin.id);
+    } catch {
+      error = { message: "Order note update failed." };
+    }
+  }
+  if (input.action === "notification-retry") after(() => deliverPendingOrderNotifications(supabase, input.orderNumber));
   if (input.action === "theme")
     ({ error } = await supabase
       .from("site_settings")
@@ -237,10 +223,18 @@ export async function POST(request: Request) {
       ({ error } = await supabase
         .from("site_settings")
         .upsert({ key: input.key, value: business.data, updated_at: new Date().toISOString() }, { onConflict: "key" }));
-    } else
+    } else {
+      const settingSchema = input.key === "content" ? storefrontContentSchema : storeAppearanceSchema;
+      const settingValue = settingSchema.safeParse(input.value);
+      if (!settingValue.success)
+        return Response.json({ error: "Check the storefront settings and try again." }, { status: 400 });
       ({ error } = await supabase
         .from("site_settings")
-        .upsert({ key: input.key, value: input.value, updated_at: new Date().toISOString() }, { onConflict: "key" }));
+        .upsert(
+          { key: input.key, value: settingValue.data, updated_at: new Date().toISOString() },
+          { onConflict: "key" },
+        ));
+    }
   if (error) return Response.json({ error: "The update could not be saved." }, { status: 500 });
   return Response.json({ ok: true });
 }

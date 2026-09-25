@@ -2,11 +2,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/types";
-import { formatMoney } from "@/lib/format";
+import { useMoney } from "@/components/providers";
 import { useCart } from "@/components/providers";
 import { Badge } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 export function ProductCard({ product }: { product: Product }) {
+  const formatMoney = useMoney();
   const cart = useCart();
   const unavailable = product.status !== "ACTIVE";
   return (

@@ -5,6 +5,7 @@ import { type FormEvent, useState } from "react";
 import type { Product, ProductImage, ProductStatus, ProductVariant } from "@/types";
 import { Button, Checkbox, Input, Select, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
+import { useBusinessSettings } from "@/components/providers";
 
 type DraftVariant = Omit<ProductVariant, "id"> & { id?: string };
 type PendingImage = { key: string; file: File; altText: string };
@@ -26,6 +27,7 @@ export function ProductEditor({
   close: () => void;
   onSaved: () => void;
 }) {
+  const { currency } = useBusinessSettings();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [savedId, setSavedId] = useState(product?.id ?? "");
@@ -146,7 +148,7 @@ export function ProductEditor({
           <h3>Pricing & visibility</h3>
           <div className="field-row">
             <Input
-              label="Price (₦)"
+              label={`Price (${currency})`}
               name="price"
               type="number"
               min="0"
@@ -155,7 +157,7 @@ export function ProductEditor({
               required
             />
             <Input
-              label="Sale price (₦)"
+              label={`Sale price (${currency})`}
               name="discountPrice"
               type="number"
               min="0"
@@ -237,7 +239,7 @@ export function ProductEditor({
                 }
               />
               <Input
-                label="Price adjustment (₦)"
+                label={`Price adjustment (${currency})`}
                 type="number"
                 step="0.01"
                 value={variant.priceAdjustment / 100}

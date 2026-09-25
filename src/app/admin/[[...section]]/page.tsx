@@ -19,6 +19,7 @@ export default async function Page({ params }: { params: Promise<{ section?: str
       initialContent={data.content}
       initialBusiness={data.business}
       initialCakeConfiguration={data.cakeConfiguration}
+      initialAppearance={data.appearance}
     />
   );
 }

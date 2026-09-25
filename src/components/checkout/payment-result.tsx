@@ -101,7 +101,7 @@ export function PaymentResult({
       <p>
         {payment?.orderNumber && (
           <>
-            <b>Order #{payment.orderNumber}</b>: {" "}
+            <b>Order #{payment.orderNumber}</b>:{" "}
           </>
         )}
         {body}
@@ -132,7 +132,10 @@ export function PaymentResult({
       )}
       <div className="success-actions">
         {succeeded && payment?.orderNumber && (
-          <Link href={`/track-order?order=${encodeURIComponent(payment.orderNumber)}`} className="button button-primary">
+          <Link
+            href={`/track-order?order=${encodeURIComponent(payment.orderNumber)}`}
+            className="button button-primary"
+          >
             Track this order
           </Link>
         )}

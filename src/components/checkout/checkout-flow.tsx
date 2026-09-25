@@ -8,14 +8,34 @@ import { Icon } from "@/components/ui/icons";
 import { Input, Select, Textarea } from "@/components/ui/primitives";
 import type { Fulfilment } from "@/types";
 import type { BusinessSettings } from "@/types/content";
-type Info = { name: string; email: string; phone: string; street: string; area: string; city: string; notes: string };
-const blank: Info = { name: "", email: "", phone: "", street: "", area: "", city: "Lagos", notes: "" };
+type Info = {
+  name: string;
+  email: string;
+  phone: string;
+  street: string;
+  addressLine2: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  notes: string;
+};
+const provinces = ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"];
 export function CheckoutFlow({ business }: { business: BusinessSettings }) {
   const cart = useCart();
   const products = useProducts();
   const deliveryZones = useDeliveryZones();
   const [step, setStep] = useState(0);
-  const [info, setInfo] = useState(blank);
+  const [info, setInfo] = useState<Info>({
+    name: "",
+    email: "",
+    phone: "",
+    street: "",
+    addressLine2: "",
+    city: "",
+    province: business.province,
+    postalCode: "",
+    notes: "",
+  });
   const [fulfilment, setFulfilment] = useState<Fulfilment>(business.deliveryEnabled ? "delivery" : "pickup");
   const [zone, setZone] = useState("");
   const [coupon, setCoupon] = useState("");
@@ -26,7 +46,11 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
   const [errors, setErrors] = useState<Partial<Record<keyof Info | string, string>>>({});
   const [busy, setBusy] = useState(false);
   const delivery = fulfilment === "delivery" ? (deliveryZones.find((z) => z.id === zone)?.fee ?? 0) : 0;
-  const total = cart.subtotal + delivery - discount;
+  const tax = business.taxEnabled
+    ? Math.round(((cart.subtotal - discount + (business.taxDelivery ? delivery : 0)) * business.taxRateBps) / 10_000)
+    : 0;
+  const total = cart.subtotal + delivery - discount + tax;
+  const money = (value: number) => formatMoney(value, business.currency, business.locale);
   const resolved = useMemo(
     () =>
       cart.lines.flatMap((line) => {
@@ -63,11 +87,13 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
         if (!zone) found.zone = "Choose a delivery area.";
         if (info.street.trim().length < 5) found.street = "Enter a complete delivery address.";
         if (info.city.trim().length < 2) found.city = "Enter a valid city.";
+        if (!provinces.includes(info.province)) found.province = "Choose a province or territory.";
+        if (!/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(info.postalCode.trim()))
+          found.postalCode = "Enter a valid Canadian postal code.";
       }
       const selectedZone = fulfilment === "delivery" ? deliveryZones.find((item) => item.id === zone) : undefined;
       const minimum = Math.max(business.orderMinimum, selectedZone?.minimumOrder ?? 0);
-      if (cart.subtotal < minimum)
-        found.fulfilment = `Add ${formatMoney(minimum - cart.subtotal)} more before continuing.`;
+      if (cart.subtotal < minimum) found.fulfilment = `Add ${money(minimum - cart.subtotal)} more before continuing.`;
       if (Object.keys(found).length) {
         setErrors(found);
         return;
@@ -87,7 +113,17 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
           customer: { name: info.name, email: info.email, phone: info.phone },
           delivery:
             fulfilment === "delivery"
-              ? { fulfilment, zoneId: zone, street: info.street, area: info.area, city: info.city, notes: info.notes }
+              ? {
+                  fulfilment,
+                  zoneId: zone,
+                  street: info.street,
+                  addressLine2: info.addressLine2,
+                  city: info.city,
+                  province: info.province,
+                  postalCode: info.postalCode,
+                  country: "CA" as const,
+                  notes: info.notes,
+                }
               : { fulfilment },
           cart: resolved.map(({ productId, variantId, quantity }) => ({ productId, variantId, quantity })),
           couponCode: coupon.trim(),
@@ -116,7 +152,17 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
           customer: { name: info.name, email: info.email, phone: info.phone },
           delivery:
             fulfilment === "delivery"
-              ? { fulfilment, zoneId: zone, street: info.street, area: info.area, city: info.city, notes: info.notes }
+              ? {
+                  fulfilment,
+                  zoneId: zone,
+                  street: info.street,
+                  addressLine2: info.addressLine2,
+                  city: info.city,
+                  province: info.province,
+                  postalCode: info.postalCode,
+                  country: "CA" as const,
+                  notes: info.notes,
+                }
               : { fulfilment },
           cart: resolved.map(({ productId, variantId, quantity }) => ({ productId, variantId, quantity })),
           couponCode: applied ? coupon.trim().toUpperCase() : undefined,
@@ -231,7 +277,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                 >
                   <Icon name="truck" />
                   <b>Delivery</b>
-                  <small>To your Lagos address</small>
+                  <small>To your Canadian delivery address</small>
                 </button>
               )}
               {business.pickupEnabled && (
@@ -269,8 +315,8 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                   <option value="">Choose your area</option>
                   {deliveryZones.map((z) => (
                     <option value={z.id} key={z.id}>
-                      {z.name} · {formatMoney(z.fee)}
-                      {z.minimumOrder > 0 ? ` · ${formatMoney(z.minimumOrder)} minimum` : ""}
+                      {z.name} · {money(z.fee)}
+                      {z.minimumOrder > 0 ? ` · ${money(z.minimumOrder)} minimum` : ""}
                     </option>
                   ))}
                 </Select>
@@ -281,15 +327,39 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                   error={errors.street}
                   onChange={(e) => set("street", e.target.value)}
                 />
+                <Input
+                  label="Apartment, suite or unit (optional)"
+                  autoComplete="address-line2"
+                  value={info.addressLine2}
+                  onChange={(e) => set("addressLine2", e.target.value)}
+                />
                 <div className="field-row">
-                  <Input label="Area" value={info.area} onChange={(e) => set("area", e.target.value)} />
                   <Input
                     label="City"
                     value={info.city}
                     error={errors.city}
                     onChange={(e) => set("city", e.target.value)}
                   />
+                  <Select
+                    label="Province or territory"
+                    value={info.province}
+                    error={errors.province}
+                    onChange={(e) => set("province", e.target.value)}
+                  >
+                    <option value="">Choose one</option>
+                    {provinces.map((province) => (
+                      <option key={province}>{province}</option>
+                    ))}
+                  </Select>
                 </div>
+                <Input
+                  label="Postal code"
+                  autoComplete="postal-code"
+                  value={info.postalCode}
+                  error={errors.postalCode}
+                  onChange={(e) => set("postalCode", e.target.value.toUpperCase())}
+                  placeholder="A1A 1A1"
+                />
                 <Textarea
                   label="Delivery notes (optional)"
                   rows={3}
@@ -340,7 +410,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                 <span>{fulfilment === "delivery" ? "Deliver to" : "Collection"}</span>
                 <p>
                   {fulfilment === "delivery"
-                    ? `${info.street}, ${deliveryZones.find((z) => z.id === zone)?.name}, Lagos`
+                    ? `${info.street}${info.addressLine2 ? `, ${info.addressLine2}` : ""}, ${info.city}, ${info.province} ${info.postalCode}`
                     : business.address || business.businessName}
                 </p>
                 <button type="button" onClick={() => setStep(1)}>
@@ -370,7 +440,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
               {couponError && <small role="alert">{couponError}</small>}
               {applied && (
                 <small className="success-text">
-                  {coupon.trim().toUpperCase()} saved you {formatMoney(discount)}.
+                  {coupon.trim().toUpperCase()} saved you {money(discount)}.
                 </small>
               )}
             </div>
@@ -416,27 +486,33 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                 {v.name} · Qty {quantity}
               </small>
             </span>
-            <strong>{formatMoney((p.price + v.priceAdjustment) * quantity)}</strong>
+            <strong>{money((p.price + v.priceAdjustment) * quantity)}</strong>
           </div>
         ))}
         <dl>
           <div>
             <dt>Subtotal</dt>
-            <dd>{formatMoney(cart.subtotal)}</dd>
+            <dd>{money(cart.subtotal)}</dd>
           </div>
           <div>
             <dt>{fulfilment === "pickup" ? "Pickup" : "Delivery"}</dt>
-            <dd>{fulfilment === "pickup" ? "Free" : delivery ? formatMoney(delivery) : "—"}</dd>
+            <dd>{fulfilment === "pickup" ? "Free" : delivery ? money(delivery) : "—"}</dd>
           </div>
           {applied && (
             <div className="discount-row">
               <dt>Discount</dt>
-              <dd>−{formatMoney(discount)}</dd>
+              <dd>−{money(discount)}</dd>
+            </div>
+          )}
+          {business.taxEnabled && (
+            <div>
+              <dt>{business.taxLabel}</dt>
+              <dd>{money(tax)}</dd>
             </div>
           )}
           <div className="total-row">
             <dt>Total</dt>
-            <dd>{formatMoney(total)}</dd>
+            <dd>{money(total)}</dd>
           </div>
         </dl>
       </aside>

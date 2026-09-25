@@ -1,6 +1,8 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { CartLine, DeliveryZone, Product } from "@/types";
+import type { BusinessSettings } from "@/types/content";
+import { formatMoney } from "@/lib/format";
 
 type Toast = { id: number; message: string };
 export type StoreTheme = "berry" | "purple" | "sunrise";
@@ -21,17 +23,20 @@ const ToastContext = createContext<(message: string) => void>(() => {});
 const ThemeContext = createContext<ThemeValue | null>(null);
 const ProductsContext = createContext<Product[]>([]);
 const DeliveryZonesContext = createContext<DeliveryZone[]>([]);
+const BusinessContext = createContext<BusinessSettings | null>(null);
 
 export function Providers({
   children,
   products,
   deliveryZones,
   initialTheme,
+  business,
 }: {
   children: React.ReactNode;
   products: Product[];
   deliveryZones: DeliveryZone[];
   initialTheme: StoreTheme;
+  business: BusinessSettings;
 }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [open, setOpen] = useState(false);
@@ -111,24 +116,26 @@ export function Providers({
     [lines, open, products, notify],
   );
   return (
-    <ProductsContext.Provider value={products}>
-      <DeliveryZonesContext.Provider value={deliveryZones}>
-        <ThemeContext.Provider value={{ theme, setTheme }}>
-          <ToastContext.Provider value={notify}>
-            <CartContext.Provider value={value}>
-              {children}
-              <div className="toast-region" aria-live="polite">
-                {toasts.map((t) => (
-                  <div className="toast" key={t.id}>
-                    ✓ {t.message}
-                  </div>
-                ))}
-              </div>
-            </CartContext.Provider>
-          </ToastContext.Provider>
-        </ThemeContext.Provider>
-      </DeliveryZonesContext.Provider>
-    </ProductsContext.Provider>
+    <BusinessContext.Provider value={business}>
+      <ProductsContext.Provider value={products}>
+        <DeliveryZonesContext.Provider value={deliveryZones}>
+          <ThemeContext.Provider value={{ theme, setTheme }}>
+            <ToastContext.Provider value={notify}>
+              <CartContext.Provider value={value}>
+                {children}
+                <div className="toast-region" aria-live="polite">
+                  {toasts.map((t) => (
+                    <div className="toast" key={t.id}>
+                      ✓ {t.message}
+                    </div>
+                  ))}
+                </div>
+              </CartContext.Provider>
+            </ToastContext.Provider>
+          </ThemeContext.Provider>
+        </DeliveryZonesContext.Provider>
+      </ProductsContext.Provider>
+    </BusinessContext.Provider>
   );
 }
 export function useCart() {
@@ -149,4 +156,18 @@ export function useProducts() {
 }
 export function useDeliveryZones() {
   return useContext(DeliveryZonesContext);
+}
+
+export function useBusinessSettings() {
+  const value = useContext(BusinessContext);
+  if (!value) throw new Error("Business settings are unavailable.");
+  return value;
+}
+
+export function useMoney() {
+  const business = useBusinessSettings();
+  return useCallback(
+    (minorUnits: number) => formatMoney(minorUnits, business.currency, business.locale),
+    [business.currency, business.locale],
+  );
 }

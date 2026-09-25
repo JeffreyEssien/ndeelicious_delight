@@ -1,4 +1,5 @@
 import { checkoutSchema } from "@/validations/checkout";
+import { after } from "next/server";
 import { assertFulfilmentAvailable, calculateOrderQuote, CommerceError } from "@/features/checkout/pricing";
 import { getDeliveryZones, getProducts } from "@/lib/data/catalog";
 import { isSameOrigin } from "@/lib/auth/validation";
@@ -7,6 +8,7 @@ import { claimOrderCoupon, getCoupon } from "@/lib/data/coupons";
 import { InventoryConflictError, reserveOrderInventory } from "@/lib/data/inventory";
 import { getBusinessSettings } from "@/lib/data/settings";
 import { createStripeCheckout, expireStripeCheckout, PaymentConfigurationError } from "@/lib/payments/stripe";
+import { deliverOrderNotification, queueOrderNotification } from "@/lib/orders/notifications";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const orderNumber = () => `ND-${Date.now().toString().slice(-7)}${Math.floor(Math.random() * 10)}`;
@@ -48,6 +50,11 @@ export async function POST(request: Request) {
       deliveryEnabled: business.deliveryEnabled,
       pickupEnabled: business.pickupEnabled,
       coupon,
+      currency: business.currency,
+      locale: business.locale,
+      taxEnabled: business.taxEnabled,
+      taxRateBps: business.taxRateBps,
+      taxDelivery: business.taxDelivery,
     });
     const service = createServiceClient();
     const { data: customerRow, error: customerError } = await service
@@ -62,12 +69,28 @@ export async function POST(request: Request) {
         name: customer.name,
         phone: customer.phone,
         street: delivery.street,
-        area: delivery.area ?? "",
+        addressLine2: delivery.addressLine2 ?? "",
         city: delivery.city,
-        state: "Lagos",
+        province: delivery.province,
+        postalCode: delivery.postalCode.toUpperCase(),
+        country: delivery.country,
         instructions: delivery.notes ?? "",
       };
-      await service.from("delivery_addresses").insert({ customer_id: customerRow.id, ...addressSnapshot });
+      const { error: addressError } = await service.from("delivery_addresses").insert({
+        customer_id: customerRow.id,
+        name: customer.name,
+        phone: customer.phone,
+        street: delivery.street,
+        area: null,
+        address_line_2: delivery.addressLine2 || null,
+        city: delivery.city,
+        state: delivery.province,
+        province: delivery.province,
+        postal_code: delivery.postalCode.toUpperCase(),
+        country: delivery.country,
+        instructions: delivery.notes || null,
+      });
+      if (addressError) throw addressError;
     }
     const number = orderNumber();
     const { data: order, error: orderError } = await service
@@ -84,7 +107,10 @@ export async function POST(request: Request) {
         subtotal: quote.subtotal,
         discount_total: quote.discount,
         delivery_fee: quote.deliveryFee,
+        tax_total: quote.taxTotal,
+        tax_rate_bps: quote.taxRateBps,
         grand_total: quote.grandTotal,
+        currency: business.currency,
         coupon_id: coupon?.id ?? null,
         customer_note: delivery.fulfilment === "delivery" ? delivery.notes : null,
       })
@@ -113,7 +139,7 @@ export async function POST(request: Request) {
       orderNumber: order.order_number,
       email: customerEmail,
       amount: quote.grandTotal,
-      currency: "NGN",
+      currency: business.currency,
     });
     checkoutSessionId = checkout.id;
     const { error: paymentError } = await service.from("payments").insert({
@@ -122,7 +148,7 @@ export async function POST(request: Request) {
       provider_payment_id: checkout.id,
       status: "PENDING",
       amount: quote.grandTotal,
-      currency: "NGN",
+      currency: business.currency,
       idempotency_key: `checkout:${order.id}:initial`,
       provider_payload: {
         checkout_session_id: checkout.id,
@@ -131,6 +157,8 @@ export async function POST(request: Request) {
       },
     });
     if (paymentError) throw paymentError;
+    const notificationId = await queueOrderNotification(service, order.id, "ORDER_RECEIVED").catch(() => undefined);
+    if (notificationId) after(() => deliverOrderNotification(service, notificationId));
     return Response.json(
       {
         order: { number: order.order_number, total: quote.grandTotal, status: "PENDING_PAYMENT" },

@@ -2,24 +2,29 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   setProductInventory: vi.fn(),
-  transitionOrderStatus: vi.fn(),
+  transitionAdminOrderStatus: vi.fn(),
+  saveOrderInternalNote: vi.fn(),
   upsert: vi.fn(),
 }));
+
+vi.mock("next/server", () => ({ after: (callback: () => unknown) => callback() }));
 
 vi.mock("@/lib/auth/admin-request", () => ({
   requireAdminRequest: () =>
     Promise.resolve({
       ok: true,
       db: { from: () => ({ upsert: mocks.upsert }) },
-      admin: {},
+      admin: { id: "22222222-2222-4222-8222-222222222222" },
       sessionId: "session-id",
     }),
 }));
 vi.mock("@/lib/data/inventory", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/data/inventory")>()),
   setProductInventory: mocks.setProductInventory,
-  transitionOrderStatus: mocks.transitionOrderStatus,
+  transitionAdminOrderStatus: mocks.transitionAdminOrderStatus,
+  saveOrderInternalNote: mocks.saveOrderInternalNote,
 }));
+vi.mock("@/lib/orders/notifications", () => ({ deliverPendingOrderNotifications: vi.fn() }));
 
 import { POST } from "./route";
 
@@ -35,7 +40,8 @@ describe("POST /api/admin/mutate inventory operations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.setProductInventory.mockResolvedValue(undefined);
-    mocks.transitionOrderStatus.mockResolvedValue(undefined);
+    mocks.transitionAdminOrderStatus.mockResolvedValue(undefined);
+    mocks.saveOrderInternalNote.mockResolvedValue(undefined);
     mocks.upsert.mockResolvedValue({ error: null });
   });
 
@@ -52,11 +58,16 @@ describe("POST /api/admin/mutate inventory operations", () => {
     );
   });
 
-  it("commits inventory through the atomic paid transition", async () => {
-    const response = await POST(request({ action: "order-status", orderNumber: "ND-12345678", status: "PAID" }));
+  it("records an allowed admin lifecycle transition", async () => {
+    const response = await POST(request({ action: "order-status", orderNumber: "ND-12345678", status: "CONFIRMED" }));
 
     expect(response.status).toBe(200);
-    expect(mocks.transitionOrderStatus).toHaveBeenCalledWith(expect.anything(), "ND-12345678", "PAID");
+    expect(mocks.transitionAdminOrderStatus).toHaveBeenCalledWith(
+      expect.anything(),
+      "ND-12345678",
+      "CONFIRMED",
+      "22222222-2222-4222-8222-222222222222",
+    );
   });
 
   it("reports a conflict when an adjustment would consume reserved units", async () => {
@@ -83,9 +94,9 @@ describe("POST /api/admin/mutate inventory operations", () => {
         zones: [
           {
             id: "11111111-1111-4111-8111-111111111111",
-            name: "Lekki",
-            fee: 250000,
-            minimumOrder: 2000000,
+            name: "Downtown Toronto",
+            fee: 1_500,
+            minimumOrder: 5_000,
             estimate: "Next day",
             active: true,
           },
@@ -94,7 +105,7 @@ describe("POST /api/admin/mutate inventory operations", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mocks.upsert).toHaveBeenCalledWith([expect.objectContaining({ minimum_order: 2000000, sort_order: 0 })]);
+    expect(mocks.upsert).toHaveBeenCalledWith([expect.objectContaining({ minimum_order: 5_000, sort_order: 0 })]);
   });
 
   it("saves coupon eligibility and limits in one database write", async () => {
@@ -125,5 +136,40 @@ describe("POST /api/admin/mutate inventory operations", () => {
     expect(mocks.upsert).toHaveBeenCalledWith([
       expect.objectContaining({ code: "PASTRY10", per_customer_limit: 1, category_ids: expect.any(Array) }),
     ]);
+  });
+
+  it("rejects malformed storefront content before it reaches the database", async () => {
+    const response = await POST(request({ action: "settings", key: "content", value: { home: {} } }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.upsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects arbitrary CSS in storefront appearance settings", async () => {
+    const response = await POST(
+      request({
+        action: "settings",
+        key: "appearance",
+        value: {
+          useCustomColors: true,
+          colors: {
+            background: "url(javascript:alert(1))",
+            surface: "#ffffff",
+            text: "#111111",
+            mutedText: "#666666",
+            primary: "#792f49",
+            primaryDark: "#5d2137",
+            accent: "#c89b49",
+          },
+          contentWidth: "standard",
+          sectionSpacing: "comfortable",
+          cornerStyle: "soft",
+          productColumns: 4,
+        },
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.upsert).not.toHaveBeenCalled();
   });
 });

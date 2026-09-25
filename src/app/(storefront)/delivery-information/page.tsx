@@ -34,10 +34,12 @@ export default async function Page() {
                     <b>{zone.name}</b>
                     <small>
                       {zone.estimate}
-                      {zone.minimumOrder > 0 ? ` · ${formatMoney(zone.minimumOrder)} minimum` : ""}
+                      {zone.minimumOrder > 0
+                        ? ` · ${formatMoney(zone.minimumOrder, business.currency, business.locale)} minimum`
+                        : ""}
                     </small>
                   </span>
-                  <strong>{formatMoney(zone.fee)}</strong>
+                  <strong>{formatMoney(zone.fee, business.currency, business.locale)}</strong>
                 </div>
               ))
             ) : (
@@ -59,20 +61,22 @@ export default async function Page() {
             </article>
           ))}
         </div>
-        {business.pickupEnabled && <div className="pickup-callout">
-          <div>
-            <span className="overline">{page.pickup.eyebrow}</span>
-            <h2>{page.pickup.headline}</h2>
-            <p>{page.pickup.body}</p>
+        {business.pickupEnabled && (
+          <div className="pickup-callout">
+            <div>
+              <span className="overline">{page.pickup.eyebrow}</span>
+              <h2>{page.pickup.headline}</h2>
+              <p>{page.pickup.body}</p>
+            </div>
+            {(business.openingHours || business.address) && (
+              <span>
+                {business.openingHours}
+                <br />
+                <b>{business.address}</b>
+              </span>
+            )}
           </div>
-          {(business.openingHours || business.address) && (
-            <span>
-              {business.openingHours}
-              <br />
-              <b>{business.address}</b>
-            </span>
-          )}
-        </div>}
+        )}
       </section>
     </>
   );

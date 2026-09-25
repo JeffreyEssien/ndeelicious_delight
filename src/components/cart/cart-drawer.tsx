@@ -1,12 +1,12 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useCart, useProducts } from "@/components/providers";
+import { useCart, useMoney, useProducts } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
-import { formatMoney } from "@/lib/format";
 export function CartDrawer() {
   const cart = useCart();
   const products = useProducts();
+  const formatMoney = useMoney();
   const lines = cart.lines.flatMap((line) => {
     const product = products.find((item) => item.id === line.productId);
     const variant = product?.variants.find((item) => item.id === line.variantId);

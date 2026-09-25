@@ -1,55 +1,22 @@
 import type Stripe from "stripe";
+import { after } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { constructStripeEvent } from "@/lib/payments/stripe";
 import { processStripeCheckoutEvent } from "@/lib/data/payments";
-import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
+import { deliverPendingOrderNotifications, sendPaidOrderAdminNotification } from "@/lib/orders/notifications";
 
 const handledEvents = new Set([
   "checkout.session.completed",
   "checkout.session.async_payment_succeeded",
   "checkout.session.async_payment_failed",
   "checkout.session.expired",
+  "refund.created",
+  "refund.updated",
+  "refund.failed",
 ]);
 
 function paymentIntentId(value: Stripe.Checkout.Session["payment_intent"]) {
-  return typeof value === "string" ? value : value?.id ?? "";
-}
-
-async function sendPaidNotifications(orderId: string) {
-  const { data: order, error } = await createServiceClient()
-    .from("orders")
-    .select("customer_name,email,order_number,order_items(product_name,variant_name,quantity)")
-    .eq("id", orderId)
-    .single();
-  if (error || !order) return;
-  const items = order.order_items ?? [];
-  const summary = items
-    .map(
-      (item) =>
-        `<li>${escapeHtml(item.product_name)} · ${escapeHtml(item.variant_name ?? "Standard")} × ${item.quantity}</li>`,
-    )
-    .join("");
-  const adminEmail = process.env.ADMIN_EMAIL;
-  await Promise.all([
-    sendTransactionalEmail({
-      to: order.email,
-      subject: `Payment confirmed for ${order.order_number}`,
-      html: emailFrame(
-        "Payment confirmed",
-        `<p>Thank you, ${escapeHtml(order.customer_name)}. Payment for order <b>${escapeHtml(order.order_number)}</b> is confirmed.</p><ul>${summary}</ul><p>We’ll send another update as your order moves through the bakery.</p>`,
-      ),
-    }),
-    adminEmail
-      ? sendTransactionalEmail({
-          to: adminEmail,
-          subject: `Paid order ${order.order_number}`,
-          html: emailFrame(
-            "A paid order is ready to prepare",
-            `<p>${escapeHtml(order.customer_name)} paid for order <b>${escapeHtml(order.order_number)}</b>.</p><ul>${summary}</ul>`,
-          ),
-        })
-      : Promise.resolve({ sent: false }),
-  ]);
+  return typeof value === "string" ? value : (value?.id ?? "");
 }
 
 export async function POST(request: Request) {
@@ -64,6 +31,28 @@ export async function POST(request: Request) {
   }
 
   if (!handledEvents.has(event.type)) return Response.json({ received: true });
+  if (event.type.startsWith("refund.")) {
+    const refund = event.data.object as Stripe.Refund;
+    if (refund.object !== "refund" || !refund.status)
+      return Response.json({ error: "Invalid Stripe refund." }, { status: 400 });
+    try {
+      const service = createServiceClient();
+      const { data, error } = await service.rpc("process_stripe_refund_event", {
+        p_event_id: event.id,
+        p_event_type: event.type,
+        p_provider_refund_id: refund.id,
+        p_refund_status: refund.status,
+        p_failure_reason: refund.failure_reason ?? null,
+      });
+      if (error) throw error;
+      if (refund.status === "succeeded" && data?.orderNumber)
+        after(() => deliverPendingOrderNotifications(service, data.orderNumber));
+      return Response.json({ received: true });
+    } catch (error) {
+      console.error("Stripe refund webhook processing failed", error instanceof Error ? error.message : "unknown");
+      return Response.json({ error: "Webhook processing failed." }, { status: 500 });
+    }
+  }
   const session = event.data.object as Stripe.Checkout.Session;
   if (session.object !== "checkout.session" || session.amount_total === null || !session.currency) {
     return Response.json({ error: "Invalid Checkout Session." }, { status: 400 });
@@ -80,7 +69,13 @@ export async function POST(request: Request) {
       amountTotal: session.amount_total,
       currency: session.currency,
     });
-    if (result.becamePaid && result.orderId) await sendPaidNotifications(result.orderId);
+    if (result.becamePaid && result.orderNumber) {
+      after(async () => {
+        const service = createServiceClient();
+        await deliverPendingOrderNotifications(service, result.orderNumber as string);
+        await sendPaidOrderAdminNotification(service, result.orderNumber as string);
+      });
+    }
     return Response.json({ received: true });
   } catch (error) {
     console.error("Stripe webhook processing failed", error instanceof Error ? error.message : "unknown");

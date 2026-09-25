@@ -1,13 +1,13 @@
 "use client";
 import { useState } from "react";
 import type { Product } from "@/types";
-import { useCart } from "@/components/providers";
-import { formatMoney } from "@/lib/format";
+import { useCart, useMoney } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 export function ProductPurchase({ product }: { product: Product }) {
   const [variant, setVariant] = useState(product.variants[0]?.id ?? "");
   const [quantity, setQuantity] = useState(1);
   const cart = useCart();
+  const formatMoney = useMoney();
   const selected = product.variants.find((v) => v.id === variant);
   if (!selected) return <p className="stock-note">This product does not have an available option.</p>;
   const unavailable = product.status !== "ACTIVE" || selected.stockQuantity === 0;

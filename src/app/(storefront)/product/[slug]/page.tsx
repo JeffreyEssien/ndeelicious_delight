@@ -9,7 +9,7 @@ import { formatMoney } from "@/lib/format";
 import { getProduct, getProducts } from "@/lib/data/catalog";
 import { Badge } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
-import { getStorefrontContent } from "@/lib/data/settings";
+import { getBusinessSettings, getStorefrontContent } from "@/lib/data/settings";
 import { getApprovedReviews } from "@/lib/data/reviews";
 
 export const dynamic = "force-dynamic";
@@ -21,10 +21,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const product = await getProduct((await params).slug);
   if (!product) notFound();
-  const [products, content, reviews] = await Promise.all([
+  const [products, content, reviews, business] = await Promise.all([
     getProducts(),
     getStorefrontContent(),
     getApprovedReviews(product.id),
+    getBusinessSettings(),
   ]);
   const related = products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 3);
   return (
@@ -42,7 +43,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           {product.badge && <Badge tone="berry">{product.badge}</Badge>}
           <h1>{product.name}</h1>
           <div className="product-price">
-            {formatMoney(product.price)} {product.compareAtPrice && <s>{formatMoney(product.compareAtPrice)}</s>}
+            {formatMoney(product.price, business.currency, business.locale)}{" "}
+            {product.compareAtPrice && <s>{formatMoney(product.compareAtPrice, business.currency, business.locale)}</s>}
           </div>
           <p className="lead">{product.shortDescription}</p>
           <ProductPurchase product={product} />

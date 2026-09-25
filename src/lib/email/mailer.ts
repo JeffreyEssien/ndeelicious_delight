@@ -75,5 +75,5 @@ export async function sendTransactionalEmail(input: EmailInput) {
 }
 
 export function emailFrame(title: string, body: string) {
-  return `<div style="background:#faf8f5;padding:32px;font-family:Arial,sans-serif;color:#241b1e"><div style="max-width:600px;margin:auto;background:#fff;padding:32px;border-radius:16px"><p style="color:#792f49;font-weight:700">Ndeeelicious Delight</p><h1 style="font-size:26px">${escapeHtml(title)}</h1>${body}<p style="margin-top:32px;color:#6e6669;font-size:13px">Made with care in Lagos.</p></div></div>`;
+  return `<div style="background:#faf8f5;padding:32px;font-family:Arial,sans-serif;color:#241b1e"><div style="max-width:600px;margin:auto;background:#fff;padding:32px;border-radius:16px"><p style="color:#792f49;font-weight:700">Ndeeelicious Delight</p><h1 style="font-size:26px">${escapeHtml(title)}</h1>${body}<p style="margin-top:32px;color:#6e6669;font-size:13px">Made with care.</p></div></div>`;
 }

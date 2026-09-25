@@ -31,6 +31,8 @@ export type OrderQuote = {
   subtotal: number;
   discount: number;
   deliveryFee: number;
+  taxTotal: number;
+  taxRateBps: number;
   grandTotal: number;
   couponCode?: string;
 };
@@ -66,6 +68,11 @@ export function calculateOrderQuote(input: {
   deliveryEnabled?: boolean;
   pickupEnabled?: boolean;
   coupon?: CouponRule;
+  currency?: string;
+  locale?: string;
+  taxEnabled?: boolean;
+  taxRateBps?: number;
+  taxDelivery?: boolean;
   now?: Date;
 }): OrderQuote {
   assertFulfilmentAvailable(input);
@@ -105,7 +112,7 @@ export function calculateOrderQuote(input: {
   if (subtotal < orderMinimum)
     throw new CommerceError(
       "ORDER_MINIMUM",
-      `This order requires a subtotal of at least ${formatMoney(orderMinimum)}.`,
+      `This order requires a subtotal of at least ${formatMoney(orderMinimum, input.currency, input.locale)}.`,
     );
   const deliveryMinimum = input.fulfilment === "delivery" ? (input.deliveryMinimum ?? 0) : 0;
   if (!Number.isSafeInteger(deliveryMinimum) || deliveryMinimum < 0)
@@ -113,7 +120,7 @@ export function calculateOrderQuote(input: {
   if (subtotal < deliveryMinimum)
     throw new CommerceError(
       "DELIVERY_MINIMUM",
-      `This delivery area requires a subtotal of at least ${formatMoney(deliveryMinimum)}.`,
+      `This delivery area requires a subtotal of at least ${formatMoney(deliveryMinimum, input.currency, input.locale)}.`,
     );
   const discount = input.coupon
     ? calculateDiscount(input.coupon, subtotal, lines, input.products, input.now ?? new Date())
@@ -121,12 +128,19 @@ export function calculateOrderQuote(input: {
   const deliveryFee = input.fulfilment === "delivery" ? (input.deliveryFee ?? 0) : 0;
   if (deliveryFee < 0 || !Number.isSafeInteger(deliveryFee))
     throw new CommerceError("INVALID_DELIVERY_FEE", "The delivery fee is invalid.");
+  const taxRateBps = input.taxEnabled ? (input.taxRateBps ?? 0) : 0;
+  if (!Number.isInteger(taxRateBps) || taxRateBps < 0 || taxRateBps > 10_000)
+    throw new CommerceError("INVALID_TAX_RATE", "The configured tax rate needs review.");
+  const taxableAmount = subtotal - discount + (input.taxDelivery ? deliveryFee : 0);
+  const taxTotal = Math.round((taxableAmount * taxRateBps) / 10_000);
   return {
     lines,
     subtotal,
     discount,
     deliveryFee,
-    grandTotal: subtotal - discount + deliveryFee,
+    taxTotal,
+    taxRateBps,
+    grandTotal: subtotal - discount + deliveryFee + taxTotal,
     couponCode: input.coupon?.code,
   };
 }

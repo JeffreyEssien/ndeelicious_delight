@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { AdminCakeRequest, AdminCategory, AdminCoupon, AdminReview } from "@/lib/data/admin";
 import type { Product } from "@/types";
 import { Badge, Button, EmptyState, Input } from "@/components/ui/primitives";
-import { useToast } from "@/components/providers";
+import { useBusinessSettings, useToast } from "@/components/providers";
 import type { CakeConfigurationData, CakeOption, CakeOptionType } from "@/types/content";
 
 async function mutate(body: unknown) {
@@ -15,6 +15,7 @@ async function mutate(body: unknown) {
 }
 
 export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
+  const { currency } = useBusinessSettings();
   const [items, setItems] = useState(initial);
   const [selected, setSelected] = useState(initial[0]);
   const [amount, setAmount] = useState(selected?.quotedTotal ? String(selected.quotedTotal / 100) : "");
@@ -97,7 +98,12 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
             </div>
           </div>
         )}
-        <Input label="Quote amount (₦)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <Input
+          label={`Quote amount (${currency})`}
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
         <p>
           {selected.email} · {selected.phone}
         </p>
@@ -112,6 +118,7 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
 const optionTypes: CakeOptionType[] = ["occasion", "size", "flavour", "filling", "design"];
 
 export function CakeConfigurationEditor({ initial }: { initial: CakeConfigurationData }) {
+  const { currency } = useBusinessSettings();
   const [options, setOptions] = useState(initial.options);
   const [busy, setBusy] = useState(false);
   const notify = useToast();
@@ -150,7 +157,7 @@ export function CakeConfigurationEditor({ initial }: { initial: CakeConfiguratio
               <th>Type</th>
               <th>Name</th>
               <th>Description</th>
-              <th>Adjustment (₦)</th>
+              <th>Adjustment ({currency})</th>
               <th>Quote</th>
               <th>Active</th>
               <th />
