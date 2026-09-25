@@ -1,41 +1,240 @@
 import { z } from "zod";
-import { isSameOrigin } from "@/lib/auth/validation";
-import { isActiveAdmin } from "@/lib/auth/admin-auth";
-import { createClient } from "@/lib/supabase/server";
+import { after } from "next/server";
+import { requireAdminRequest } from "@/lib/auth/admin-request";
+import {
+  InventoryConflictError,
+  saveOrderInternalNote,
+  setProductInventory,
+  transitionAdminOrderStatus,
+} from "@/lib/data/inventory";
+import { deliverPendingOrderNotifications } from "@/lib/orders/notifications";
+import { businessSettingsSchema, storeAppearanceSchema, storefrontContentSchema } from "@/validations/settings";
 
-const schema=z.discriminatedUnion("action",[
-  z.object({action:z.literal("product-status"),id:z.uuid(),status:z.enum(["ACTIVE","OUT_OF_STOCK","DRAFT","ARCHIVED"])}),
-  z.object({action:z.literal("inventory"),id:z.uuid(),quantity:z.number().int().min(0)}),
-  z.object({action:z.literal("order-status"),orderNumber:z.string(),status:z.enum(["PAID","CONFIRMED","PREPARING","READY","OUT_FOR_DELIVERY","DELIVERED","CANCELLED","REFUNDED","FAILED"])}),
-  z.object({action:z.literal("theme"),theme:z.enum(["berry","purple","sunrise"])}),
-  z.object({action:z.literal("cake-quote"),id:z.uuid(),quotedTotal:z.number().int().positive()}),
-  z.object({action:z.literal("review-status"),id:z.uuid(),status:z.enum(["APPROVED","REJECTED"])}),
-  z.object({action:z.literal("coupon-create")}),
-  z.object({action:z.literal("delivery-zones"),zones:z.array(z.object({id:z.string(),name:z.string().min(2),fee:z.number().int().min(0),estimate:z.string().max(100),active:z.boolean()}))}),
-  z.object({action:z.literal("settings"),key:z.enum(["content","business"]),value:z.record(z.string(),z.unknown())}),
+const schema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("product-status"),
+    id: z.uuid(),
+    status: z.enum(["ACTIVE", "OUT_OF_STOCK", "DRAFT", "ARCHIVED"]),
+  }),
+  z.object({ action: z.literal("inventory"), id: z.uuid(), quantity: z.number().int().min(0) }),
+  z.object({
+    action: z.literal("order-status"),
+    orderNumber: z.string(),
+    status: z.enum(["CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"]),
+  }),
+  z.object({ action: z.literal("order-note"), orderNumber: z.string(), note: z.string().trim().max(2_000) }),
+  z.object({ action: z.literal("notification-retry"), orderNumber: z.string() }),
+  z.object({ action: z.literal("theme"), theme: z.enum(["berry", "purple", "sunrise"]) }),
+  z.object({ action: z.literal("cake-quote"), id: z.uuid(), quotedTotal: z.number().int().positive() }),
+  z.object({
+    action: z.literal("cake-options"),
+    options: z.array(
+      z.object({
+        id: z.string(),
+        type: z.enum(["occasion", "size", "flavour", "filling", "design"]),
+        name: z.string().trim().min(1).max(100),
+        description: z.string().trim().max(200),
+        priceAdjustment: z.number().int().min(0),
+        quoteRequired: z.boolean(),
+        active: z.boolean(),
+        sortOrder: z.number().int().min(0),
+      }),
+    ),
+  }),
+  z.object({ action: z.literal("review-status"), id: z.uuid(), status: z.enum(["APPROVED", "REJECTED"]) }),
+  z.object({
+    action: z.literal("coupons"),
+    coupons: z.array(
+      z
+        .object({
+          id: z.string(),
+          code: z
+            .string()
+            .trim()
+            .min(2)
+            .max(30)
+            .regex(/^[A-Za-z0-9_-]+$/),
+          type: z.enum(["PERCENTAGE", "FIXED"]),
+          value: z.number().int().positive(),
+          minimumOrder: z.number().int().min(0),
+          maximumDiscount: z.number().int().positive().nullable(),
+          usageLimit: z.number().int().positive().nullable(),
+          perCustomerLimit: z.number().int().positive().nullable(),
+          active: z.boolean(),
+          startsAt: z.iso.datetime().nullable(),
+          expiresAt: z.iso.datetime().nullable(),
+          productIds: z.array(z.uuid()).max(200),
+          categoryIds: z.array(z.uuid()).max(50),
+        })
+        .refine((coupon) => coupon.type !== "PERCENTAGE" || coupon.value <= 100, {
+          message: "Percentage discounts cannot exceed 100%.",
+        })
+        .refine((coupon) => !coupon.startsAt || !coupon.expiresAt || coupon.startsAt < coupon.expiresAt, {
+          message: "Coupon expiry must be after its start date.",
+        }),
+    ),
+  }),
+  z.object({
+    action: z.literal("delivery-zones"),
+    zones: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string().min(2),
+        fee: z.number().int().min(0),
+        estimate: z.string().max(100),
+        minimumOrder: z.number().int().min(0),
+        active: z.boolean(),
+      }),
+    ),
+  }),
+  z.object({
+    action: z.literal("settings"),
+    key: z.enum(["content", "business", "appearance"]),
+    value: z.record(z.string(), z.unknown()),
+  }),
 ]);
 
-export async function POST(request:Request){
-  if(!isSameOrigin(request))return Response.json({error:"Invalid request origin."},{status:403});
-  const parsed=schema.safeParse(await request.json().catch(()=>null));
-  if(!parsed.success)return Response.json({error:"Invalid admin update."},{status:400});
-  const supabase=await createClient();const {data}=await supabase.auth.getUser();
-  if(!data.user||!(await isActiveAdmin(supabase,data.user.id)))return Response.json({error:"Unauthorized."},{status:401});
-  const input=parsed.data;let error;
-  if(input.action==="product-status")({error}=await supabase.from("products").update({status:input.status,updated_at:new Date().toISOString()}).eq("id",input.id));
-  if(input.action==="inventory")({error}=await supabase.from("products").update({stock_quantity:input.quantity,status:input.quantity===0?"OUT_OF_STOCK":undefined,updated_at:new Date().toISOString()}).eq("id",input.id));
-  if(input.action==="order-status")({error}=await supabase.from("orders").update({status:input.status,updated_at:new Date().toISOString()}).eq("order_number",input.orderNumber));
-  if(input.action==="theme")({error}=await supabase.from("site_settings").upsert({key:"theme",value:input.theme,updated_at:new Date().toISOString()},{onConflict:"key"}));
-  if(input.action==="cake-quote")({error}=await supabase.from("custom_cake_orders").update({quoted_total:input.quotedTotal,status:"QUOTE_SENT",quote_expires_at:new Date(Date.now()+7*86400000).toISOString(),updated_at:new Date().toISOString()}).eq("id",input.id));
-  if(input.action==="review-status")({error}=await supabase.from("reviews").update({status:input.status}).eq("id",input.id));
-  if(input.action==="coupon-create")({error}=await supabase.from("coupons").insert({code:`DRAFT${Date.now().toString().slice(-6)}`,type:"PERCENTAGE",value:10,minimum_order:0,active:false}));
-  if(input.action==="delivery-zones"){
-    const ids=input.zones.map(zone=>zone.id).filter(id=>z.string().uuid().safeParse(id).success);
-    const current=await supabase.from("delivery_zones").select("id");if(current.error)error=current.error;
-    if(!error){const remove=(current.data??[]).map(row=>row.id).filter(id=>!ids.includes(id));if(remove.length){const result=await supabase.from("delivery_zones").delete().in("id",remove);error=result.error}}
-    if(!error)for(const [index,zone] of input.zones.entries()){const values={name:zone.name,fee:zone.fee,estimated_time:zone.estimate,active:zone.active,sort_order:index};const result=z.string().uuid().safeParse(zone.id).success?await supabase.from("delivery_zones").update(values).eq("id",zone.id):await supabase.from("delivery_zones").insert(values);if(result.error){error=result.error;break}}
+export async function POST(request: Request) {
+  const auth = await requireAdminRequest(request);
+  if (!auth.ok) return auth.response;
+  const parsed = schema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return Response.json({ error: "Invalid admin update." }, { status: 400 });
+  const supabase = auth.db;
+  const input = parsed.data;
+  let error: { message: string } | null | undefined;
+  if (input.action === "product-status")
+    ({ error } = await supabase
+      .from("products")
+      .update({ status: input.status, updated_at: new Date().toISOString() })
+      .eq("id", input.id));
+  if (input.action === "inventory") {
+    try {
+      await setProductInventory(supabase, input.id, input.quantity);
+    } catch (reason) {
+      if (reason instanceof InventoryConflictError)
+        return Response.json({ error: reason.message, code: reason.code }, { status: 409 });
+      error = { message: "Inventory update failed." };
+    }
   }
-  if(input.action==="settings")({error}=await supabase.from("site_settings").upsert({key:input.key,value:input.value,updated_at:new Date().toISOString()},{onConflict:"key"}));
-  if(error)return Response.json({error:"The update could not be saved."},{status:500});
-  return Response.json({ok:true});
+  if (input.action === "order-status") {
+    try {
+      await transitionAdminOrderStatus(supabase, input.orderNumber, input.status, auth.admin.id);
+      after(() => deliverPendingOrderNotifications(supabase, input.orderNumber));
+    } catch (reason) {
+      if (reason instanceof InventoryConflictError)
+        return Response.json({ error: reason.message, code: reason.code }, { status: 409 });
+      error = { message: "Order status transition failed." };
+    }
+  }
+  if (input.action === "order-note") {
+    try {
+      await saveOrderInternalNote(supabase, input.orderNumber, input.note, auth.admin.id);
+    } catch {
+      error = { message: "Order note update failed." };
+    }
+  }
+  if (input.action === "notification-retry") after(() => deliverPendingOrderNotifications(supabase, input.orderNumber));
+  if (input.action === "theme")
+    ({ error } = await supabase
+      .from("site_settings")
+      .upsert({ key: "theme", value: input.theme, updated_at: new Date().toISOString() }, { onConflict: "key" }));
+  if (input.action === "cake-quote")
+    ({ error } = await supabase
+      .from("custom_cake_orders")
+      .update({
+        quoted_total: input.quotedTotal,
+        status: "QUOTE_SENT",
+        quote_expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", input.id));
+  if (input.action === "cake-options") {
+    const current = await supabase.from("custom_cake_options").select("id");
+    if (current.error) error = current.error;
+    const submittedIds = new Set(
+      input.options.map((option) => option.id).filter((id) => z.uuid().safeParse(id).success),
+    );
+    if (!error) {
+      const removed = (current.data ?? []).map((row) => row.id).filter((id) => !submittedIds.has(id));
+      if (removed.length) {
+        const result = await supabase.from("custom_cake_options").update({ active: false }).in("id", removed);
+        error = result.error;
+      }
+    }
+    if (!error)
+      for (const option of input.options) {
+        const values = {
+          type: option.type,
+          name: option.name,
+          description: option.description || null,
+          price_adjustment: option.priceAdjustment,
+          quote_required: option.quoteRequired,
+          active: option.active,
+          sort_order: option.sortOrder,
+        };
+        const result = z.uuid().safeParse(option.id).success
+          ? await supabase.from("custom_cake_options").update(values).eq("id", option.id)
+          : await supabase.from("custom_cake_options").insert(values);
+        if (result.error) {
+          error = result.error;
+          break;
+        }
+      }
+  }
+  if (input.action === "review-status")
+    ({ error } = await supabase.from("reviews").update({ status: input.status }).eq("id", input.id));
+  if (input.action === "coupons") {
+    const values = input.coupons.map((coupon) => ({
+      id: z.uuid().safeParse(coupon.id).success ? coupon.id : crypto.randomUUID(),
+      code: coupon.code.trim().toUpperCase(),
+      type: coupon.type,
+      value: coupon.value,
+      minimum_order: coupon.minimumOrder,
+      maximum_discount: coupon.maximumDiscount,
+      usage_limit: coupon.usageLimit,
+      per_customer_limit: coupon.perCustomerLimit,
+      active: coupon.active,
+      starts_at: coupon.startsAt,
+      expires_at: coupon.expiresAt,
+      product_ids: coupon.productIds,
+      category_ids: coupon.categoryIds,
+      updated_at: new Date().toISOString(),
+    }));
+    if (values.length) ({ error } = await supabase.from("coupons").upsert(values));
+  }
+  if (input.action === "delivery-zones") {
+    const values = input.zones.map((zone, index) => ({
+      id: z.uuid().safeParse(zone.id).success ? zone.id : crypto.randomUUID(),
+      name: zone.name.trim(),
+      fee: zone.fee,
+      minimum_order: zone.minimumOrder,
+      estimated_time: zone.estimate.trim() || null,
+      active: zone.active,
+      sort_order: index,
+      updated_at: new Date().toISOString(),
+    }));
+    if (values.length) ({ error } = await supabase.from("delivery_zones").upsert(values));
+  }
+  if (input.action === "settings")
+    if (input.key === "business") {
+      const business = businessSettingsSchema.safeParse(input.value);
+      if (!business.success)
+        return Response.json({ error: "Check the business settings and try again." }, { status: 400 });
+      ({ error } = await supabase
+        .from("site_settings")
+        .upsert({ key: input.key, value: business.data, updated_at: new Date().toISOString() }, { onConflict: "key" }));
+    } else {
+      const settingSchema = input.key === "content" ? storefrontContentSchema : storeAppearanceSchema;
+      const settingValue = settingSchema.safeParse(input.value);
+      if (!settingValue.success)
+        return Response.json({ error: "Check the storefront settings and try again." }, { status: 400 });
+      ({ error } = await supabase
+        .from("site_settings")
+        .upsert(
+          { key: input.key, value: settingValue.data, updated_at: new Date().toISOString() },
+          { onConflict: "key" },
+        ));
+    }
+  if (error) return Response.json({ error: "The update could not be saved." }, { status: 500 });
+  return Response.json({ ok: true });
 }

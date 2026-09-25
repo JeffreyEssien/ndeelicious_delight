@@ -1,1 +1,55 @@
-import { ContactForm } from "@/components/forms/contact-form";export default function Page(){return <><header className="page-hero"><span className="overline">We’d love to hear from you</span><h1>Let’s talk cake.</h1><p>Questions, order help or a wonderfully ambitious idea—we’re listening.</p></header><section className="site-container contact-grid"><div className="contact-details"><div><span>Email</span><a href="mailto:hello@ndeedelicious.com">hello@ndeedelicious.com</a></div><div><span>WhatsApp</span><a href="https://wa.me/2348000000000">+234 800 000 0000</a></div><div><span>Bakery hours</span><p>Tuesday–Saturday<br/>9am–5pm</p></div><div><span>Location</span><p>Lekki, Lagos<br/>Visits by collection appointment</p></div></div><ContactForm/></section></>}
+import { ContactForm } from "@/components/forms/contact-form";
+import { ContentLines } from "@/components/ui/content-lines";
+import { getBusinessSettings, getStorefrontContent } from "@/lib/data/settings";
+
+export default async function Page() {
+  const [content, business] = await Promise.all([getStorefrontContent(), getBusinessSettings()]);
+  const phoneHref = business.phone.replace(/\D/g, "");
+  const whatsapp = business.whatsapp.replace(/\D/g, "");
+  return (
+    <>
+      <header className="page-hero">
+        <span className="overline">{content.contact.hero.eyebrow}</span>
+        <h1>
+          <ContentLines text={content.contact.hero.headline} />
+        </h1>
+        <p>{content.contact.hero.supportingText}</p>
+      </header>
+      <section className="site-container contact-grid">
+        <div className="contact-details">
+          {business.contactEmail && (
+            <div>
+              <span>Email</span>
+              <a href={`mailto:${business.contactEmail}`}>{business.contactEmail}</a>
+            </div>
+          )}
+          {business.phone && (
+            <div>
+              <span>Phone</span>
+              <a href={`tel:+${phoneHref}`}>{business.phone}</a>
+            </div>
+          )}
+          {whatsapp && (
+            <div>
+              <span>WhatsApp</span>
+              <a href={`https://wa.me/${whatsapp}`}>{business.whatsapp}</a>
+            </div>
+          )}
+          {business.openingHours && (
+            <div>
+              <span>Bakery hours</span>
+              <p>{business.openingHours}</p>
+            </div>
+          )}
+          {business.address && (
+            <div>
+              <span>Location</span>
+              <p>{business.address}</p>
+            </div>
+          )}
+        </div>
+        <ContactForm />
+      </section>
+    </>
+  );
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
@@ -67,20 +67,75 @@ export function LoginForm({ initialError = "" }: { initialError?: string }) {
   }
 
   if (step === "code") {
-    return <form onSubmit={verifyCode} className="login-form">
-      <div className="otp-heading"><span>Code sent to</span><b>{email}</b><button type="button" onClick={() => { setStep("email"); setToken(""); setError(""); setMessage(""); }}>Change email</button></div>
-      <Input label="Six-digit code" name="token" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={token} onChange={(event) => setToken(event.target.value.replace(/\D/g, "").slice(0, 6))} className="otp-field" placeholder="000000"/>
-      {message && <p className="login-message">{message}</p>}
-      {error && <p className="form-error" role="alert">{error}</p>}
-      <button className="button button-primary" disabled={busy || token.length !== 6}>{busy ? "Verifying…" : "Verify & enter admin"}<Icon name="arrow"/></button>
-      <button className="otp-resend" type="button" disabled={busy || resendIn > 0} onClick={() => requestCode()}>{resendIn ? `Resend code in ${resendIn}s` : "Resend code"}</button>
-    </form>;
+    return (
+      <form onSubmit={verifyCode} className="login-form">
+        <div className="otp-heading">
+          <span>Code sent to</span>
+          <b>{email}</b>
+          <button
+            type="button"
+            onClick={() => {
+              setStep("email");
+              setToken("");
+              setError("");
+              setMessage("");
+            }}
+          >
+            Change email
+          </button>
+        </div>
+        <Input
+          label="Six-digit code"
+          name="token"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          pattern="[0-9]{6}"
+          maxLength={6}
+          required
+          value={token}
+          onChange={(event) => setToken(event.target.value.replace(/\D/g, "").slice(0, 6))}
+          className="otp-field"
+          placeholder="000000"
+        />
+        {message && <p className="login-message">{message}</p>}
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        <button type="submit" className="button button-primary" disabled={busy || token.length !== 6}>
+          {busy ? "Verifying…" : "Verify & enter admin"}
+          <Icon name="arrow" />
+        </button>
+        <button className="otp-resend" type="button" disabled={busy || resendIn > 0} onClick={() => requestCode()}>
+          {resendIn ? `Resend code in ${resendIn}s` : "Resend code"}
+        </button>
+      </form>
+    );
   }
 
-  return <form onSubmit={requestCode} className="login-form">
-    <Input label="Admin email address" name="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="owner@ndeedelicious.com"/>
-    {error && <p className="form-error" role="alert">{error}</p>}
-    <button className="button button-primary" disabled={busy}>{busy ? "Sending secure code…" : "Email me a login code"}<Icon name="arrow"/></button>
-    <p>No password needed. Access is limited to approved admin accounts.</p>
-  </form>;
+  return (
+    <form onSubmit={requestCode} className="login-form">
+      <Input
+        label="Admin email address"
+        name="email"
+        type="email"
+        autoComplete="email"
+        required
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        placeholder="owner@ndeedelicious.com"
+      />
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+      <button type="submit" className="button button-primary" disabled={busy}>
+        {busy ? "Sending secure code…" : "Email me a login code"}
+        <Icon name="arrow" />
+      </button>
+      <p>No password needed. Access is limited to approved admin accounts.</p>
+    </form>
+  );
 }

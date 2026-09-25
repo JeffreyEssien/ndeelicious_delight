@@ -1,0 +1,160 @@
+name: CI/CD pipeline
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: pipeline-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  code-quality:
+    name: Lint and formatting
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Check changed files
+        env:
+          QUALITY_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+        run: npm run quality -- --since="$QUALITY_BASE_SHA"
+
+  regression-tests:
+    name: Regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Run domain regression suite
+        run: npm run test:regression
+
+  functional-tests:
+    name: Functional API tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Run route-level functional suite
+        run: npm run test:functional
+
+  structural-tests:
+    name: Structural checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Type-check and build production application
+        run: npm run test:structural
+
+  deploy-staging:
+    name: Deploy develop to staging
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/develop' &&
+      vars.VERCEL_CD_ENABLED == 'true'
+    needs: [code-quality, regression-tests, functional-tests, structural-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: staging
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Validate deployment configuration
+        run: test -n "$VERCEL_ORG_ID" && test -n "$VERCEL_PROJECT_ID" && test -n "$VERCEL_TOKEN"
+      - name: Pull staging environment
+        run: npx --yes vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
+      - name: Build staging deployment
+        run: npx --yes vercel@latest build --token="$VERCEL_TOKEN"
+      - name: Deploy staging build
+        run: npx --yes vercel@latest deploy --prebuilt --token="$VERCEL_TOKEN"
+
+  deploy-production:
+    name: Deploy main to production
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      vars.VERCEL_CD_ENABLED == 'true'
+    needs: [code-quality, regression-tests, functional-tests, structural-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Validate deployment configuration
+        run: test -n "$VERCEL_ORG_ID" && test -n "$VERCEL_PROJECT_ID" && test -n "$VERCEL_TOKEN"
+      - name: Pull production environment
+        run: npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - name: Build production deployment
+        run: npx --yes vercel@latest build --prod --token="$VERCEL_TOKEN"
+      - name: Deploy production build
+        run: npx --yes vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"

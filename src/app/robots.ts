@@ -1,1 +1,7 @@
-import type { MetadataRoute } from "next";export default function robots():MetadataRoute.Robots{return {rules:{userAgent:"*",allow:"/",disallow:"/admin/"},sitemap:"http://localhost:3000/sitemap.xml"}}
+import type { MetadataRoute } from "next";
+import { getSiteUrl } from "@/lib/site-url";
+
+export default function robots(): MetadataRoute.Robots {
+  const base = getSiteUrl();
+  return { rules: { userAgent: "*", allow: "/", disallow: "/admin/" }, sitemap: `${base}/sitemap.xml` };
+}

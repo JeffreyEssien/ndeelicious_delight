@@ -1,7 +1,9 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
 import { getDeliveryZones, getProducts } from "@/lib/data/catalog";
-import { getStoreTheme } from "@/lib/data/settings";
+import { getBusinessSettings, getStoreAppearance, getStorefrontContent, getStoreTheme } from "@/lib/data/settings";
+import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 import "./store.css";
 import "./admin.css";
@@ -9,18 +11,60 @@ import "./extras.css";
 import "./gallery.css";
 import "./reviews.css";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: { default: "Ndeeelicious Delight — Cakes & Pastries in Lagos", template: "%s · Ndeeelicious Delight" },
-  description: "Celebration cakes, fresh pastries and ready-to-bake favourites, thoughtfully made in Lagos.",
-  openGraph: { title:"Ndeeelicious Delight", description:"Made for life’s sweetest moments.", images:["/hero-bakery.jpg"] },
-};
+type StoreStyle = CSSProperties & { [key: `--${string}`]: string | number };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [content, business] = await Promise.all([getStorefrontContent(), getBusinessSettings()]);
+  return {
+    metadataBase: new URL(getSiteUrl()),
+    title: {
+      default: `${business.businessName} — Cakes & Pastries in Canada`,
+      template: `%s · ${business.businessName}`,
+    },
+    description: content.home.hero.supportingText,
+    openGraph: {
+      title: business.businessName,
+      description: content.home.hero.headline.replaceAll("\n", " "),
+      images: content.home.hero.image ? [content.home.hero.image] : [],
+    },
+  };
+}
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [products, deliveryZones, initialTheme] = await Promise.all([getProducts(), getDeliveryZones(), getStoreTheme()]);
+  const [products, deliveryZones, initialTheme, business, appearance] = await Promise.all([
+    getProducts(),
+    getDeliveryZones(),
+    getStoreTheme(),
+    getBusinessSettings(),
+    getStoreAppearance(),
+  ]);
+  const customColors: StoreStyle = appearance.useCustomColors
+    ? ({
+        "--bg": appearance.colors.background,
+        "--surface": appearance.colors.surface,
+        "--ink": appearance.colors.text,
+        "--muted": appearance.colors.mutedText,
+        "--berry": appearance.colors.primary,
+        "--berry-dark": appearance.colors.primaryDark,
+        "--accent": appearance.colors.accent,
+      } satisfies StoreStyle)
+    : {};
+  const storeStyle: StoreStyle = { ...customColors, "--product-columns": appearance.productColumns };
   return (
-    <html lang="en" data-scroll-behavior="smooth" data-theme={initialTheme}>
-      <body><Providers products={products} deliveryZones={deliveryZones} initialTheme={initialTheme}>{children}</Providers></body>
+    <html
+      lang={business.locale}
+      data-scroll-behavior="smooth"
+      data-theme={initialTheme}
+      data-content-width={appearance.contentWidth}
+      data-section-spacing={appearance.sectionSpacing}
+      data-corners={appearance.cornerStyle}
+      style={storeStyle}
+    >
+      <body>
+        <Providers products={products} deliveryZones={deliveryZones} initialTheme={initialTheme} business={business}>
+          {children}
+        </Providers>
+      </body>
     </html>
   );
 }

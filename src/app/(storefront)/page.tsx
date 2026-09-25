@@ -1,11 +1,178 @@
-import Image from "next/image";import Link from "next/link";import { Icon } from "@/components/ui/icons";import { ProductGrid } from "@/components/product/product-grid";import { getProducts } from "@/lib/data/catalog";
-export default async function Home(){const products=await getProducts();return <>
-  <section className="hero"><Image src="/hero-bakery.jpg" alt="Handmade celebration cake and pastries" fill loading="eager" sizes="100vw"/><div className="hero-shade"/><div className="site-container hero-content"><span className="overline">Handmade in Lagos</span><h1>Made for life’s<br/><em>sweetest moments.</em></h1><p>Celebration cakes, fresh pastries and oven-ready favourites, made slowly and shared joyfully.</p><div className="hero-buttons"><Link className="button button-primary" href="/shop">Shop the bakery <Icon name="arrow"/></Link><Link className="button button-link" href="/custom-cakes">Build your cake</Link></div></div><div className="hero-delivery"><span>Next available cake date</span><b>Friday, 18 September</b></div></section>
-  <section className="section site-container"><div className="section-head"><div><span className="overline">Choose your treat</span><h2>A little something<br/>for every moment.</h2></div><p>From centrepiece cakes to warm-from-the-oven mornings, everything is made with intention.</p></div><div className="category-showcase"><Link href="/custom-cakes"><Image src="/custom-cake.jpg" alt="Custom celebration cake" fill sizes="(max-width:700px) 100vw, 33vw"/><span>01 · Celebrations</span><div><h3>Custom cakes</h3><p>Designed around your story, flavour and table.</p><b>Build yours <Icon name="arrow"/></b></div></Link><Link href="/shop?category=PASTRIES"><Image src="/pastries.jpg" alt="Fresh artisan pastries" fill sizes="(max-width:700px) 100vw, 33vw"/><span>02 · Fresh daily</span><div><h3>Morning pastries</h3><p>Flaky layers, baked golden every morning.</p><b>Shop pastries <Icon name="arrow"/></b></div></Link><Link href="/ready-to-bake"><Image src="/ready-to-bake.jpg" alt="Ready-to-bake croissants" fill sizes="(max-width:700px) 100vw, 33vw"/><span>03 · At home</span><div><h3>Ready to bake</h3><p>Bakery mornings, straight from your own oven.</p><b>Fill the freezer <Icon name="arrow"/></b></div></Link></div></section>
-  <section className="section section-tint"><div className="site-container"><div className="section-title-row"><div><span className="overline">From the counter</span><h2>Today’s favourites</h2></div><Link className="inline-link" href="/shop">See everything <Icon name="arrow"/></Link></div><ProductGrid items={products.filter(p=>p.featured)}/></div></section>
-  <section className="editorial"><div className="editorial-image"><Image src="/custom-cake.jpg" alt="Bespoke Ndeeelicious Delight cake" fill sizes="(max-width:800px) 100vw, 50vw"/></div><div className="editorial-copy"><span className="overline">Yours, in cake form</span><h2>A centrepiece that tastes as good as it looks.</h2><p>Tell us the occasion, the mood and the flavours you love. Our guided builder makes the details simple.</p><ol><li><b>01</b><span>Choose your size and flavour</span></li><li><b>02</b><span>Share your colours and inspiration</span></li><li><b>03</b><span>Pick a date—we’ll handle the magic</span></li></ol><Link className="button button-primary" href="/custom-cakes">Start your cake <Icon name="arrow"/></Link></div></section>
-  <section className="ready-feature"><div className="site-container ready-grid"><div><span className="overline">A better kind of convenience</span><h2>Your kitchen.<br/>Our pastry.</h2><p>Proof overnight, bake in the morning, and take all the credit. Each box includes simple step-by-step instructions.</p><Link href="/ready-to-bake" className="button button-secondary">Explore ready to bake <Icon name="arrow"/></Link></div><div className="ready-image"><Image src="/ready-to-bake.jpg" alt="Box of croissants ready to bake" fill sizes="(max-width:800px) 100vw, 50vw"/></div></div></section>
-  <section className="testimonials section"><div className="site-container"><span className="quote">“</span><blockquote>The cake was somehow even more beautiful than I imagined—and every single person asked for a second slice.</blockquote><p><b>Amara O.</b> · Lekki</p></div></section>
-  <section className="section gallery-section"><div className="site-container"><div className="section-title-row"><div><span className="overline">From the kitchen</span><h2>Freshly made, lately.</h2></div><a className="inline-link" href="https://instagram.com" target="_blank" rel="noreferrer">Follow along ↗</a></div><div className="social-gallery"><div><Image src="/pastries.jpg" alt="Fresh laminated pastries" fill sizes="33vw"/></div><div><Image src="/custom-cake.jpg" alt="Detailed custom cake" fill sizes="33vw"/></div><div><Image src="/ready-to-bake.jpg" alt="Croissants prepared for baking" fill sizes="33vw"/></div><div><Image src="/hero-bakery.jpg" alt="Cake and pastries on the bakery counter" fill sizes="33vw"/></div></div></div></section>
-  <section className="values site-container"><div><span>01</span><h3>Small-batch, always</h3><p>Made by hand with ingredients we’re proud to use.</p></div><div><span>02</span><h3>Freshness first</h3><p>Timed carefully so every order arrives at its best.</p></div><div><span>03</span><h3>Made with feeling</h3><p>The little details matter, because your moments do.</p></div></section>
-  </>}
+import Image from "next/image";
+import Link from "next/link";
+import { ProductGrid } from "@/components/product/product-grid";
+import { ContentLines } from "@/components/ui/content-lines";
+import { Icon } from "@/components/ui/icons";
+import { getProducts } from "@/lib/data/catalog";
+import { getApprovedReviews } from "@/lib/data/reviews";
+import { getBusinessSettings, getStorefrontContent } from "@/lib/data/settings";
+
+export default async function Home() {
+  const [products, content, business, reviews] = await Promise.all([
+    getProducts(),
+    getStorefrontContent(),
+    getBusinessSettings(),
+    getApprovedReviews(),
+  ]);
+  const home = content.home;
+  const featured = products.filter((product) => product.featured);
+  const gallery = products.flatMap((product) => product.images ?? []).slice(0, 4);
+  const review = reviews[0];
+  return (
+    <>
+      <section className="hero">
+        <Image src={home.hero.image ?? ""} alt={home.hero.imageAlt ?? ""} fill loading="eager" sizes="100vw" />
+        <div className="hero-shade" />
+        <div className="site-container hero-content">
+          <span className="overline">{home.hero.eyebrow}</span>
+          <h1>
+            <ContentLines text={home.hero.headline} />
+          </h1>
+          <p>{home.hero.supportingText}</p>
+          <div className="hero-buttons">
+            <Link className="button button-primary" href={home.hero.primaryHref}>
+              {home.hero.primaryLabel} <Icon name="arrow" />
+            </Link>
+            <Link className="button button-link" href={home.hero.secondaryHref}>
+              {home.hero.secondaryLabel}
+            </Link>
+          </div>
+        </div>
+      </section>
+      <section className="section site-container">
+        <div className="section-head">
+          <div>
+            <span className="overline">{home.intro.eyebrow}</span>
+            <h2>
+              <ContentLines text={home.intro.headline} />
+            </h2>
+          </div>
+          <p>{home.intro.body}</p>
+        </div>
+        <div className="category-showcase">
+          {home.categories.map((category, index) => (
+            <Link href={category.href} key={category.href}>
+              <Image src={category.image} alt={category.imageAlt} fill sizes="(max-width:700px) 100vw, 33vw" />
+              <span>
+                {String(index + 1).padStart(2, "0")} · {category.eyebrow}
+              </span>
+              <div>
+                <h3>{category.title}</h3>
+                <p>{category.body}</p>
+                <b>
+                  {category.linkLabel} <Icon name="arrow" />
+                </b>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+      <section className="section section-tint">
+        <div className="site-container">
+          <div className="section-title-row">
+            <div>
+              <span className="overline">{home.featured.eyebrow}</span>
+              <h2>{home.featured.headline}</h2>
+            </div>
+            <Link className="inline-link" href="/shop">
+              {home.featured.linkLabel} <Icon name="arrow" />
+            </Link>
+          </div>
+          {featured.length ? <ProductGrid items={featured} /> : <p>No featured products are currently published.</p>}
+        </div>
+      </section>
+      <section className="editorial">
+        <div className="editorial-image">
+          <Image
+            src={home.cakeFeature.image}
+            alt={home.cakeFeature.imageAlt}
+            fill
+            sizes="(max-width:800px) 100vw, 50vw"
+          />
+        </div>
+        <div className="editorial-copy">
+          <span className="overline">{home.cakeFeature.eyebrow}</span>
+          <h2>{home.cakeFeature.headline}</h2>
+          <p>{home.cakeFeature.body}</p>
+          <ol>
+            {home.cakeFeature.steps.map((step, index) => (
+              <li key={step}>
+                <b>{String(index + 1).padStart(2, "0")}</b>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+          <Link className="button button-primary" href="/custom-cakes">
+            {home.cakeFeature.buttonLabel} <Icon name="arrow" />
+          </Link>
+        </div>
+      </section>
+      <section className="ready-feature">
+        <div className="site-container ready-grid">
+          <div>
+            <span className="overline">{home.readyFeature.eyebrow}</span>
+            <h2>
+              <ContentLines text={home.readyFeature.headline} />
+            </h2>
+            <p>{home.readyFeature.body}</p>
+            <Link href="/ready-to-bake" className="button button-secondary">
+              {home.readyFeature.buttonLabel} <Icon name="arrow" />
+            </Link>
+          </div>
+          <div className="ready-image">
+            <Image
+              src={home.readyFeature.image}
+              alt={home.readyFeature.imageAlt}
+              fill
+              sizes="(max-width:800px) 100vw, 50vw"
+            />
+          </div>
+        </div>
+      </section>
+      {review && (
+        <section className="testimonials section">
+          <div className="site-container">
+            <span className="quote">“</span>
+            <blockquote>{review.body}</blockquote>
+            <p>
+              <b>{review.customerName}</b>
+            </p>
+          </div>
+        </section>
+      )}
+      {!!gallery.length && (
+        <section className="section gallery-section">
+          <div className="site-container">
+            <div className="section-title-row">
+              <div>
+                <span className="overline">{home.gallery.eyebrow}</span>
+                <h2>{home.gallery.headline}</h2>
+              </div>
+              {business.instagramUrl && (
+                <a className="inline-link" href={business.instagramUrl} target="_blank" rel="noreferrer">
+                  Follow along ↗
+                </a>
+              )}
+            </div>
+            <div className="social-gallery">
+              {gallery.map((image) => (
+                <div key={image.id}>
+                  <Image src={image.url} alt={image.altText} fill sizes="33vw" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+      <section className="values site-container">
+        {home.values.map((value, index) => (
+          <div key={value.title}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <h3>{value.title}</h3>
+            <p>{value.body}</p>
+          </div>
+        ))}
+      </section>
+    </>
+  );
+}
