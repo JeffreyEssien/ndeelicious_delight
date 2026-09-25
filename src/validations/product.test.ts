@@ -9,17 +9,15 @@ const valid = {
   category: "PASTRIES" as const,
   price: 450_000,
   discountPrice: null,
-  sku: "CRO-ALM",
   status: "DRAFT" as const,
   featured: false,
   trackInventory: true,
-  stockQuantity: 12,
   lowStockThreshold: 3,
   ingredients: "Flour, butter, almonds",
   allergens: ["Wheat", "Milk", "Nuts"],
   storageInstructions: "Keep cool.",
   preparationInstructions: "Serve at room temperature.",
-  variants: [{ name: "Single", sku: "CRO-ALM-1", priceAdjustment: 0, stockQuantity: 12, active: true }],
+  variants: [{ name: "Single", priceAdjustment: 0, stockQuantity: 12, active: true }],
   images: [],
 };
 
@@ -42,5 +40,15 @@ describe("productInputSchema", () => {
       productInputSchema.safeParse({ ...valid, status: "ACTIVE", variants: [{ ...valid.variants[0], active: false }] })
         .success,
     ).toBe(false);
+  });
+
+  it("does not accept client-owned product or inventory-unit SKUs", () => {
+    const result = productInputSchema.parse({
+      ...valid,
+      sku: "MANUAL-PRODUCT-SKU",
+      variants: [{ ...valid.variants[0], sku: "MANUAL-VARIANT-SKU" }],
+    });
+    expect(result).not.toHaveProperty("sku");
+    expect(result.variants[0]).not.toHaveProperty("sku");
   });
 });

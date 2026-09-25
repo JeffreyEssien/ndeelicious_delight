@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { after } from "next/server";
+import { recordAdminAudit } from "@/lib/audit/admin-audit";
+import { readAdminAuditState } from "@/lib/audit/admin-audit-state";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 import { createStripeRefund, PaymentConfigurationError } from "@/lib/payments/stripe";
 import { deliverPendingOrderNotifications } from "@/lib/orders/notifications";
@@ -23,6 +25,12 @@ export async function POST(request: Request, context: RouteContext<"/api/admin/o
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Enter a valid refund amount and reason." }, { status: 400 });
   const { orderNumber } = await context.params;
+  let previousValue: unknown;
+  try {
+    previousValue = await readAdminAuditState(auth.db, { type: "order", orderNumber });
+  } catch {
+    return Response.json({ error: "The order could not be verified for auditing." }, { status: 500 });
+  }
   const { data, error } = await auth.db.rpc("begin_order_refund", {
     p_order_number: orderNumber,
     p_amount: parsed.data.amount,
@@ -39,6 +47,28 @@ export async function POST(request: Request, context: RouteContext<"/api/admin/o
     return Response.json({ error: message }, { status: 409 });
   }
   const refund = data as RefundPreparation;
+  try {
+    const order = await readAdminAuditState(auth.db, { type: "order", orderNumber });
+    await recordAdminAudit(auth.db, auth, {
+      action: "REFUND_INITIATED",
+      entityType: "order_refund",
+      entityId: refund.refundId,
+      previousValue,
+      newValue: {
+        order,
+        refund: { id: refund.refundId, amount: refund.amount, reason: parsed.data.reason, status: refund.status },
+      },
+      metadata: { orderNumber },
+    });
+  } catch {
+    if (refund.status === "PENDING") {
+      await auth.db.rpc("fail_order_refund", { p_refund_id: refund.refundId, p_error_code: "audit-record-failed" });
+    }
+    return Response.json(
+      { error: "The refund was not sent because its audit record could not be verified." },
+      { status: 500 },
+    );
+  }
   if (refund.status === "SUCCEEDED") return Response.json({ ok: true, alreadyProcessed: true });
   try {
     const stripeRefund = await createStripeRefund({

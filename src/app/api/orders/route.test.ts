@@ -13,7 +13,7 @@ const product: Product = {
   status: "ACTIVE",
   stockQuantity: 10,
   lowStockThreshold: 2,
-  variants: [{ id: "variant-id", name: "Single <large>", priceAdjustment: 0, stockQuantity: 10 }],
+  variants: [{ id: "variant-id", name: "Single <large>", sku: "NDE-00000001", priceAdjustment: 0, stockQuantity: 10 }],
   ingredients: "Flour",
   allergens: ["Wheat"],
 };
@@ -165,6 +165,7 @@ describe("POST /api/orders", () => {
       payment: { checkoutUrl: "https://checkout.stripe.test/order" },
     });
     expect(mocks.itemInsert).toHaveBeenCalledOnce();
+    expect(mocks.itemInsert).toHaveBeenCalledWith([expect.objectContaining({ sku: "NDE-00000001", quantity: 2 })]);
     expect(mocks.reserveInventory).toHaveBeenCalledWith(expect.anything(), "order-id", 60);
     expect(mocks.createStripeCheckout).toHaveBeenCalledWith(
       expect.objectContaining({ orderId: "order-id", amount: 1_000_000, currency: "CAD" }),

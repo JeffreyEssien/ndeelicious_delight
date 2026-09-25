@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = {
+const mocks = vi.hoisted(() => ({
   productSingle: vi.fn(),
   imageCount: vi.fn(),
   imageSingle: vi.fn(),
   upload: vi.fn(),
   remove: vi.fn(),
   getPublicUrl: vi.fn(),
-};
+  readAuditState: vi.fn(),
+  recordAudit: vi.fn(),
+}));
+vi.mock("@/lib/audit/admin-audit-state", () => ({ readAdminAuditState: mocks.readAuditState }));
+vi.mock("@/lib/audit/admin-audit", () => ({ recordAdminAudit: mocks.recordAudit }));
 const db = {
   from: vi.fn((table: string) => {
     if (table === "products") return { select: () => ({ eq: () => ({ maybeSingle: mocks.productSingle }) }) };
@@ -23,7 +27,9 @@ const db = {
     from: vi.fn(() => ({ upload: mocks.upload, remove: mocks.remove, getPublicUrl: mocks.getPublicUrl })),
   },
 };
-vi.mock("@/lib/auth/admin-request", () => ({ requireAdminRequest: () => Promise.resolve({ ok: true, db }) }));
+vi.mock("@/lib/auth/admin-request", () => ({
+  requireAdminRequest: () => Promise.resolve({ ok: true, db, admin: { id: "admin-id" }, sessionId: "session-id" }),
+}));
 
 import { POST } from "./route";
 
@@ -44,6 +50,8 @@ describe("POST /api/admin/products/images", () => {
       },
       error: null,
     });
+    mocks.readAuditState.mockResolvedValue({ id: "11111111-1111-4111-8111-111111111111" });
+    mocks.recordAudit.mockResolvedValue(undefined);
   });
 
   it("rejects SVG uploads before storage access", async () => {
@@ -75,6 +83,11 @@ describe("POST /api/admin/products/images", () => {
     await expect(response.json()).resolves.toEqual({
       image: expect.objectContaining({ id: "image-id", altText: "Product artwork" }),
     });
+    expect(mocks.recordAudit).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({ sessionId: "session-id" }),
+      expect.objectContaining({ action: "PRODUCT_IMAGE_ADDED" }),
+    );
   });
 
   it("enforces the server-side image limit", async () => {

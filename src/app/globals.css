@@ -149,7 +149,7 @@ html[data-theme] .field textarea:focus {
   isolation: isolate;
 }
 .brand-logo img {
-  object-fit: cover;
+  object-fit: contain;
   object-position: center center;
 }
 .brand-logo-compact {

@@ -22,6 +22,7 @@ export type OrderQuote = {
   lines: Array<{
     productId: string;
     variantId: string;
+    sku: string;
     name: string;
     variantName: string;
     quantity: number;
@@ -98,6 +99,7 @@ export function calculateOrderQuote(input: {
     return {
       productId: product.id,
       variantId: variant.id,
+      sku: variant.sku ?? "",
       name: product.name,
       variantName: variant.name,
       quantity: line.quantity,

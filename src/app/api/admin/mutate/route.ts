@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { after } from "next/server";
+import { recordAdminAudit } from "@/lib/audit/admin-audit";
+import { type AdminAuditTarget, readAdminAuditState } from "@/lib/audit/admin-audit-state";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 import {
   InventoryConflictError,
   saveOrderInternalNote,
-  setProductInventory,
+  setVariantInventory,
   transitionAdminOrderStatus,
 } from "@/lib/data/inventory";
 import { deliverPendingOrderNotifications } from "@/lib/orders/notifications";
@@ -16,7 +18,12 @@ const schema = z.discriminatedUnion("action", [
     id: z.uuid(),
     status: z.enum(["ACTIVE", "OUT_OF_STOCK", "DRAFT", "ARCHIVED"]),
   }),
-  z.object({ action: z.literal("inventory"), id: z.uuid(), quantity: z.number().int().min(0) }),
+  z.object({
+    action: z.literal("inventory"),
+    id: z.uuid(),
+    variantId: z.uuid(),
+    quantity: z.number().int().min(0),
+  }),
   z.object({
     action: z.literal("order-status"),
     orderNumber: z.string(),
@@ -26,6 +33,21 @@ const schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("notification-retry"), orderNumber: z.string() }),
   z.object({ action: z.literal("theme"), theme: z.enum(["berry", "purple", "sunrise"]) }),
   z.object({ action: z.literal("cake-quote"), id: z.uuid(), quotedTotal: z.number().int().positive() }),
+  z.object({
+    action: z.literal("cake-status"),
+    id: z.uuid(),
+    status: z.enum([
+      "QUOTE_REQUIRED",
+      "QUOTE_SENT",
+      "CUSTOMER_APPROVED",
+      "CONFIRMED",
+      "PREPARING",
+      "READY",
+      "OUT_FOR_DELIVERY",
+      "DELIVERED",
+      "CANCELLED",
+    ]),
+  }),
   z.object({
     action: z.literal("cake-options"),
     options: z.array(
@@ -94,6 +116,104 @@ const schema = z.discriminatedUnion("action", [
   }),
 ]);
 
+type AdminMutation = z.infer<typeof schema>;
+
+function auditDescriptor(input: AdminMutation): {
+  action: string;
+  entityType: string;
+  entityId: string;
+  target: AdminAuditTarget;
+} {
+  switch (input.action) {
+    case "product-status":
+      return {
+        action: "PRODUCT_STATUS_CHANGED",
+        entityType: "product",
+        entityId: input.id,
+        target: { type: "product", id: input.id },
+      };
+    case "inventory":
+      return {
+        action: "STOCK_CHANGED",
+        entityType: "product",
+        entityId: input.id,
+        target: { type: "product", id: input.id },
+      };
+    case "order-status":
+      return {
+        action: "ORDER_STATUS_CHANGED",
+        entityType: "order",
+        entityId: input.orderNumber,
+        target: { type: "order", orderNumber: input.orderNumber },
+      };
+    case "order-note":
+      return {
+        action: "ORDER_NOTE_CHANGED",
+        entityType: "order",
+        entityId: input.orderNumber,
+        target: { type: "order", orderNumber: input.orderNumber },
+      };
+    case "notification-retry":
+      return {
+        action: "ORDER_NOTIFICATION_RETRY_REQUESTED",
+        entityType: "order",
+        entityId: input.orderNumber,
+        target: { type: "order", orderNumber: input.orderNumber },
+      };
+    case "theme":
+      return {
+        action: "THEME_CHANGED",
+        entityType: "site_setting",
+        entityId: "theme",
+        target: { type: "site-setting", key: "theme" },
+      };
+    case "cake-quote":
+      return {
+        action: "CAKE_QUOTE_SENT",
+        entityType: "custom_cake_order",
+        entityId: input.id,
+        target: { type: "cake-order", id: input.id },
+      };
+    case "cake-status":
+      return {
+        action: "CAKE_REQUEST_STATUS_CHANGED",
+        entityType: "custom_cake_order",
+        entityId: input.id,
+        target: { type: "cake-order", id: input.id },
+      };
+    case "cake-options":
+      return {
+        action: "CAKE_OPTIONS_CHANGED",
+        entityType: "custom_cake_options",
+        entityId: "all",
+        target: { type: "cake-options" },
+      };
+    case "review-status":
+      return {
+        action: "REVIEW_STATUS_CHANGED",
+        entityType: "review",
+        entityId: input.id,
+        target: { type: "review", id: input.id },
+      };
+    case "coupons":
+      return { action: "COUPONS_CHANGED", entityType: "coupons", entityId: "all", target: { type: "coupons" } };
+    case "delivery-zones":
+      return {
+        action: "DELIVERY_ZONES_CHANGED",
+        entityType: "delivery_zones",
+        entityId: "all",
+        target: { type: "delivery-zones" },
+      };
+    case "settings":
+      return {
+        action: "SITE_SETTING_CHANGED",
+        entityType: "site_setting",
+        entityId: input.key,
+        target: { type: "site-setting", key: input.key },
+      };
+  }
+}
+
 export async function POST(request: Request) {
   const auth = await requireAdminRequest(request);
   if (!auth.ok) return auth.response;
@@ -101,6 +221,13 @@ export async function POST(request: Request) {
   if (!parsed.success) return Response.json({ error: "Invalid admin update." }, { status: 400 });
   const supabase = auth.db;
   const input = parsed.data;
+  const audit = auditDescriptor(input);
+  let previousValue: unknown;
+  try {
+    previousValue = await readAdminAuditState(supabase, audit.target);
+  } catch {
+    return Response.json({ error: "The current value could not be verified for auditing." }, { status: 500 });
+  }
   let error: { message: string } | null | undefined;
   if (input.action === "product-status")
     ({ error } = await supabase
@@ -109,7 +236,7 @@ export async function POST(request: Request) {
       .eq("id", input.id));
   if (input.action === "inventory") {
     try {
-      await setProductInventory(supabase, input.id, input.quantity);
+      await setVariantInventory(supabase, input.id, input.variantId, input.quantity);
     } catch (reason) {
       if (reason instanceof InventoryConflictError)
         return Response.json({ error: reason.message, code: reason.code }, { status: 409 });
@@ -147,6 +274,11 @@ export async function POST(request: Request) {
         quote_expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
         updated_at: new Date().toISOString(),
       })
+      .eq("id", input.id));
+  if (input.action === "cake-status")
+    ({ error } = await supabase
+      .from("custom_cake_orders")
+      .update({ status: input.status, updated_at: new Date().toISOString() })
       .eq("id", input.id));
   if (input.action === "cake-options") {
     const current = await supabase.from("custom_cake_options").select("id");
@@ -236,5 +368,14 @@ export async function POST(request: Request) {
         ));
     }
   if (error) return Response.json({ error: "The update could not be saved." }, { status: 500 });
+  try {
+    const newValue = await readAdminAuditState(supabase, audit.target);
+    await recordAdminAudit(supabase, auth, { ...audit, previousValue, newValue });
+  } catch {
+    return Response.json(
+      { error: "The update was saved, but its audit record could not be verified." },
+      { status: 500 },
+    );
+  }
   return Response.json({ ok: true });
 }

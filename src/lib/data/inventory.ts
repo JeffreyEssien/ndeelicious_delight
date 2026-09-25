@@ -85,9 +85,10 @@ export async function saveOrderInternalNote(db: SupabaseClient, orderNumber: str
   if (error) throw error;
 }
 
-export async function setProductInventory(db: SupabaseClient, productId: string, quantity: number) {
-  const { error } = await db.rpc("set_product_inventory", {
+export async function setVariantInventory(db: SupabaseClient, productId: string, variantId: string, quantity: number) {
+  const { error } = await db.rpc("set_variant_inventory", {
     p_product_id: productId,
+    p_variant_id: variantId,
     p_quantity: quantity,
   });
   if (error) {

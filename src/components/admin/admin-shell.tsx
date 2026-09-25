@@ -16,6 +16,7 @@ const links = [
   { label: "Reviews", href: "/admin/reviews", icon: "heart" },
   { label: "Content", href: "/admin/content", icon: "orders" },
   { label: "Delivery", href: "/admin/delivery", icon: "truck" },
+  { label: "Audit log", href: "/admin/audit", icon: "orders" },
   { label: "Settings", href: "/admin/settings", icon: "settings" },
 ];
 
