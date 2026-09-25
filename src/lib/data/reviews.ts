@@ -6,8 +6,9 @@ export async function getApprovedReviews(productId?: string, client?: SupabaseCl
   const db = client ?? createServiceClient();
   let query = db
     .from("reviews")
-    .select("id,customer_name,rating,title,body,created_at")
+    .select("id,customer_name,rating,title,body,created_at,verified_purchase")
     .eq("status", "APPROVED")
+    .eq("verified_purchase", true)
     .order("created_at", { ascending: false })
     .limit(productId ? 12 : 1);
   if (productId) query = query.eq("product_id", productId);
@@ -20,5 +21,6 @@ export async function getApprovedReviews(productId?: string, client?: SupabaseCl
     title: row.title,
     body: row.body,
     createdAt: row.created_at,
+    verifiedPurchase: row.verified_purchase,
   }));
 }

@@ -157,6 +157,16 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
             <Button disabled={!Number(amount)} onClick={save}>
               Save quote
             </Button>
+            {selected.quotedTotal && (
+              <a
+                className="button button-secondary"
+                href={`/admin/documents/cakes/${encodeURIComponent(selected.requestNumber)}/quote`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View quote
+              </a>
+            )}
             <label className="field">
               <span>Request stage</span>
               <select value={selected.status} onChange={(event) => changeStatus(event.target.value)}>
@@ -677,8 +687,9 @@ export function Reviews({ initial }: { initial: AdminReview[] }) {
           <p>
             {item.productName} · {item.customerName}
           </p>
+          <small>{item.verifiedPurchase ? "✓ Purchase verified" : "Legacy unverified review · cannot publish"}</small>
           <div>
-            <Button variant="secondary" onClick={() => update(item.id, "APPROVED")}>
+            <Button variant="secondary" disabled={!item.verifiedPurchase} onClick={() => update(item.id, "APPROVED")}>
               Approve
             </Button>
             <Button variant="ghost" onClick={() => update(item.id, "REJECTED")}>

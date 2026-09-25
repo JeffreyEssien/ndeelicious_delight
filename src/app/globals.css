@@ -117,6 +117,43 @@ body {
     background-color var(--ease),
     color var(--ease);
 }
+
+.verified-review-note {
+  max-width: 360px;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: right;
+}
+.review-invite-page {
+  min-height: 70vh;
+  display: grid;
+  place-items: center;
+  padding-block: 72px;
+}
+.review-invite-card {
+  width: min(640px, 100%);
+  margin: 0;
+  padding: clamp(28px, 5vw, 52px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.review-invite-card > p {
+  color: var(--muted);
+  line-height: 1.65;
+}
+.review-invite-success {
+  text-align: center;
+}
+.review-invite-success .success-mark {
+  margin: 0 auto 20px;
+}
+@media (max-width: 700px) {
+  .verified-review-note {
+    text-align: left;
+  }
+}
 html[data-theme] .site-header {
   background: rgba(var(--header-rgb), 0.92);
 }
@@ -1476,6 +1513,7 @@ h2 {
   border-bottom: 1px solid var(--line);
 }
 .cart-line > img {
+  width: 88px;
   height: 104px;
   border-radius: var(--radius-sm);
 }
@@ -1548,6 +1586,7 @@ h2 {
   border-bottom: 1px solid var(--line);
 }
 .cart-page-line img {
+  width: 140px;
   height: 168px;
   border-radius: var(--radius);
 }

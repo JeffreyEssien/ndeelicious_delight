@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
+import { sendEmailToActiveAdmins } from "@/lib/email/admin-recipients";
+import { createDocumentToken } from "@/lib/documents/tokens";
+import { getSiteUrl } from "@/lib/site-url";
 
 const messages: Record<string, { subject: string; title: string; body: string }> = {
   ORDER_RECEIVED: {
@@ -109,7 +112,7 @@ async function deliver(db: SupabaseClient, notificationId: string) {
     subject: `${message.subject} · ${order.order_number}`,
     html: emailFrame(
       message.title,
-      `<p>Hello ${escapeHtml(order.customer_name)},</p><p>${escapeHtml(message.body)}</p><p><b>Order ${escapeHtml(order.order_number)}</b></p><ul>${summary}</ul><p>${fulfilment}</p>`,
+      `<p>Hello ${escapeHtml(order.customer_name)},</p><p>${escapeHtml(message.body)}</p><p><b>Order ${escapeHtml(order.order_number)}</b></p><ul>${summary}</ul><p>${fulfilment}</p>${notification.event_type === "PAID" ? `<p><a href="${getSiteUrl()}/documents/orders/${encodeURIComponent(order.order_number)}/receipt?token=${createDocumentToken("receipt", order.order_number)}">View, print or save your receipt</a></p>` : ""}`,
     ),
   });
   const now = new Date().toISOString();
@@ -153,8 +156,6 @@ export async function deliverPendingOrderNotifications(db: SupabaseClient, order
 }
 
 export async function sendPaidOrderAdminNotification(db: SupabaseClient, orderNumber: string) {
-  const adminEmail = process.env.ADMIN_EMAIL?.trim();
-  if (!adminEmail) return;
   const { data: order } = await db
     .from("orders")
     .select("customer_name,order_number,order_items(product_name,variant_name,quantity)")
@@ -167,12 +168,36 @@ export async function sendPaidOrderAdminNotification(db: SupabaseClient, orderNu
         `<li>${escapeHtml(item.product_name)} · ${escapeHtml(item.variant_name ?? "Standard")} × ${item.quantity}</li>`,
     )
     .join("");
-  await sendTransactionalEmail({
-    to: adminEmail,
+  await sendEmailToActiveAdmins(db, {
     subject: `Paid order ${order.order_number}`,
     html: emailFrame(
       "A paid order is ready to confirm",
       `<p>${escapeHtml(order.customer_name)} paid for order <b>${escapeHtml(order.order_number)}</b>.</p><ul>${summary}</ul>`,
+    ),
+  });
+}
+
+export async function sendPlacedOrderAdminNotification(db: SupabaseClient, orderNumber: string) {
+  const { data: order } = await db
+    .from("orders")
+    .select(
+      "customer_name,email,order_number,grand_total,currency,fulfilment,order_items(product_name,variant_name,quantity)",
+    )
+    .eq("order_number", orderNumber)
+    .maybeSingle();
+  if (!order) return;
+  const summary = (order.order_items ?? [])
+    .map(
+      (item) =>
+        `<li>${escapeHtml(item.product_name)} · ${escapeHtml(item.variant_name ?? "Standard")} × ${item.quantity}</li>`,
+    )
+    .join("");
+  await sendEmailToActiveAdmins(db, {
+    replyTo: order.email,
+    subject: `New order ${order.order_number} · awaiting payment`,
+    html: emailFrame(
+      "A new order was placed",
+      `<p>${escapeHtml(order.customer_name)} created order <b>${escapeHtml(order.order_number)}</b> for ${escapeHtml(order.fulfilment)}.</p><ul>${summary}</ul><p>Payment is still pending. You’ll receive another alert when Stripe confirms it.</p>`,
     ),
   });
 }

@@ -1,0 +1,224 @@
+.business-document-wrap {
+  width: min(980px, calc(100% - 40px));
+  margin: 36px auto 80px;
+}
+.document-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+.document-toolbar p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.business-document {
+  padding: 52px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(35, 25, 20, 0.08);
+}
+.business-document > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  padding-bottom: 32px;
+  border-bottom: 2px solid var(--ink);
+}
+.business-document > header > div {
+  text-align: right;
+}
+.business-document > header span,
+.document-parties span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.business-document > header h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+.business-document > header b {
+  color: var(--berry);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.document-parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.9fr;
+  gap: 32px;
+  padding: 34px 0;
+}
+.document-parties b {
+  display: block;
+  margin-bottom: 8px;
+}
+.document-parties p {
+  margin: 3px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.document-parties dl {
+  margin: 0;
+}
+.document-parties dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 5px 0;
+  font-size: 11px;
+}
+.document-parties dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+}
+.business-document table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.business-document th {
+  padding: 11px;
+  background: #f4f1ee;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-align: right;
+  text-transform: uppercase;
+}
+.business-document th:first-child,
+.business-document td:first-child {
+  text-align: left;
+}
+.business-document td {
+  padding: 16px 11px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  text-align: right;
+}
+.business-document td b,
+.business-document td small {
+  display: block;
+}
+.business-document td small {
+  margin-top: 5px;
+  color: var(--muted);
+}
+.document-summary {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 48px;
+  padding: 30px 0;
+}
+.document-summary > div p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.document-summary dl {
+  margin: 0;
+}
+.document-summary dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 7px 0;
+  font-size: 12px;
+}
+.document-summary dd {
+  margin: 0;
+  font-weight: 700;
+}
+.document-summary .document-total {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 2px solid var(--ink);
+  font-size: 18px;
+}
+.business-document footer {
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.business-document footer p {
+  margin-bottom: 5px;
+  font-weight: 700;
+}
+.business-document footer small {
+  color: var(--muted);
+}
+@media (max-width: 700px) {
+  .business-document-wrap {
+    width: min(100% - 24px, 980px);
+  }
+  .business-document {
+    padding: 24px;
+  }
+  .business-document > header,
+  .document-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .business-document > header > div {
+    text-align: left;
+  }
+  .document-parties {
+    grid-template-columns: 1fr;
+  }
+  .document-summary {
+    grid-template-columns: 1fr;
+  }
+  .business-document {
+    overflow-x: auto;
+  }
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 13mm;
+  }
+  .admin-sidebar,
+  .admin-topbar,
+  .document-toolbar,
+  .no-print {
+    display: none !important;
+  }
+  .admin-shell {
+    display: block;
+    background: #fff;
+  }
+  .admin-content {
+    display: block;
+  }
+  .business-document-wrap {
+    width: 100%;
+    margin: 0;
+  }
+  .business-document {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .brand-logo {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .business-document table {
+    break-inside: auto;
+  }
+  .business-document tr {
+    break-inside: avoid;
+  }
+  .business-document footer {
+    break-inside: avoid;
+  }
+}

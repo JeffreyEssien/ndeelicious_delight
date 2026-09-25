@@ -10,6 +10,7 @@ import {
   transitionAdminOrderStatus,
 } from "@/lib/data/inventory";
 import { deliverPendingOrderNotifications } from "@/lib/orders/notifications";
+import { sendCakeQuoteEmail } from "@/lib/cakes/notifications";
 import { businessSettingsSchema, storeAppearanceSchema, storefrontContentSchema } from "@/validations/settings";
 
 const schema = z.discriminatedUnion("action", [
@@ -314,7 +315,11 @@ export async function POST(request: Request) {
       }
   }
   if (input.action === "review-status")
-    ({ error } = await supabase.from("reviews").update({ status: input.status }).eq("id", input.id));
+    ({ error } = await supabase
+      .from("reviews")
+      .update({ status: input.status })
+      .eq("id", input.id)
+      .eq("verified_purchase", true));
   if (input.action === "coupons") {
     const values = input.coupons.map((coupon) => ({
       id: z.uuid().safeParse(coupon.id).success ? coupon.id : crypto.randomUUID(),
@@ -377,5 +382,6 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+  if (input.action === "cake-quote") after(() => sendCakeQuoteEmail(supabase, input.id));
   return Response.json({ ok: true });
 }

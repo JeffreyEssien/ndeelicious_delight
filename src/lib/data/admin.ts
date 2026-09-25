@@ -42,6 +42,7 @@ export type AdminReview = {
   body: string;
   status: string;
   productName: string;
+  verifiedPurchase: boolean;
 };
 export type AdminAuditLog = {
   id: string;
@@ -129,7 +130,7 @@ export async function getAdminData(supabase: SupabaseClient) {
     supabase.from("categories").select("id,name").order("sort_order"),
     supabase
       .from("reviews")
-      .select("id,customer_name,rating,title,body,status,products(name)")
+      .select("id,customer_name,rating,title,body,status,verified_purchase,products(name)")
       .order("created_at", { ascending: false }),
     getStorefrontContent(supabase),
     getBusinessSettings(supabase),
@@ -235,6 +236,7 @@ export async function getAdminData(supabase: SupabaseClient) {
     body: row.body,
     status: row.status,
     productName: row.products?.[0]?.name ?? "Product",
+    verifiedPurchase: row.verified_purchase,
   }));
   const auditLogs: AdminAuditLog[] = (auditResult.data ?? []).map((row) => {
     const actor = Array.isArray(row.admins) ? row.admins[0] : row.admins;

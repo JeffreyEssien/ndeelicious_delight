@@ -31,4 +31,5 @@ export type PublicReview = {
   title: string | null;
   body: string;
   createdAt: string;
+  verifiedPurchase: boolean;
 };

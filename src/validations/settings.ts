@@ -33,6 +33,7 @@ export const businessSettingsSchema = z.object({
   orderMinimum: z.number().int().min(0).max(100_000_000),
   taxEnabled: z.boolean(),
   taxLabel: text(40).min(1),
+  taxRegistrationNumber: text(50).default(""),
   taxRateBps: z.number().int().min(0).max(10_000),
   taxDelivery: z.boolean(),
 });

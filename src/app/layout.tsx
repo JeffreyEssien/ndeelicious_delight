@@ -10,6 +10,7 @@ import "./admin.css";
 import "./extras.css";
 import "./gallery.css";
 import "./reviews.css";
+import "./documents.css";
 
 type StoreStyle = CSSProperties & { [key: `--${string}`]: string | number };
 
