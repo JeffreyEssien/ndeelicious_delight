@@ -11,6 +11,8 @@ import "./extras.css";
 import "./gallery.css";
 import "./reviews.css";
 import "./documents.css";
+import "./carousel.css";
+import "./budget.css";
 
 type StoreStyle = CSSProperties & { [key: `--${string}`]: string | number };
 

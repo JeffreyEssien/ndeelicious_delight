@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { BusinessDocument } from "@/components/documents/business-document";
+import { DocumentComposer } from "@/components/documents/document-composer";
 import { requireAdminPageSession } from "@/lib/auth/admin-request";
 import { getBusinessSettings } from "@/lib/data/settings";
 
@@ -25,42 +25,49 @@ export default async function Page({ params }: { params: Promise<{ orderNumber: 
   if (kind === "receipt" && !payment?.paid_at) notFound();
   const address = order.delivery_address_snapshot as Record<string, string> | null;
   return (
-    <BusinessDocument
-      kind={kind === "receipt" ? "Receipt" : "Invoice"}
-      number={`${kind === "receipt" ? "RCT" : "INV"}-${order.order_number.replace(/^ND-/, "")}`}
-      issuedAt={kind === "receipt" ? payment.paid_at : order.created_at}
-      status={kind === "receipt" ? payment.status : order.status}
-      customer={{
-        name: order.customer_name,
-        email: order.email,
-        phone: order.phone,
-        address: address
-          ? [address.street, address.addressLine2, address.city, address.province, address.postalCode]
-              .filter(Boolean)
-              .join(", ")
-          : undefined,
+    <DocumentComposer
+      initial={{
+        kind: kind === "receipt" ? "Receipt" : "Invoice",
+        number: `${kind === "receipt" ? "RCT" : "INV"}-${order.order_number.replace(/^ND-/, "")}`,
+        issuedAt: kind === "receipt" ? payment.paid_at : order.created_at,
+        status: kind === "receipt" ? payment.status : order.status,
+        customer: {
+          name: order.customer_name,
+          email: order.email,
+          phone: order.phone,
+          address: address
+            ? [address.street, address.addressLine2, address.city, address.province, address.postalCode]
+                .filter(Boolean)
+                .join(", ")
+            : undefined,
+        },
+        lines: (order.order_items ?? []).map((line) => ({
+          id: line.id,
+          name: line.product_name,
+          detail: line.variant_name ?? "Standard",
+          sku: line.sku ?? undefined,
+          quantity: line.quantity,
+          unitPrice: line.unit_price,
+          total: line.final_price,
+        })),
+        subtotal: order.subtotal,
+        discount: order.discount_total,
+        delivery: order.delivery_fee,
+        tax: order.tax_total,
+        total: order.grand_total,
+        paid: kind === "receipt" ? payment.amount : undefined,
+        refunded: kind === "receipt" ? payment.refunded_amount : undefined,
+        notes: [
+          order.fulfilment === "pickup" ? "Fulfilment: Bakery pickup" : "Fulfilment: Delivery",
+          ...(order.customer_note ? [`Customer note: ${order.customer_note}`] : []),
+        ],
+        business,
+        design: "classic",
+        accentColor: "#792f49",
+        showSku: true,
+        showBusinessTaxNumber: true,
+        showPaymentDetails: true,
       }}
-      lines={(order.order_items ?? []).map((line) => ({
-        id: line.id,
-        name: line.product_name,
-        detail: line.variant_name ?? "Standard",
-        sku: line.sku ?? undefined,
-        quantity: line.quantity,
-        unitPrice: line.unit_price,
-        total: line.final_price,
-      }))}
-      subtotal={order.subtotal}
-      discount={order.discount_total}
-      delivery={order.delivery_fee}
-      tax={order.tax_total}
-      total={order.grand_total}
-      paid={kind === "receipt" ? payment.amount : undefined}
-      refunded={kind === "receipt" ? payment.refunded_amount : undefined}
-      notes={[
-        order.fulfilment === "pickup" ? "Fulfilment: Bakery pickup" : "Fulfilment: Delivery",
-        ...(order.customer_note ? [`Customer note: ${order.customer_note}`] : []),
-      ]}
-      business={business}
     />
   );
 }

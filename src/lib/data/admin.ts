@@ -1,7 +1,13 @@
 import type { Order } from "@/types";
 import { getDeliveryZones, getProducts } from "./catalog";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getBusinessSettings, getCakeConfiguration, getStoreAppearance, getStorefrontContent } from "./settings";
+import {
+  getBusinessSettings,
+  getCakeConfiguration,
+  getStoreAppearance,
+  getStoreCarousel,
+  getStorefrontContent,
+} from "./settings";
 
 export type AdminCakeRequest = {
   id: string;
@@ -100,6 +106,7 @@ export async function getAdminData(supabase: SupabaseClient) {
     business,
     cakeConfiguration,
     appearance,
+    carousel,
     auditResult,
   ] = await Promise.all([
     getProducts({ includeInactive: true, client: supabase }),
@@ -136,6 +143,7 @@ export async function getAdminData(supabase: SupabaseClient) {
     getBusinessSettings(supabase),
     getCakeConfiguration(supabase),
     getStoreAppearance(supabase),
+    getStoreCarousel(supabase),
     supabase
       .from("admin_audit_logs")
       .select("id,action,entity_type,entity_id,previous_value,new_value,metadata,created_at,admins(name,email)")
@@ -265,6 +273,7 @@ export async function getAdminData(supabase: SupabaseClient) {
     business,
     cakeConfiguration,
     appearance,
+    carousel,
     auditLogs,
   };
 }

@@ -3,7 +3,7 @@ import { formatDate, formatMoney } from "@/lib/format";
 import type { BusinessSettings } from "@/types/content";
 import { PrintDocumentButton } from "./print-document-button";
 
-type Line = {
+export type DocumentLine = {
   id: string;
   name: string;
   detail: string;
@@ -12,14 +12,14 @@ type Line = {
   unitPrice: number;
   total: number;
 };
-type Props = {
+export type BusinessDocumentData = {
   kind: "Invoice" | "Receipt" | "Quote";
   number: string;
   issuedAt: string;
   validUntil?: string | null;
   status: string;
   customer: { name: string; email: string; phone?: string; address?: string };
-  lines: Line[];
+  lines: DocumentLine[];
   subtotal: number;
   discount?: number;
   delivery?: number;
@@ -29,17 +29,27 @@ type Props = {
   refunded?: number;
   notes?: string[];
   business: BusinessSettings;
+  footerMessage?: string;
+  design?: "classic" | "modern" | "minimal";
+  accentColor?: string;
+  showSku?: boolean;
+  showBusinessTaxNumber?: boolean;
+  showPaymentDetails?: boolean;
+  customized?: boolean;
 };
 
-export function BusinessDocument(props: Props) {
+export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocumentData & { showToolbar?: boolean }) {
   const money = (value: number) => formatMoney(value, props.business.currency, props.business.locale);
+  const style = { "--document-accent": props.accentColor ?? "var(--berry)" } as CSSProperties;
   return (
     <main className="business-document-wrap">
-      <div className="document-toolbar no-print">
-        <p>This document is generated from the saved database record.</p>
-        <PrintDocumentButton />
-      </div>
-      <article className="business-document">
+      {showToolbar && (
+        <div className="document-toolbar no-print">
+          <p>This document is generated from the saved database record.</p>
+          <PrintDocumentButton />
+        </div>
+      )}
+      <article className={`business-document document-${props.design ?? "classic"}`} style={style}>
         <header>
           <BrandLogo />
           <div>
@@ -54,7 +64,7 @@ export function BusinessDocument(props: Props) {
             <b>{props.business.businessName}</b>
             <p>{props.business.address}</p>
             <p>{[props.business.contactEmail, props.business.phone].filter(Boolean).join(" · ")}</p>
-            {props.business.taxRegistrationNumber && (
+            {(props.showBusinessTaxNumber ?? true) && props.business.taxRegistrationNumber && (
               <p>
                 {props.business.taxLabel} no. {props.business.taxRegistrationNumber}
               </p>
@@ -100,7 +110,7 @@ export function BusinessDocument(props: Props) {
                   <b>{line.name}</b>
                   <small>
                     {line.detail}
-                    {line.sku ? ` · SKU ${line.sku}` : ""}
+                    {(props.showSku ?? true) && line.sku ? ` · SKU ${line.sku}` : ""}
                   </small>
                 </td>
                 <td>{line.quantity}</td>
@@ -143,13 +153,13 @@ export function BusinessDocument(props: Props) {
               <dt>Total</dt>
               <dd>{money(props.total)}</dd>
             </div>
-            {props.paid !== undefined && (
+            {(props.showPaymentDetails ?? true) && props.paid !== undefined && (
               <div>
                 <dt>Paid</dt>
                 <dd>{money(props.paid)}</dd>
               </div>
             )}
-            {!!props.refunded && (
+            {(props.showPaymentDetails ?? true) && !!props.refunded && (
               <div>
                 <dt>Refunded</dt>
                 <dd>−{money(props.refunded)}</dd>
@@ -158,10 +168,15 @@ export function BusinessDocument(props: Props) {
           </dl>
         </div>
         <footer>
-          <p>Thank you for choosing {props.business.businessName}.</p>
-          <small>Generated from the permanent order record. Keep this document for your records.</small>
+          <p>{props.footerMessage || `Thank you for choosing ${props.business.businessName}.`}</p>
+          <small>
+            {props.customized
+              ? "Customized printable copy. The permanent order and payment records are unchanged."
+              : "Generated from the permanent order record. Keep this document for your records."}
+          </small>
         </footer>
       </article>
     </main>
   );
 }
+import type { CSSProperties } from "react";

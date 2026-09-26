@@ -1,8 +1,14 @@
 import type { z } from "zod";
-import type { businessSettingsSchema, storeAppearanceSchema, storefrontContentSchema } from "@/validations/settings";
+import type {
+  businessSettingsSchema,
+  storeAppearanceSchema,
+  storeCarouselSchema,
+  storefrontContentSchema,
+} from "@/validations/settings";
 
 export type BusinessSettings = z.infer<typeof businessSettingsSchema>;
 export type StoreAppearance = z.infer<typeof storeAppearanceSchema>;
+export type StoreCarousel = z.infer<typeof storeCarouselSchema>;
 
 export type StorefrontContent = z.infer<typeof storefrontContentSchema>;
 

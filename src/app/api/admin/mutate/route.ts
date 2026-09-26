@@ -11,7 +11,12 @@ import {
 } from "@/lib/data/inventory";
 import { deliverPendingOrderNotifications } from "@/lib/orders/notifications";
 import { sendCakeQuoteEmail } from "@/lib/cakes/notifications";
-import { businessSettingsSchema, storeAppearanceSchema, storefrontContentSchema } from "@/validations/settings";
+import {
+  businessSettingsSchema,
+  storeAppearanceSchema,
+  storeCarouselSchema,
+  storefrontContentSchema,
+} from "@/validations/settings";
 
 const schema = z.discriminatedUnion("action", [
   z.object({
@@ -112,7 +117,7 @@ const schema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("settings"),
-    key: z.enum(["content", "business", "appearance"]),
+    key: z.enum(["content", "business", "appearance", "carousel"]),
     value: z.record(z.string(), z.unknown()),
   }),
 ]);
@@ -361,7 +366,12 @@ export async function POST(request: Request) {
         .from("site_settings")
         .upsert({ key: input.key, value: business.data, updated_at: new Date().toISOString() }, { onConflict: "key" }));
     } else {
-      const settingSchema = input.key === "content" ? storefrontContentSchema : storeAppearanceSchema;
+      const settingSchema =
+        input.key === "content"
+          ? storefrontContentSchema
+          : input.key === "carousel"
+            ? storeCarouselSchema
+            : storeAppearanceSchema;
       const settingValue = settingSchema.safeParse(input.value);
       if (!settingValue.success)
         return Response.json({ error: "Check the storefront settings and try again." }, { status: 400 });

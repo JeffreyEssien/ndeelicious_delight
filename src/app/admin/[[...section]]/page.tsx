@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AdminPortal } from "@/components/admin/admin-portal";
 import { requireAdminPageSession } from "@/lib/auth/admin-request";
 import { getAdminData } from "@/lib/data/admin";
+import { getSiteUrl } from "@/lib/site-url";
 export default async function Page({ params }: { params: Promise<{ section?: string[] }> }) {
   const session = await requireAdminPageSession();
   if (!session) redirect("/admin/login");
@@ -20,7 +21,9 @@ export default async function Page({ params }: { params: Promise<{ section?: str
       initialBusiness={data.business}
       initialCakeConfiguration={data.cakeConfiguration}
       initialAppearance={data.appearance}
+      initialCarousel={data.carousel}
       initialAuditLogs={data.auditLogs}
+      siteUrl={getSiteUrl()}
     />
   );
 }

@@ -47,9 +47,149 @@
   font-size: 28px;
 }
 .business-document > header b {
-  color: var(--berry);
+  color: var(--document-accent, var(--berry));
   font-size: 11px;
   text-transform: uppercase;
+}
+.document-modern {
+  border-top: 10px solid var(--document-accent, var(--berry));
+}
+.document-modern > header {
+  border-bottom-color: var(--document-accent, var(--berry));
+}
+.document-modern th {
+  background: var(--document-accent, var(--berry));
+  color: #fff;
+}
+.document-minimal {
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+.document-minimal > header {
+  border-bottom-width: 1px;
+}
+.document-minimal th {
+  background: transparent;
+  border-bottom: 1px solid var(--ink);
+}
+.document-studio {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  min-height: calc(100vh - 72px);
+}
+.document-editor {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+}
+.document-editor-head {
+  padding: 28px 28px 20px;
+}
+.document-editor-head > span {
+  color: var(--berry);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.document-editor-head h1 {
+  margin: 6px 0 10px;
+  font-size: 28px;
+}
+.document-editor-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.document-editor > nav {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+.document-editor > nav button {
+  padding: 13px 5px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 750;
+  text-transform: capitalize;
+}
+.document-editor > nav button.active {
+  border-color: var(--berry);
+  color: var(--berry);
+}
+.document-editor-fields {
+  display: grid;
+  gap: 15px;
+  padding: 24px 28px 110px;
+}
+.document-editor-fields input[type="color"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.document-line-editor {
+  display: grid;
+  gap: 14px;
+}
+.document-line-editor fieldset {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.document-line-editor legend {
+  padding: 0 6px;
+  color: var(--berry);
+  font-size: 10px;
+  font-weight: 800;
+}
+.document-number-row,
+.document-totals-editor {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.document-totals-editor {
+  margin-top: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.document-totals-editor .button {
+  grid-column: 1 / -1;
+}
+.document-editor-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 28px;
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+}
+.document-preview {
+  min-width: 0;
+  padding: 1px;
+  background: #eeecea;
+}
+.document-preview .business-document-wrap {
+  width: min(920px, calc(100% - 48px));
 }
 .document-parties {
   display: grid;
@@ -94,6 +234,14 @@
   letter-spacing: 0.08em;
   text-align: right;
   text-transform: uppercase;
+}
+.business-document.document-modern th {
+  background: var(--document-accent, var(--berry));
+  color: #fff;
+}
+.business-document.document-minimal th {
+  background: transparent;
+  color: var(--muted);
 }
 .business-document th:first-child,
 .business-document td:first-child {
@@ -156,8 +304,30 @@
   color: var(--muted);
 }
 @media (max-width: 700px) {
+  .document-studio {
+    grid-template-columns: 1fr;
+  }
+  .document-editor {
+    position: static;
+    height: auto;
+    border-right: 0;
+  }
+  .document-preview .business-document-wrap {
+    width: calc(100% - 20px);
+  }
   .business-document-wrap {
     width: min(100% - 24px, 980px);
+  }
+  .document-studio {
+    display: block;
+    min-height: 0;
+  }
+  .document-preview {
+    padding: 0;
+    background: #fff;
+  }
+  .document-preview .business-document-wrap {
+    width: 100%;
   }
   .business-document {
     padding: 24px;
@@ -197,6 +367,17 @@
   }
   .admin-content {
     display: block;
+  }
+  .document-studio {
+    display: block;
+    min-height: 0;
+  }
+  .document-preview {
+    padding: 0;
+    background: #fff;
+  }
+  .document-preview .business-document-wrap {
+    width: 100%;
   }
   .business-document-wrap {
     width: 100%;

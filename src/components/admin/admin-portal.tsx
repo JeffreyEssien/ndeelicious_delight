@@ -17,11 +17,13 @@ import { Icon } from "@/components/ui/icons";
 import { CakeWorkspace, Coupons, Reviews } from "@/components/admin/live-sections";
 import { ProductEditor } from "@/components/admin/product-editor";
 import { ContentSettings } from "@/components/admin/content-settings";
+import { CarouselEditor } from "@/components/admin/carousel-editor";
 import { useBusinessSettings, useMoney, useStoreTheme, useToast, type StoreTheme } from "@/components/providers";
 import type {
   BusinessSettings as BusinessSettingsData,
   CakeConfigurationData,
   StoreAppearance,
+  StoreCarousel,
   StorefrontContent,
 } from "@/types/content";
 
@@ -38,7 +40,9 @@ type Props = {
   initialBusiness: BusinessSettingsData;
   initialCakeConfiguration: CakeConfigurationData;
   initialAppearance: StoreAppearance;
+  initialCarousel: StoreCarousel;
   initialAuditLogs: AdminAuditLog[];
+  siteUrl: string;
 };
 const titles: Record<string, string> = {
   dashboard: "Bakery overview",
@@ -50,6 +54,7 @@ const titles: Record<string, string> = {
   coupons: "Coupons & promotions",
   reviews: "Customer reviews",
   content: "Storefront content",
+  carousel: "Homepage carousel",
   delivery: "Delivery zones",
   settings: "Business settings",
   audit: "Audit log",
@@ -95,7 +100,9 @@ export function AdminPortal({
   initialBusiness,
   initialCakeConfiguration,
   initialAppearance,
+  initialCarousel,
   initialAuditLogs,
+  siteUrl,
 }: Props) {
   const [products, setProducts] = useState(initialProducts);
   const [orders, setOrders] = useState(initialOrders);
@@ -257,6 +264,7 @@ export function AdminPortal({
       {section === "coupons" && <Coupons initial={initialCoupons} products={products} categories={initialCategories} />}
       {section === "reviews" && <Reviews initial={initialReviews} />}
       {section === "content" && <ContentSettings initial={initialContent} />}
+      {section === "carousel" && <CarouselEditor products={products} initial={initialCarousel} siteUrl={siteUrl} />}
       {section === "delivery" && <DeliveryZones zones={zones} setZones={setZones} busy={zoneBusy} onSave={saveZones} />}
       {section === "audit" && <AuditLog entries={initialAuditLogs} />}
       {section === "settings" && (
@@ -628,7 +636,7 @@ function OrderDetail({
             href={`/admin/documents/orders/${encodeURIComponent(order.id)}/invoice`}
             target="_blank"
           >
-            Invoice
+            Create invoice
           </Link>
           {order.payment?.paidAt && (
             <Link
@@ -636,7 +644,7 @@ function OrderDetail({
               href={`/admin/documents/orders/${encodeURIComponent(order.id)}/receipt`}
               target="_blank"
             >
-              Receipt
+              Create receipt
             </Link>
           )}
         </div>

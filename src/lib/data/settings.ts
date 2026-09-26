@@ -6,9 +6,38 @@ import type {
   CakeConfigurationData,
   CakeOption,
   StoreAppearance,
+  StoreCarousel,
   StorefrontContent,
 } from "@/types/content";
-import { businessSettingsSchema, storeAppearanceSchema, storefrontContentSchema } from "@/validations/settings";
+import {
+  businessSettingsSchema,
+  storeAppearanceSchema,
+  storeCarouselSchema,
+  storefrontContentSchema,
+} from "@/validations/settings";
+
+export const defaultStoreCarousel: StoreCarousel = {
+  enabled: false,
+  eyebrow: "From our kitchen",
+  headline: "Today’s favourites",
+  body: "Browse a few of our most-loved bakes, made fresh for every celebration.",
+  productIds: [],
+  style: "editorial",
+  autoplay: true,
+  intervalMs: 6000,
+  loop: true,
+  showPrices: true,
+  showAddToCart: true,
+  social: {
+    headline: "Made fresh for you",
+    callToAction: "Order online",
+    websiteUrl: "",
+    format: "portrait",
+    template: "berry",
+    showLogo: true,
+    showPrice: true,
+  },
+};
 
 export const defaultStoreAppearance: StoreAppearance = {
   useCustomColors: false,
@@ -58,6 +87,15 @@ export async function getStoreAppearance(client?: SupabaseClient): Promise<Store
     return storeAppearanceSchema.parse(await setting<StoreAppearance>("appearance", client));
   } catch (error) {
     if (error instanceof Error && error.message === "Missing site setting: appearance") return defaultStoreAppearance;
+    throw error;
+  }
+}
+
+export async function getStoreCarousel(client?: SupabaseClient): Promise<StoreCarousel> {
+  try {
+    return storeCarouselSchema.parse(await setting<StoreCarousel>("carousel", client));
+  } catch (error) {
+    if (error instanceof Error && error.message === "Missing site setting: carousel") return defaultStoreCarousel;
     throw error;
   }
 }

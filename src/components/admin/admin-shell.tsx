@@ -15,6 +15,7 @@ const links = [
   { label: "Coupons", href: "/admin/coupons", icon: "coupon" },
   { label: "Reviews", href: "/admin/reviews", icon: "heart" },
   { label: "Content", href: "/admin/content", icon: "orders" },
+  { label: "Homepage carousel", href: "/admin/carousel", icon: "grid" },
   { label: "Delivery", href: "/admin/delivery", icon: "truck" },
   { label: "Audit log", href: "/admin/audit", icon: "orders" },
   { label: "Settings", href: "/admin/settings", icon: "settings" },
