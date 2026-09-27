@@ -2,54 +2,72 @@ import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
 import { getDeliveryZones, getProducts } from "@/lib/data/catalog";
-import { getBusinessSettings, getStoreAppearance, getStorefrontContent, getStoreTheme } from "@/lib/data/settings";
+import {
+  getBusinessSettings,
+  getMarketingExport,
+  getStoreAppearance,
+  getStorefrontContent,
+  getStoreTheme,
+} from "@/lib/data/settings";
+import { organizationJsonLd, serializeJsonLd } from "@/lib/seo";
 import { getSiteUrl } from "@/lib/site-url";
+import { resolveThemeTokens, themeTokenCss } from "@/lib/theme/tokens";
 import "./globals.css";
 import "./store.css";
 import "./admin.css";
 import "./extras.css";
 import "./gallery.css";
 import "./reviews.css";
+import "./documents.css";
+import "./carousel.css";
+import "./budget.css";
 
 type StoreStyle = CSSProperties & { [key: `--${string}`]: string | number };
 
 export async function generateMetadata(): Promise<Metadata> {
   const [content, business] = await Promise.all([getStorefrontContent(), getBusinessSettings()]);
+  const title = `${business.businessName} — Cakes & Pastries`;
+  const description = content.home.hero.supportingText;
+  const image = content.home.hero.image;
   return {
     metadataBase: new URL(getSiteUrl()),
     title: {
-      default: `${business.businessName} — Cakes & Pastries`,
+      default: title,
       template: `%s · ${business.businessName}`,
     },
-    description: content.home.hero.supportingText,
+    description,
     openGraph: {
-      title: business.businessName,
-      description: content.home.hero.headline.replaceAll("\n", " "),
-      images: content.home.hero.image ? [content.home.hero.image] : [],
+      title,
+      description,
+      siteName: business.businessName,
+      locale: business.locale.replace("-", "_"),
+      type: "website",
+      images: image ? [{ url: image, alt: content.home.hero.imageAlt || business.businessName }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: image ? [{ url: image, alt: content.home.hero.imageAlt || business.businessName }] : [],
     },
   };
 }
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [products, deliveryZones, initialTheme, business, appearance] = await Promise.all([
+  const [products, deliveryZones, initialTheme, business, appearance, marketing] = await Promise.all([
     getProducts(),
     getDeliveryZones(),
     getStoreTheme(),
     getBusinessSettings(),
     getStoreAppearance(),
+    getMarketingExport(),
   ]);
-  const customColors: StoreStyle = appearance.useCustomColors
-    ? ({
-        "--bg": appearance.colors.background,
-        "--surface": appearance.colors.surface,
-        "--ink": appearance.colors.text,
-        "--muted": appearance.colors.mutedText,
-        "--berry": appearance.colors.primary,
-        "--berry-dark": appearance.colors.primaryDark,
-        "--accent": appearance.colors.accent,
-      } satisfies StoreStyle)
-    : {};
-  const storeStyle: StoreStyle = { ...customColors, "--product-columns": appearance.productColumns };
+  const organization = organizationJsonLd({ business, logoUrl: marketing.logoUrl, siteUrl: getSiteUrl() });
+  const themeTokens = resolveThemeTokens(initialTheme, appearance);
+  const storeStyle: StoreStyle = {
+    ...themeTokenCss(themeTokens),
+    "--product-columns": appearance.productColumns,
+  };
   return (
     <html
       lang={business.locale}
@@ -61,7 +79,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       style={storeStyle}
     >
       <body>
-        <Providers products={products} deliveryZones={deliveryZones} initialTheme={initialTheme} business={business}>
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: serializeJsonLd escapes HTML-significant characters. */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(organization) }} />
+        <Providers
+          products={products}
+          deliveryZones={deliveryZones}
+          initialTheme={initialTheme}
+          business={business}
+          themeTokens={themeTokens}
+        >
           {children}
         </Providers>
       </body>

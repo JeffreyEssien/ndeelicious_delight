@@ -3,9 +3,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { CartLine, DeliveryZone, Product } from "@/types";
 import type { BusinessSettings } from "@/types/content";
 import { formatMoney } from "@/lib/format";
+import type { StoreTheme, ThemeTokens } from "@/lib/theme/tokens";
+import { getDefaultPurchasableVariant, getPurchasableVariants } from "@/features/catalog/availability";
 
 type Toast = { id: number; message: string };
-export type StoreTheme = "berry" | "purple" | "sunrise";
+export type { StoreTheme } from "@/lib/theme/tokens";
 type CartValue = {
   lines: CartLine[];
   count: number;
@@ -24,6 +26,7 @@ const ThemeContext = createContext<ThemeValue | null>(null);
 const ProductsContext = createContext<Product[]>([]);
 const DeliveryZonesContext = createContext<DeliveryZone[]>([]);
 const BusinessContext = createContext<BusinessSettings | null>(null);
+const ThemeTokensContext = createContext<ThemeTokens | null>(null);
 
 export function Providers({
   children,
@@ -31,12 +34,14 @@ export function Providers({
   deliveryZones,
   initialTheme,
   business,
+  themeTokens,
 }: {
   children: React.ReactNode;
   products: Product[];
   deliveryZones: DeliveryZone[];
   initialTheme: StoreTheme;
   business: BusinessSettings;
+  themeTokens: ThemeTokens;
 }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [open, setOpen] = useState(false);
@@ -67,10 +72,15 @@ export function Providers({
       count: lines.reduce((n, l) => n + l.quantity, 0),
       open,
       setOpen,
-      add(product, variantId = product.variants[0]?.id ?? "", quantity = 1) {
-        const variant = product.variants.find((item) => item.id === variantId);
+      add(product, variantId, quantity = 1) {
+        const purchasable = getPurchasableVariants(product);
+        const variant = variantId
+          ? purchasable.find((item) => item.id === variantId)
+          : getDefaultPurchasableVariant(product);
         if (!variant) {
-          notify("This product does not have an available option.");
+          notify(
+            purchasable.length > 1 ? "Choose an option before adding this product." : "This product is unavailable.",
+          );
           return;
         }
         const limit = product.trackInventory === false ? 50 : Math.min(50, variant.stockQuantity);
@@ -78,11 +88,19 @@ export function Providers({
           notify("This option is currently unavailable.");
           return;
         }
+        const selectedVariantId = variant.id;
         setLines((current) => {
-          const found = current.find((l) => l.productId === product.id && l.variantId === variantId);
+          const found = current.find((l) => l.productId === product.id && l.variantId === selectedVariantId);
           return found
             ? current.map((l) => (l === found ? { ...l, quantity: Math.min(limit, l.quantity + quantity) } : l))
-            : [...current, { productId: product.id, variantId, quantity: Math.min(limit, Math.max(1, quantity)) }];
+            : [
+                ...current,
+                {
+                  productId: product.id,
+                  variantId: selectedVariantId,
+                  quantity: Math.min(limit, Math.max(1, quantity)),
+                },
+              ];
         });
         notify("Added to your basket.");
       },
@@ -117,24 +135,26 @@ export function Providers({
   );
   return (
     <BusinessContext.Provider value={business}>
-      <ProductsContext.Provider value={products}>
-        <DeliveryZonesContext.Provider value={deliveryZones}>
-          <ThemeContext.Provider value={{ theme, setTheme }}>
-            <ToastContext.Provider value={notify}>
-              <CartContext.Provider value={value}>
-                {children}
-                <div className="toast-region" aria-live="polite">
-                  {toasts.map((t) => (
-                    <div className="toast" key={t.id}>
-                      ✓ {t.message}
-                    </div>
-                  ))}
-                </div>
-              </CartContext.Provider>
-            </ToastContext.Provider>
-          </ThemeContext.Provider>
-        </DeliveryZonesContext.Provider>
-      </ProductsContext.Provider>
+      <ThemeTokensContext.Provider value={themeTokens}>
+        <ProductsContext.Provider value={products}>
+          <DeliveryZonesContext.Provider value={deliveryZones}>
+            <ThemeContext.Provider value={{ theme, setTheme }}>
+              <ToastContext.Provider value={notify}>
+                <CartContext.Provider value={value}>
+                  {children}
+                  <div className="toast-region" aria-live="polite">
+                    {toasts.map((t) => (
+                      <div className="toast" key={t.id}>
+                        ✓ {t.message}
+                      </div>
+                    ))}
+                  </div>
+                </CartContext.Provider>
+              </ToastContext.Provider>
+            </ThemeContext.Provider>
+          </DeliveryZonesContext.Provider>
+        </ProductsContext.Provider>
+      </ThemeTokensContext.Provider>
     </BusinessContext.Provider>
   );
 }
@@ -161,6 +181,12 @@ export function useDeliveryZones() {
 export function useBusinessSettings() {
   const value = useContext(BusinessContext);
   if (!value) throw new Error("Business settings are unavailable.");
+  return value;
+}
+
+export function useThemeTokens() {
+  const value = useContext(ThemeTokensContext);
+  if (!value) throw new Error("Theme tokens are unavailable.");
   return value;
 }
 

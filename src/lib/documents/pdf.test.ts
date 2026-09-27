@@ -1,0 +1,48 @@
+import { describe, expect, it } from "vitest";
+import { documentTextLines, renderDocumentPdf } from "./pdf";
+
+const document = {
+  id: "doc-1",
+  revision: 1,
+  kind: "Receipt" as const,
+  number: "RCT-100",
+  issuedAt: "2026-09-26T12:00:00.000Z",
+  status: "PAID",
+  customer: { name: "Ada Customer", email: "ada@example.com" },
+  lines: [{ id: "1", name: "Cake", detail: "Vanilla", quantity: 1, unitPrice: 1000, total: 1000 }],
+  subtotal: 1000,
+  tax: 130,
+  total: 1130,
+  paid: 1130,
+  business: {
+    businessName: "Ndeelicious Delight",
+    contactEmail: "hello@example.com",
+    phone: "",
+    whatsapp: "",
+    address: "Toronto",
+    country: "CA" as const,
+    province: "ON",
+    postalCode: "M1M 1M1",
+    locale: "en-CA",
+    timezone: "America/Toronto",
+    openingHours: "",
+    currency: "CAD",
+    cakeLeadHours: 48,
+    instagramUrl: "",
+    deliveryEnabled: true,
+    pickupEnabled: true,
+    orderMinimum: 0,
+    taxEnabled: true,
+    taxLabel: "HST",
+    taxRegistrationNumber: "123",
+    taxRateBps: 1300,
+    taxDelivery: true,
+  },
+};
+
+describe("document PDF", () => {
+  it("uses the normalized DTO and Canadian configured tax label", () => {
+    expect(documentTextLines(document)).toContain("HST (13%): $1.30");
+    expect(renderDocumentPdf(document).subarray(0, 8).toString()).toBe("%PDF-1.4");
+  });
+});

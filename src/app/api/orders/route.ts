@@ -8,7 +8,11 @@ import { claimOrderCoupon, getCoupon } from "@/lib/data/coupons";
 import { InventoryConflictError, reserveOrderInventory } from "@/lib/data/inventory";
 import { getBusinessSettings } from "@/lib/data/settings";
 import { createStripeCheckout, expireStripeCheckout, PaymentConfigurationError } from "@/lib/payments/stripe";
-import { deliverOrderNotification, queueOrderNotification } from "@/lib/orders/notifications";
+import {
+  deliverOrderNotification,
+  queueOrderNotification,
+  sendPlacedOrderAdminNotification,
+} from "@/lib/orders/notifications";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const orderNumber = () => `ND-${Date.now().toString().slice(-7)}${Math.floor(Math.random() * 10)}`;
@@ -160,6 +164,7 @@ export async function POST(request: Request) {
     if (paymentError) throw paymentError;
     const notificationId = await queueOrderNotification(service, order.id, "ORDER_RECEIVED").catch(() => undefined);
     if (notificationId) after(() => deliverOrderNotification(service, notificationId));
+    after(() => sendPlacedOrderAdminNotification(service, order.order_number));
     return Response.json(
       {
         order: { number: order.order_number, total: quote.grandTotal, status: "PENDING_PAYMENT" },

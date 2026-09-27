@@ -1,18 +1,23 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ProductGrid } from "@/components/product/product-grid";
+import { ProductCarousel } from "@/components/product/product-carousel";
 import { ContentLines } from "@/components/ui/content-lines";
 import { Icon } from "@/components/ui/icons";
 import { getProducts } from "@/lib/data/catalog";
 import { getApprovedReviews } from "@/lib/data/reviews";
-import { getBusinessSettings, getStorefrontContent } from "@/lib/data/settings";
+import { getBusinessSettings, getStoreCarousel, getStorefrontContent } from "@/lib/data/settings";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function Home() {
-  const [products, content, business, reviews] = await Promise.all([
+  const [products, content, business, reviews, carousel] = await Promise.all([
     getProducts(),
     getStorefrontContent(),
     getBusinessSettings(),
     getApprovedReviews(),
+    getStoreCarousel(),
   ]);
   const home = content.home;
   const featured = products.filter((product) => product.featured);
@@ -67,6 +72,7 @@ export default async function Home() {
           ))}
         </div>
       </section>
+      <ProductCarousel products={products} settings={carousel} />
       <section className="section section-tint">
         <div className="site-container">
           <div className="section-title-row">

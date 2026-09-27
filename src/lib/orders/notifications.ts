@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
+import { sendEmailToActiveAdmins } from "@/lib/email/admin-recipients";
+import { createAccessToken, issueOrderDocument, latestDocument } from "@/lib/documents/service";
+import { getSiteUrl } from "@/lib/site-url";
 
 const messages: Record<string, { subject: string; title: string; body: string }> = {
   ORDER_RECEIVED: {
@@ -104,12 +107,25 @@ async function deliver(db: SupabaseClient, notificationId: string) {
             .filter(Boolean)
             .join(", "),
         );
+  let receiptUrl = "";
+  let receiptDocumentId = "";
+  if (notification.event_type === "PAID") {
+    const existing = await latestDocument(db, "RECEIPT", "order_id", notification.order_id);
+    const receipt = existing
+      ? {
+          document: existing,
+          token: await createAccessToken(db, existing.id, new Date(Date.now() + 3650 * 86400000).toISOString()),
+        }
+      : await issueOrderDocument(db, order.order_number, "RECEIPT");
+    receiptUrl = `${getSiteUrl()}/documents/orders/${encodeURIComponent(order.order_number)}/receipt?token=${receipt.token}`;
+    receiptDocumentId = receipt.document.id;
+  }
   const result = await sendTransactionalEmail({
     to: notification.recipient,
     subject: `${message.subject} · ${order.order_number}`,
     html: emailFrame(
       message.title,
-      `<p>Hello ${escapeHtml(order.customer_name)},</p><p>${escapeHtml(message.body)}</p><p><b>Order ${escapeHtml(order.order_number)}</b></p><ul>${summary}</ul><p>${fulfilment}</p>`,
+      `<p>Hello ${escapeHtml(order.customer_name)},</p><p>${escapeHtml(message.body)}</p><p><b>Order ${escapeHtml(order.order_number)}</b></p><ul>${summary}</ul><p>${fulfilment}</p>${receiptUrl ? `<p><a href="${receiptUrl}">View or download your receipt</a></p>` : ""}`,
     ),
   });
   const now = new Date().toISOString();
@@ -132,6 +148,8 @@ async function deliver(db: SupabaseClient, notificationId: string) {
     event_type: result.sent ? "EMAIL_SENT" : "EMAIL_FAILED",
     metadata: { notificationId: notification.id, eventType: notification.event_type },
   });
+  if (result.sent && receiptDocumentId)
+    await db.from("document_events").insert({ document_id: receiptDocumentId, action: "RECEIPT_SENT" });
   return result.sent;
 }
 
@@ -153,8 +171,6 @@ export async function deliverPendingOrderNotifications(db: SupabaseClient, order
 }
 
 export async function sendPaidOrderAdminNotification(db: SupabaseClient, orderNumber: string) {
-  const adminEmail = process.env.ADMIN_EMAIL?.trim();
-  if (!adminEmail) return;
   const { data: order } = await db
     .from("orders")
     .select("customer_name,order_number,order_items(product_name,variant_name,quantity)")
@@ -167,12 +183,36 @@ export async function sendPaidOrderAdminNotification(db: SupabaseClient, orderNu
         `<li>${escapeHtml(item.product_name)} · ${escapeHtml(item.variant_name ?? "Standard")} × ${item.quantity}</li>`,
     )
     .join("");
-  await sendTransactionalEmail({
-    to: adminEmail,
+  await sendEmailToActiveAdmins(db, {
     subject: `Paid order ${order.order_number}`,
     html: emailFrame(
       "A paid order is ready to confirm",
       `<p>${escapeHtml(order.customer_name)} paid for order <b>${escapeHtml(order.order_number)}</b>.</p><ul>${summary}</ul>`,
+    ),
+  });
+}
+
+export async function sendPlacedOrderAdminNotification(db: SupabaseClient, orderNumber: string) {
+  const { data: order } = await db
+    .from("orders")
+    .select(
+      "customer_name,email,order_number,grand_total,currency,fulfilment,order_items(product_name,variant_name,quantity)",
+    )
+    .eq("order_number", orderNumber)
+    .maybeSingle();
+  if (!order) return;
+  const summary = (order.order_items ?? [])
+    .map(
+      (item) =>
+        `<li>${escapeHtml(item.product_name)} · ${escapeHtml(item.variant_name ?? "Standard")} × ${item.quantity}</li>`,
+    )
+    .join("");
+  await sendEmailToActiveAdmins(db, {
+    replyTo: order.email,
+    subject: `New order ${order.order_number} · awaiting payment`,
+    html: emailFrame(
+      "A new order was placed",
+      `<p>${escapeHtml(order.customer_name)} created order <b>${escapeHtml(order.order_number)}</b> for ${escapeHtml(order.fulfilment)}.</p><ul>${summary}</ul><p>Payment is still pending. You’ll receive another alert when Stripe confirms it.</p>`,
     ),
   });
 }

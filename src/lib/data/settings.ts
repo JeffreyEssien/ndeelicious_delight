@@ -1,14 +1,36 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { StoreTheme } from "@/components/providers";
+import type { StoreTheme } from "@/lib/theme/tokens";
 import { createServiceClient } from "@/lib/supabase/service";
 import type {
   BusinessSettings,
   CakeConfigurationData,
   CakeOption,
   StoreAppearance,
+  StoreCarousel,
   StorefrontContent,
+  MarketingExport,
 } from "@/types/content";
-import { businessSettingsSchema, storeAppearanceSchema, storefrontContentSchema } from "@/validations/settings";
+import {
+  businessSettingsSchema,
+  storeAppearanceSchema,
+  storeCarouselSchema,
+  storefrontContentSchema,
+  marketingExportSchema,
+} from "@/validations/settings";
+
+export const defaultStoreCarousel: StoreCarousel = {
+  enabled: false,
+  eyebrow: "From our kitchen",
+  headline: "Today’s favourites",
+  body: "Browse a few of our most-loved bakes, made fresh for every celebration.",
+  productIds: [],
+  style: "editorial",
+  autoplay: false,
+  intervalMs: 6000,
+  loop: true,
+  showPrices: true,
+  showAddToCart: true,
+};
 
 export const defaultStoreAppearance: StoreAppearance = {
   useCustomColors: false,
@@ -27,6 +49,19 @@ export const defaultStoreAppearance: StoreAppearance = {
   productColumns: 4,
 };
 
+export const defaultMarketingExport: MarketingExport = {
+  headline: "Made fresh for you",
+  callToAction: "Order online",
+  websiteUrl: "",
+  format: "portrait",
+  template: "brand",
+  showLogo: true,
+  showPrice: true,
+  showSafeZone: true,
+  logoUrl: "/WhatsApp Image 2026-09-15 at 22.16.43.jpeg",
+  productIds: [],
+};
+
 async function setting<T>(key: string, client?: SupabaseClient): Promise<T> {
   const db = client ?? createServiceClient();
   const { data, error } = await db.from("site_settings").select("value").eq("key", key).maybeSingle();
@@ -35,9 +70,13 @@ async function setting<T>(key: string, client?: SupabaseClient): Promise<T> {
   return data.value as T;
 }
 
-export async function getStoreTheme(): Promise<StoreTheme> {
+export async function getStoreTheme(client?: SupabaseClient): Promise<StoreTheme> {
   try {
-    const { data } = await createServiceClient().from("site_settings").select("value").eq("key", "theme").maybeSingle();
+    const { data } = await (client ?? createServiceClient())
+      .from("site_settings")
+      .select("value")
+      .eq("key", "theme")
+      .maybeSingle();
     const theme = String(data?.value);
     return ["berry", "purple", "sunrise"].includes(theme) ? (theme as StoreTheme) : "berry";
   } catch {
@@ -58,6 +97,24 @@ export async function getStoreAppearance(client?: SupabaseClient): Promise<Store
     return storeAppearanceSchema.parse(await setting<StoreAppearance>("appearance", client));
   } catch (error) {
     if (error instanceof Error && error.message === "Missing site setting: appearance") return defaultStoreAppearance;
+    throw error;
+  }
+}
+
+export async function getStoreCarousel(client?: SupabaseClient): Promise<StoreCarousel> {
+  try {
+    return storeCarouselSchema.parse(await setting<StoreCarousel>("carousel", client));
+  } catch (error) {
+    if (error instanceof Error && error.message === "Missing site setting: carousel") return defaultStoreCarousel;
+    throw error;
+  }
+}
+
+export async function getMarketingExport(client?: SupabaseClient): Promise<MarketingExport> {
+  try {
+    return marketingExportSchema.parse(await setting<MarketingExport>("marketing", client));
+  } catch (error) {
+    if (error instanceof Error && error.message === "Missing site setting: marketing") return defaultMarketingExport;
     throw error;
   }
 }

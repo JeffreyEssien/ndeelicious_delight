@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateCakeQuote } from "./pricing";
+import { calculateCakeConfigurationPrice, calculateCakeQuote } from "./pricing";
 import type { CakeConfiguration } from "@/types";
 const cake: CakeConfiguration = {
   occasion: "Birthday",
@@ -37,7 +37,11 @@ const options = [
 ];
 describe("cake pricing", () => {
   it("calculates all database adjustments", () => {
-    expect(calculateCakeQuote(cake, options, { now: new Date("2026-09-15T10:00:00Z") }).estimatedTotal).toBe(5550000);
+    const configurationPrice = calculateCakeConfigurationPrice(cake, options).total;
+    expect(configurationPrice).toBe(5550000);
+    expect(calculateCakeQuote(cake, options, { now: new Date("2026-09-15T10:00:00Z") }).estimatedTotal).toBe(
+      configurationPrice,
+    );
   });
   it("routes database-marked designs to quote review", () => {
     expect(

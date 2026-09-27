@@ -1,12 +1,16 @@
 # Project Progress and TODOs
 
-Last updated: 2026-09-25
+Last updated: 2026-09-27
 Active development branch: `develop`
-Baseline commit: `fc769b6` (`the initial push`)
+Baseline commit for the premium pass: `9818e17`
 
 This is the living checkpoint for implementation progress. Update it when a feature, migration, test, deployment prerequisite, or known limitation changes. `implementation.md` remains the full product plan and definition of done.
 
 ## Current checkpoint
+
+The premium UX/system-simplicity pass is implemented through its application and database layers. Theme resolution, carousel agency/availability, maximum-budget discovery, persisted official documents, accepted-quote checkout, and the independent Marketing studio now share canonical domain helpers instead of duplicating financial or availability logic.
+
+Migrations `0022` through `0026` are additive and have been applied to the currently configured Supabase database. Browser E2E remains intentionally open until isolated Supabase/Stripe services and a browser harness are configured; production services must not be used for destructive automated journeys.
 
 The initial full-stack application is committed on `main`. The current `develop` branch adds:
 
@@ -18,11 +22,21 @@ The initial full-stack application is committed on `main`. The current `develop`
 - Incremental Biome linting and formatting for every changed file, locally and in CI.
 - A clean full-repository Biome lint baseline; the former 82-error/141-warning backlog is resolved.
 
-The Canada commerce, owner-managed storefront settings, complete order lifecycle, and immutable admin audit ledger are implemented. The active implementation checkpoint is now **G12 · SEO**.
+The Canada commerce, owner-managed storefront settings, complete order lifecycle, immutable admin audit ledger, and search/social metadata are implemented. The active implementation checkpoint is now **G13 · Analytics and monitoring**.
 
 The first-party admin OTP/SMTP security remediation is implemented and verified locally. Migrations `0003` through `0017` are applied to the project's configured Supabase database. Deployment remains blocked on production environment configuration and revocation of legacy Supabase Auth sessions.
 
 ## Implemented
+
+- [x] Added a complete semantic theme resolver for Berry, Purple, Sunrise, and arbitrary custom colours, including automatic contrast-safe foregrounds and centralized CSS variables.
+- [x] Added shared product/variant availability rules and used them in carousel, budget, product card, and cart paths so multi-variant products never silently add the wrong variant.
+- [x] Reworked carousel autoplay, manual pause, reduced-motion, touch swipe, announcements, 44px controls, advanced settings, and persistent publish state.
+- [x] Changed Budget Match to true maximum-spend semantics with live rounded presets, transparent catalogue filters, zero-result recovery, segmented results, canonical cake pricing, and stable option-ID deep links.
+- [x] Integrated Budget Match into the catalogue filter sidebar and expanded cake discovery into three calculated spend levels, with four visible suggestions per desktop row and horizontally scrollable overflow.
+- [x] Added persisted immutable quote/invoice/receipt snapshots, append-only document events, opaque hashed/revocable access tokens, private/no-store document responses, read-only official financial fields, and deterministic server-generated PDFs from the shared document DTO.
+- [x] Added atomic quote responses and quote-to-order conversion, linked custom-cake order lifecycle, server-side Canada delivery/tax calculation, final-total review, and Stripe handoff through the existing payment infrastructure.
+- [x] Separated Marketing from homepage carousel merchandising, enabled all-active-product selection, brand-aware exports, editable captions, Story safe-zone preview, centralized logo setting, and one-ZIP bulk PNG downloads.
+- [x] Made newly added nested Budget Match copy fields backward-compatible with individually applied validation defaults, preventing older content records from producing runtime Zod errors.
 
 - [x] Next.js App Router storefront and shared layout.
 - [x] Product catalogue, category pages, product details, cart, and local cart state.
@@ -73,6 +87,9 @@ Verified locally on 2026-09-19 before introducing the CI files:
 
 Checkpoint verification history:
 
+- SEO verification — 84 regression tests, 52 functional tests, strict TypeScript, quality checks, and the 46-route production build passed after the canonical metadata and structured-data pass on 2026-09-27.
+- Migrations `0022_carousel_safe_timing.sql`, `0023_budget_maximum_copy.sql`, `0024_persisted_business_documents.sql`, `0025_marketing_export_settings.sql`, and `0026_quote_order_conversion.sql` were transactionally applied to the configured Supabase environment.
+
 - `npm run test:regression` — 9 files and 29 tests passed.
 - `npm run test:functional` — 5 files and 9 tests passed.
 - `npm run test:structural` — route type generation, strict TypeScript, and the 43-route production build passed.
@@ -115,6 +132,10 @@ CI command ownership:
 
 ## TODO — immediate
 
+- [ ] Configure isolated browser-test Supabase and Stripe services, then add the Phase 7 Playwright journeys for themes, mobile, reduced motion, carousel, budget, quote/payment, and immutable receipt workflows.
+- [x] Add admin email and copy-secure-link controls for issued invoices and receipts; generated links create new revocable opaque access tokens.
+- [ ] Add live database integration tests for document immutability, revoked/expired access, revision races, and concurrent quote conversion. Unit/functional coverage is present, but production Supabase is intentionally not used as an automated destructive test target.
+
 - [x] Review and format the transactional-email route changes.
 - [x] Add unit tests for HTML escaping, provider failure, and missing email configuration.
 - [x] Add functional tests for order creation, cake requests, contact submission, and newsletter subscription.
@@ -145,7 +166,7 @@ Complete these checkpoints in order unless a newly discovered dependency require
 - [x] **G09 · Phase 21 — Reviews:** replace placeholder reviews with persisted submission, moderation, and approved public display.
 - [x] **G10 · Phases 22–23 — Content and settings:** make saved admin content and centralized business settings drive the storefront.
 - [x] **G11 · Phase 24 — Audit logging:** record sensitive admin changes with before/after values and actor identity.
-- [ ] **G12 · Phase 25 — SEO:** add Twitter metadata and Product, Organization, and Breadcrumb structured data.
+- [x] **G12 · Phase 25 — SEO:** add Twitter metadata and Product, Organization, and Breadcrumb structured data.
 - [ ] **G13 · Phase 26 — Analytics and monitoring:** add privacy-conscious commerce events, error monitoring, and structured operational logs.
 - [ ] **G14 · Phases 27–28 — Performance and accessibility:** measure targets, fix material issues, and automate critical accessibility checks.
 - [ ] **G15 · Phases 29–30 — Security and test depth:** add durable public-endpoint abuse protection, database integration tests, browser E2E, and concurrency/payment edge cases.

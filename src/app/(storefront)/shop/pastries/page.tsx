@@ -1,9 +1,11 @@
+import type { Metadata } from "next";
 import { Catalogue } from "@/components/product/catalogue";
 import { ContentLines } from "@/components/ui/content-lines";
-import { getStorefrontContent } from "@/lib/data/settings";
+import { getCakeConfiguration, getStorefrontContent } from "@/lib/data/settings";
+export const metadata: Metadata = { title: "Pastries", alternates: { canonical: "/shop/pastries" } };
 export default async function Page() {
-  const { headers } = await getStorefrontContent();
-  const header = headers.pastries;
+  const [content, cakeConfiguration] = await Promise.all([getStorefrontContent(), getCakeConfiguration()]);
+  const header = content.headers.pastries;
   return (
     <>
       <header className="page-hero small">
@@ -14,7 +16,11 @@ export default async function Page() {
         <p>{header.supportingText}</p>
       </header>
       <section className="site-container catalogue-section">
-        <Catalogue initialCategory="PASTRIES" />
+        <Catalogue
+          initialCategory="PASTRIES"
+          cakeConfiguration={cakeConfiguration}
+          budgetContent={content.shopBudget}
+        />
       </section>
     </>
   );

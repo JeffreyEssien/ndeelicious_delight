@@ -4,6 +4,7 @@ import { cakeConfigurationSchema } from "@/validations/cake";
 import { isSameOrigin } from "@/lib/auth/validation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
+import { sendEmailToActiveAdmins } from "@/lib/email/admin-recipients";
 import { getCakeConfiguration } from "@/lib/data/settings";
 
 const imageExtensions: Record<string, string> = {
@@ -82,7 +83,6 @@ export async function POST(request: Request) {
       if (referencePath) await service.storage.from("cake-reference-images").remove([referencePath]);
       throw error;
     }
-    const adminEmail = process.env.ADMIN_EMAIL;
     await Promise.all([
       sendTransactionalEmail({
         to: customerEmail,
@@ -92,17 +92,14 @@ export async function POST(request: Request) {
           `<p>Thank you, ${escapeHtml(parsed.data.customerName)}. We’ll review request <b>${requestNumber}</b> and reply with the next step.</p>`,
         ),
       }),
-      adminEmail
-        ? sendTransactionalEmail({
-            to: adminEmail,
-            replyTo: customerEmail,
-            subject: `New cake request ${requestNumber}`,
-            html: emailFrame(
-              "New custom cake request",
-              `<p>${escapeHtml(parsed.data.customerName)} requested a ${escapeHtml(parsed.data.occasion)} cake for ${escapeHtml(parsed.data.deliveryDate)}.</p>`,
-            ),
-          })
-        : Promise.resolve({ sent: false }),
+      sendEmailToActiveAdmins(service, {
+        replyTo: customerEmail,
+        subject: `New cake request ${requestNumber}`,
+        html: emailFrame(
+          "New custom cake request",
+          `<p>${escapeHtml(parsed.data.customerName)} requested a ${escapeHtml(parsed.data.occasion)} cake for ${escapeHtml(parsed.data.deliveryDate)}.</p>`,
+        ),
+      }),
     ]);
     return Response.json(
       {

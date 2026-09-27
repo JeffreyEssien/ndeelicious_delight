@@ -5,6 +5,7 @@ import type { CakeConfigurationData, CakeOptionType } from "@/types/content";
 import { useMoney } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 import { Input, Textarea } from "@/components/ui/primitives";
+import { calculateCakeConfigurationPrice } from "@/features/cakes/pricing";
 const initial: CakeConfiguration = {
   occasion: "",
   size: "",
@@ -32,7 +33,15 @@ const steps = [
   "Date",
   "Review",
 ];
-export function CakeBuilder({ configuration }: { configuration: CakeConfigurationData }) {
+export function CakeBuilder({
+  configuration,
+  initialSelection,
+  budgetPreset,
+}: {
+  configuration: CakeConfigurationData;
+  initialSelection?: Partial<Pick<CakeConfiguration, "occasion" | "size" | "flavour" | "filling" | "design">>;
+  budgetPreset?: { title: string; body: string };
+}) {
   const formatMoney = useMoney();
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState(initial);
@@ -45,19 +54,27 @@ export function CakeBuilder({ configuration }: { configuration: CakeConfiguratio
   useEffect(() => {
     try {
       const saved = localStorage.getItem("ndee-cake-v1");
-      if (saved) setConfig({ ...JSON.parse(saved), referenceName: "" });
+      const stored = saved ? { ...JSON.parse(saved), referenceName: "" } : {};
+      const validPreset = Object.fromEntries(
+        Object.entries(initialSelection ?? {}).filter(([type, name]) =>
+          configuration.options.some((option) => option.active && option.type === type && option.name === name),
+        ),
+      );
+      setConfig({ ...initial, ...stored, ...validPreset });
     } catch {}
     setReady(true);
-  }, []);
+  }, [configuration.options, initialSelection]);
   useEffect(() => {
     if (ready) localStorage.setItem("ndee-cake-v1", JSON.stringify(config));
   }, [config, ready]);
   const options = (type: CakeOptionType) =>
     configuration.options.filter((option) => option.active && option.type === type);
   const pricing = useMemo(() => {
-    return configuration.options
-      .filter((option) => [config.size, config.flavour, config.filling, config.design].includes(option.name))
-      .reduce((total, option) => total + option.priceAdjustment, 0);
+    try {
+      return calculateCakeConfigurationPrice(config, configuration.options).total;
+    } catch {
+      return 0;
+    }
   }, [config, configuration.options]);
   const quote = configuration.options.some(
     (option) =>
@@ -156,6 +173,12 @@ export function CakeBuilder({ configuration }: { configuration: CakeConfiguratio
     );
   return (
     <div className="cake-builder">
+      {!!initialSelection && Object.keys(initialSelection).length > 0 && (
+        <div className="cake-budget-preset">
+          <span>{budgetPreset?.title}</span>
+          <p>{budgetPreset?.body}</p>
+        </div>
+      )}
       <div className="builder-progress">
         <div>
           <span>

@@ -20,19 +20,29 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
   const [selected, setSelected] = useState(initial[0]);
   const [amount, setAmount] = useState(selected?.quotedTotal ? String(selected.quotedTotal / 100) : "");
   const [filter, setFilter] = useState("OPEN");
+  const [busy, setBusy] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "changed" | "saving" | "sent" | "error">("idle");
   const notify = useToast();
   if (!selected) return <EmptyState title="No cake requests" body="New customer requests will appear here." />;
   async function save() {
+    if (busy) return;
+    setBusy(true);
+    setSaveState("saving");
     const selectedId = selected.id;
     const quotedTotal = Math.round(Number(amount) * 100);
     const response = await mutate({ action: "cake-quote", id: selectedId, quotedTotal });
+    setBusy(false);
     if (response.ok) {
       setItems((v) =>
         v.map((item) => (item.id === selectedId ? { ...item, status: "QUOTE_SENT", quotedTotal } : item)),
       );
       setSelected((v) => (v ? { ...v, status: "QUOTE_SENT", quotedTotal } : v));
-      notify("Cake quote saved.");
-    } else notify("Quote could not be saved.");
+      setSaveState("sent");
+      notify("Quote sent.");
+    } else {
+      setSaveState("error");
+      notify("Quote could not be sent.");
+    }
   }
   async function changeStatus(status: string) {
     const response = await mutate({ action: "cake-status", id: selected.id, status });
@@ -89,6 +99,7 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
               onClick={() => {
                 setSelected(item);
                 setAmount(item.quotedTotal ? String(item.quotedTotal / 100) : "");
+                setSaveState("idle");
               }}
             >
               <span className="avatar">
@@ -147,16 +158,29 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
             label={`Quote amount (${currency})`}
             type="number"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              setSaveState("changed");
+            }}
           />
           <p>
             {selected.email} · {selected.phone}
           </p>
           {selected.customerNote && <p className="cake-customer-note">“{selected.customerNote}”</p>}
           <div className="cake-request-actions">
-            <Button disabled={!Number(amount)} onClick={save}>
-              Save quote
+            <Button disabled={!Number(amount) || busy || saveState === "idle"} onClick={save}>
+              {busy ? "Sending…" : selected.quotedTotal ? "Send revised quote" : "Send quote"}
             </Button>
+            {selected.quotedTotal && (
+              <a
+                className="button button-secondary"
+                href={`/admin/documents/cakes/${encodeURIComponent(selected.requestNumber)}/quote`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View quote
+              </a>
+            )}
             <label className="field">
               <span>Request stage</span>
               <select value={selected.status} onChange={(event) => changeStatus(event.target.value)}>
@@ -172,6 +196,12 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
               </select>
             </label>
           </div>
+          <p className="admin-inline-state" role="status">
+            {saveState === "changed" && "Unsaved quote amount"}
+            {saveState === "saving" && "Issuing and emailing quote…"}
+            {saveState === "sent" && "Quote sent"}
+            {saveState === "error" && "Quote was not sent. Try again."}
+          </p>
         </div>
       </div>
     </div>
@@ -677,8 +707,9 @@ export function Reviews({ initial }: { initial: AdminReview[] }) {
           <p>
             {item.productName} · {item.customerName}
           </p>
+          <small>{item.verifiedPurchase ? "✓ Purchase verified" : "Legacy unverified review · cannot publish"}</small>
           <div>
-            <Button variant="secondary" onClick={() => update(item.id, "APPROVED")}>
+            <Button variant="secondary" disabled={!item.verifiedPurchase} onClick={() => update(item.id, "APPROVED")}>
               Approve
             </Button>
             <Button variant="ghost" onClick={() => update(item.id, "REJECTED")}>

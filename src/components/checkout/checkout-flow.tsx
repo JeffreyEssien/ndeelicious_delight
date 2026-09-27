@@ -476,7 +476,13 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
         {resolved.map(({ p, v, quantity }) => (
           <div className="checkout-item" key={`${p.id}-${v.id}`}>
             {p.image ? (
-              <Image src={p.image} alt="" width={64} height={72} style={{ objectPosition: p.imagePosition }} />
+              <Image
+                src={p.image}
+                alt=""
+                width={64}
+                height={72}
+                style={{ width: 64, height: 72, objectPosition: p.imagePosition }}
+              />
             ) : (
               <span className="checkout-image-empty missing-image">No image</span>
             )}

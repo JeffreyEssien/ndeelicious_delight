@@ -96,6 +96,7 @@ vi.mock("@/lib/payments/stripe", async (importOriginal) => ({
 vi.mock("@/lib/orders/notifications", () => ({
   queueOrderNotification: mocks.queueNotification,
   deliverOrderNotification: mocks.deliverNotification,
+  sendPlacedOrderAdminNotification: vi.fn(),
 }));
 
 import { POST } from "./route";

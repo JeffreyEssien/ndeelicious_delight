@@ -1,0 +1,33 @@
+name: Scheduled customer and inventory emails
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: scheduled-notifications
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - name: Run notification dispatcher
+        env:
+          SITE_URL: ${{ secrets.PRODUCTION_SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$SITE_URL"
+          test -n "$CRON_SECRET"
+          curl --fail-with-body --silent --show-error \
+            --retry 2 \
+            --retry-all-errors \
+            --max-time 55 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "${SITE_URL%/}/api/cron/notifications"

@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { ContactForm } from "@/components/forms/contact-form";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getBusinessSettings, getStorefrontContent } from "@/lib/data/settings";
+
+export const metadata: Metadata = { title: "Contact", alternates: { canonical: "/contact" } };
 
 export default async function Page() {
   const [content, business] = await Promise.all([getStorefrontContent(), getBusinessSettings()]);

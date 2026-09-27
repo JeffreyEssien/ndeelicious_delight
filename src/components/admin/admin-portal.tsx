@@ -17,12 +17,16 @@ import { Icon } from "@/components/ui/icons";
 import { CakeWorkspace, Coupons, Reviews } from "@/components/admin/live-sections";
 import { ProductEditor } from "@/components/admin/product-editor";
 import { ContentSettings } from "@/components/admin/content-settings";
+import { CarouselEditor } from "@/components/admin/carousel-editor";
+import { SocialPostGenerator } from "@/components/admin/social-post-generator";
 import { useBusinessSettings, useMoney, useStoreTheme, useToast, type StoreTheme } from "@/components/providers";
 import type {
   BusinessSettings as BusinessSettingsData,
   CakeConfigurationData,
   StoreAppearance,
+  StoreCarousel,
   StorefrontContent,
+  MarketingExport,
 } from "@/types/content";
 
 type Props = {
@@ -38,7 +42,10 @@ type Props = {
   initialBusiness: BusinessSettingsData;
   initialCakeConfiguration: CakeConfigurationData;
   initialAppearance: StoreAppearance;
+  initialCarousel: StoreCarousel;
+  initialMarketing: MarketingExport;
   initialAuditLogs: AdminAuditLog[];
+  siteUrl: string;
 };
 const titles: Record<string, string> = {
   dashboard: "Bakery overview",
@@ -50,6 +57,8 @@ const titles: Record<string, string> = {
   coupons: "Coupons & promotions",
   reviews: "Customer reviews",
   content: "Storefront content",
+  carousel: "Homepage carousel",
+  marketing: "Marketing studio",
   delivery: "Delivery zones",
   settings: "Business settings",
   audit: "Audit log",
@@ -95,7 +104,10 @@ export function AdminPortal({
   initialBusiness,
   initialCakeConfiguration,
   initialAppearance,
+  initialCarousel,
+  initialMarketing,
   initialAuditLogs,
+  siteUrl,
 }: Props) {
   const [products, setProducts] = useState(initialProducts);
   const [orders, setOrders] = useState(initialOrders);
@@ -257,6 +269,10 @@ export function AdminPortal({
       {section === "coupons" && <Coupons initial={initialCoupons} products={products} categories={initialCategories} />}
       {section === "reviews" && <Reviews initial={initialReviews} />}
       {section === "content" && <ContentSettings initial={initialContent} />}
+      {section === "carousel" && <CarouselEditor products={products} initial={initialCarousel} />}
+      {section === "marketing" && (
+        <SocialPostGenerator products={products} initial={initialMarketing} siteUrl={siteUrl} />
+      )}
       {section === "delivery" && <DeliveryZones zones={zones} setZones={setZones} busy={zoneBusy} onSave={saveZones} />}
       {section === "audit" && <AuditLog entries={initialAuditLogs} />}
       {section === "settings" && (
@@ -624,6 +640,34 @@ function OrderDetail({
             Print summary
           </Button>
         </div>
+        <section className="order-documents-area">
+          <span className="overline">Documents</span>
+          <h3>{order.payment?.paidAt ? "Payment receipt" : "Invoice and payment request"}</h3>
+          <p>
+            {order.payment?.paidAt
+              ? "The receipt is locked to the confirmed payment record."
+              : "Issue an invoice showing the current amount due."}
+          </p>
+          <Link
+            className="button button-primary"
+            href={`/admin/documents/orders/${encodeURIComponent(order.id)}/${order.payment?.paidAt ? "receipt" : "invoice"}`}
+            target="_blank"
+          >
+            {order.payment?.paidAt ? "View receipt" : "Create invoice"}
+          </Link>
+          {order.payment?.paidAt && (
+            <details>
+              <summary>Other document</summary>
+              <Link
+                className="text-button"
+                href={`/admin/documents/orders/${encodeURIComponent(order.id)}/invoice`}
+                target="_blank"
+              >
+                View invoice
+              </Link>
+            </details>
+          )}
+        </section>
         <section>
           <h3>Customer and fulfilment</h3>
           <dl className="order-detail-list">
@@ -982,10 +1026,9 @@ function Inventory({
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"ALL" | "LOW" | "OUT">("ALL");
   const units = products.flatMap((product) => product.variants.map((variant) => ({ product, variant })));
+  const normalizedQuery = query.trim().toLowerCase();
   const visible = units.filter(({ product, variant }) => {
-    const matchesQuery = `${product.name} ${variant.name} ${variant.sku ?? ""}`
-      .toLowerCase()
-      .includes(query.toLowerCase());
+    const matchesQuery = `${product.name} ${variant.name} ${variant.sku ?? ""}`.toLowerCase().includes(normalizedQuery);
     const matchesView =
       view === "ALL" ||
       (view === "OUT" && variant.stockQuantity === 0) ||
@@ -996,13 +1039,14 @@ function Inventory({
     ({ product, variant }) => variant.stockQuantity > 0 && variant.stockQuantity <= product.lowStockThreshold,
   ).length;
   const out = units.filter(({ variant }) => variant.stockQuantity === 0).length;
+  const stockOnHand = units.reduce((total, { variant }) => total + variant.stockQuantity, 0);
   return (
     <div className="inventory-workspace">
       <div className="inventory-overview">
         <div>
-          <span>Inventory units</span>
-          <b>{units.length}</b>
-          <small>Every sellable product option</small>
+          <span>Units on hand</span>
+          <b>{stockOnHand}</b>
+          <small>Across {units.length} sellable options</small>
         </div>
         <div className={low ? "warning" : ""}>
           <span>Running low</span>
@@ -1015,76 +1059,107 @@ function Inventory({
           <small>Unavailable to customers</small>
         </div>
       </div>
-      <div className="inventory-toolbar">
-        <label>
-          <Icon name="search" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search product, option or SKU"
-          />
-        </label>
-        <fieldset aria-label="Filter inventory">
-          {(["ALL", "LOW", "OUT"] as const).map((item) => (
-            <button key={item} type="button" className={view === item ? "active" : ""} onClick={() => setView(item)}>
-              {item === "ALL" ? "All stock" : item === "LOW" ? "Low stock" : "Out of stock"}
-            </button>
-          ))}
-        </fieldset>
-      </div>
-      <div className="admin-card inventory-list">
-        {!visible.length && <EmptyState title="No inventory matched" body="Try another search or stock filter." />}
-        {visible.map(({ product, variant }) => (
-          <article key={variant.id}>
-            {product.image ? (
-              <Image src={product.image} alt="" width={56} height={64} />
-            ) : (
-              <span className="admin-image-empty" role="img" aria-label="No product image" />
-            )}
-            <div>
-              <b>{product.name}</b>
-              <small>
-                {variant.name} · {variant.sku ?? "SKU pending"}
-              </small>
-            </div>
-            <div className="stock-control">
-              <button
-                type="button"
-                onClick={() => onChange(product.id, variant.id, Math.max(0, variant.stockQuantity - 1))}
-              >
-                −
-              </button>
-              <b className={variant.stockQuantity <= product.lowStockThreshold ? "danger-text" : ""}>
-                {variant.stockQuantity}
-              </b>
-              <button type="button" onClick={() => onChange(product.id, variant.id, variant.stockQuantity + 1)}>
-                +
-              </button>
-            </div>
-            <label className="inventory-exact">
-              <span>Set exact</span>
-              <input
-                key={`${variant.id}-${variant.stockQuantity}`}
-                type="number"
-                min="0"
-                defaultValue={variant.stockQuantity}
-                onBlur={(event) => {
-                  const quantity = Math.max(0, Number(event.currentTarget.value));
-                  if (quantity !== variant.stockQuantity) onChange(product.id, variant.id, quantity);
-                }}
-              />
-            </label>
-            <StatusBadge
-              status={
-                variant.stockQuantity === 0
-                  ? "OUT_OF_STOCK"
-                  : variant.stockQuantity <= product.lowStockThreshold
-                    ? "LOW_STOCK"
-                    : "HEALTHY"
-              }
+      <div className="admin-card inventory-panel">
+        <div className="inventory-panel-head">
+          <div>
+            <h2>Stock by product option</h2>
+            <p>Search by product, option, or SKU and adjust the quantity available to customers.</p>
+          </div>
+          <span>
+            <b>{visible.length}</b> of {units.length} options
+          </span>
+        </div>
+        <div className="inventory-toolbar">
+          <label className="inventory-search">
+            <Icon name="search" />
+            <input
+              aria-label="Search inventory"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search product, option or SKU"
             />
-          </article>
-        ))}
+            {query && (
+              <button type="button" onClick={() => setQuery("")} aria-label="Clear inventory search">
+                Clear
+              </button>
+            )}
+          </label>
+          <fieldset aria-label="Filter inventory">
+            {(["ALL", "LOW", "OUT"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                className={view === item ? "active" : ""}
+                aria-pressed={view === item}
+                onClick={() => setView(item)}
+              >
+                {item === "ALL" ? "All stock" : item === "LOW" ? `Low (${low})` : `Out (${out})`}
+              </button>
+            ))}
+          </fieldset>
+        </div>
+        <div className="inventory-list">
+          {!visible.length && <EmptyState title="No inventory matched" body="Try another search or stock filter." />}
+          {visible.map(({ product, variant }) => (
+            <article key={variant.id}>
+              {product.image ? (
+                <Image src={product.image} alt="" width={56} height={64} />
+              ) : (
+                <span className="admin-image-empty" role="img" aria-label="No product image" />
+              )}
+              <div className="inventory-item-copy">
+                <b>{product.name}</b>
+                <small>{variant.name}</small>
+                <code>{variant.sku ?? "SKU pending"}</code>
+              </div>
+              <div className="inventory-quantity">
+                <span>On hand</span>
+                <div className="stock-control">
+                  <button
+                    type="button"
+                    aria-label={`Remove one ${product.name} ${variant.name}`}
+                    onClick={() => onChange(product.id, variant.id, Math.max(0, variant.stockQuantity - 1))}
+                  >
+                    −
+                  </button>
+                  <b className={variant.stockQuantity <= product.lowStockThreshold ? "danger-text" : ""}>
+                    {variant.stockQuantity}
+                  </b>
+                  <button
+                    type="button"
+                    aria-label={`Add one ${product.name} ${variant.name}`}
+                    onClick={() => onChange(product.id, variant.id, variant.stockQuantity + 1)}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              <label className="inventory-exact">
+                <span>Set exact</span>
+                <input
+                  key={`${variant.id}-${variant.stockQuantity}`}
+                  type="number"
+                  min="0"
+                  aria-label={`Set exact stock for ${product.name} ${variant.name}`}
+                  defaultValue={variant.stockQuantity}
+                  onBlur={(event) => {
+                    const quantity = Math.max(0, Number(event.currentTarget.value));
+                    if (quantity !== variant.stockQuantity) onChange(product.id, variant.id, quantity);
+                  }}
+                />
+              </label>
+              <StatusBadge
+                status={
+                  variant.stockQuantity === 0
+                    ? "OUT_OF_STOCK"
+                    : variant.stockQuantity <= product.lowStockThreshold
+                      ? "LOW_STOCK"
+                      : "HEALTHY"
+                }
+              />
+            </article>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1487,6 +1562,11 @@ function BusinessSettings({
           <span>Calculate tax at checkout</span>
         </label>
         <Input name="taxLabel" label="Tax label" defaultValue={initial.taxLabel} />
+        <Input
+          name="taxRegistrationNumber"
+          label="GST/HST registration number"
+          defaultValue={initial.taxRegistrationNumber}
+        />
         <Input
           name="taxRate"
           label="Combined tax rate (%)"
