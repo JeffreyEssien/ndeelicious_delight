@@ -1,7 +1,8 @@
 .product-carousel {
   padding: clamp(64px, 8vw, 112px) 0;
   overflow: hidden;
-  background: #f3e9e7;
+  background: var(--color-primary-soft);
+  touch-action: pan-y;
 }
 .carousel-heading {
   display: grid;
@@ -52,13 +53,13 @@
 .carousel-badge {
   top: 22px;
   left: 22px;
-  background: var(--berry);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 .carousel-count {
   right: 22px;
   bottom: 22px;
-  background: rgba(255, 255, 255, 0.9);
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
   color: var(--ink);
   backdrop-filter: blur(8px);
 }
@@ -118,37 +119,54 @@
   gap: 16px;
 }
 .carousel-controls > button {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--line);
   border-radius: 50%;
   background: var(--surface);
   color: var(--ink);
   cursor: pointer;
 }
-.carousel-controls > div {
+.carousel-controls > fieldset {
   display: flex;
   gap: 7px;
-}
-.carousel-controls > div button {
-  width: 24px;
-  height: 4px;
+  margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 99px;
-  background: color-mix(in srgb, var(--berry) 22%, transparent);
+}
+.carousel-controls > fieldset button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
   cursor: pointer;
 }
-.carousel-controls > div button.active {
+.carousel-controls > fieldset button span {
+  width: 24px;
+  height: 4px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--berry) 22%, transparent);
+}
+.carousel-controls > fieldset button.active span {
   background: var(--berry);
 }
 .carousel-controls .carousel-pause {
   width: auto;
-  height: 32px;
+  min-width: 64px;
+  height: 44px;
   padding: 0 13px;
   border-radius: 99px;
   font-size: 10px;
   font-weight: 700;
+}
+.carousel-controls button:focus-visible,
+.carousel-actions a:focus-visible,
+.carousel-actions button:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
 }
 .carousel-cards {
   background: var(--bg);
@@ -158,31 +176,31 @@
   border: 1px solid var(--line);
   border-radius: calc(var(--radius-lg) + 8px);
   background: var(--surface);
-  box-shadow: 0 24px 70px rgba(38, 25, 20, 0.08);
+  box-shadow: 0 24px 70px color-mix(in srgb, var(--color-text) 8%, transparent);
 }
 .carousel-cards .carousel-image {
   border-radius: var(--radius-lg);
 }
 .carousel-spotlight {
-  background: #282220;
-  color: #fff;
+  background: var(--color-feature-surface);
+  color: var(--color-feature-text);
 }
 .carousel-spotlight .carousel-heading > p,
 .carousel-spotlight .overline {
-  color: #d4c8c2;
+  color: var(--color-feature-muted);
 }
 .carousel-spotlight .carousel-copy {
-  background: var(--berry);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 .carousel-spotlight .carousel-copy > span,
 .carousel-spotlight .carousel-copy > p,
 .carousel-spotlight .carousel-price strong {
-  color: #fff;
+  color: var(--color-on-primary);
 }
 .carousel-spotlight .carousel-copy .button-secondary {
-  border-color: #fff;
-  color: #fff;
+  border-color: var(--color-on-primary);
+  color: var(--color-on-primary);
 }
 @media (max-width: 800px) {
   .carousel-heading,

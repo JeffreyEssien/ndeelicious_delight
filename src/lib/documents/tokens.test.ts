@@ -1,14 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createDocumentToken, verifyDocumentToken } from "./tokens";
+import { describe, expect, it } from "vitest";
+import { createDocumentAccessToken, DOCUMENT_TOKEN_BYTES, hashDocumentToken } from "./tokens";
 
 describe("customer document tokens", () => {
-  beforeEach(() => vi.stubEnv("DOCUMENT_TOKEN_SECRET", "document-secret-that-is-at-least-thirty-two-characters"));
-  afterEach(() => vi.unstubAllEnvs());
-
-  it("binds the signature to document type and reference", () => {
-    const token = createDocumentToken("receipt", "ND-12345678");
-    expect(verifyDocumentToken("receipt", "ND-12345678", token)).toBe(true);
-    expect(verifyDocumentToken("quote", "ND-12345678", token)).toBe(false);
-    expect(verifyDocumentToken("receipt", "ND-87654321", token)).toBe(false);
+  it("creates opaque high-entropy values and stores only stable hashes", () => {
+    const first = createDocumentAccessToken();
+    const second = createDocumentAccessToken();
+    expect(Buffer.from(first.token, "base64url")).toHaveLength(DOCUMENT_TOKEN_BYTES);
+    expect(first.token).not.toBe(second.token);
+    expect(first.tokenHash).toHaveLength(64);
+    expect(hashDocumentToken(first.token)).toBe(first.tokenHash);
+    expect(hashDocumentToken(second.token)).not.toBe(first.tokenHash);
   });
 });

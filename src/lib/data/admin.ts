@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   getBusinessSettings,
   getCakeConfiguration,
+  getMarketingExport,
   getStoreAppearance,
   getStoreCarousel,
   getStorefrontContent,
@@ -107,6 +108,7 @@ export async function getAdminData(supabase: SupabaseClient) {
     cakeConfiguration,
     appearance,
     carousel,
+    marketing,
     auditResult,
   ] = await Promise.all([
     getProducts({ includeInactive: true, client: supabase }),
@@ -144,6 +146,7 @@ export async function getAdminData(supabase: SupabaseClient) {
     getCakeConfiguration(supabase),
     getStoreAppearance(supabase),
     getStoreCarousel(supabase),
+    getMarketingExport(supabase),
     supabase
       .from("admin_audit_logs")
       .select("id,action,entity_type,entity_id,previous_value,new_value,metadata,created_at,admins(name,email)")
@@ -274,6 +277,7 @@ export async function getAdminData(supabase: SupabaseClient) {
     cakeConfiguration,
     appearance,
     carousel,
+    marketing,
     auditLogs,
   };
 }

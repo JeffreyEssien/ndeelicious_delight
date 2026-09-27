@@ -1,61 +1,38 @@
 import { notFound } from "next/navigation";
 import { BusinessDocument } from "@/components/documents/business-document";
-import { getBusinessSettings } from "@/lib/data/settings";
-import { verifyDocumentToken } from "@/lib/documents/tokens";
+import { QuoteResponse } from "@/components/documents/quote-response";
+import { persistedDocumentToDTO } from "@/lib/documents/dto";
+import { resolveAccessToken } from "@/lib/documents/service";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getDeliveryZones } from "@/lib/data/catalog";
 
-export default async function Page({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ requestNumber: string }>;
-  searchParams: Promise<{ token?: string }>;
-}) {
-  const { requestNumber } = await params;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default async function Page({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
   const { token = "" } = await searchParams;
-  if (!verifyDocumentToken("quote", requestNumber, token)) notFound();
   const db = createServiceClient();
-  const [{ data: cake, error }, business] = await Promise.all([
-    db
-      .from("custom_cake_orders")
-      .select(
-        "request_number,customer_name,email,phone,status,configuration,requested_date,quoted_total,quote_expires_at,customer_note,created_at",
-      )
-      .eq("request_number", requestNumber)
-      .maybeSingle(),
-    getBusinessSettings(db),
-  ]);
-  if (error || !cake?.quoted_total) notFound();
-  const configuration = cake.configuration as Record<string, string>;
-  const detail = [configuration.size, configuration.flavour, configuration.filling, configuration.design]
-    .filter(Boolean)
-    .join(" · ");
+  const document = await resolveAccessToken(db, token);
+  if (document?.kind !== "QUOTE") notFound();
+  const zones = await getDeliveryZones(db);
+  const expired = !!document.valid_until && new Date(document.valid_until).getTime() <= Date.now();
   return (
-    <BusinessDocument
-      kind="Quote"
-      number={`QT-${cake.request_number.replace(/^CK-/, "")}`}
-      issuedAt={cake.created_at}
-      validUntil={cake.quote_expires_at}
-      status={cake.status}
-      customer={{ name: cake.customer_name, email: cake.email, phone: cake.phone }}
-      lines={[
-        {
-          id: cake.request_number,
-          name: `${configuration.occasion || "Custom"} cake`,
-          detail,
-          quantity: 1,
-          unitPrice: cake.quoted_total,
-          total: cake.quoted_total,
-        },
-      ]}
-      subtotal={cake.quoted_total}
-      total={cake.quoted_total}
-      notes={[
-        `Requested fulfilment date: ${cake.requested_date}`,
-        ...(cake.customer_note ? [`Customer note: ${cake.customer_note}`] : []),
-        "Final design details remain subject to written approval and availability.",
-      ]}
-      business={business}
-    />
+    <>
+      <BusinessDocument
+        {...persistedDocumentToDTO(document)}
+        downloadHref={`/api/documents/pdf?token=${encodeURIComponent(token)}`}
+      />
+      <QuoteResponse
+        token={token}
+        initialState={expired ? "EXPIRED" : document.state}
+        contactEmail={document.business_snapshot.contactEmail}
+        quoteNumber={document.number}
+        zones={zones.map((zone) => ({ id: zone.id, name: zone.name, fee: zone.fee, minimumOrder: zone.minimumOrder }))}
+        deliveryEnabled={document.business_snapshot.deliveryEnabled}
+        pickupEnabled={document.business_snapshot.pickupEnabled}
+        currency={document.business_snapshot.currency}
+        locale={document.business_snapshot.locale}
+      />
+    </>
   );
 }

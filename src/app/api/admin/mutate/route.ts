@@ -11,11 +11,13 @@ import {
 } from "@/lib/data/inventory";
 import { deliverPendingOrderNotifications } from "@/lib/orders/notifications";
 import { sendCakeQuoteEmail } from "@/lib/cakes/notifications";
+import { issueCakeQuote, type IssuedDocument } from "@/lib/documents/service";
 import {
   businessSettingsSchema,
   storeAppearanceSchema,
   storeCarouselSchema,
   storefrontContentSchema,
+  marketingExportSchema,
 } from "@/validations/settings";
 
 const schema = z.discriminatedUnion("action", [
@@ -117,7 +119,7 @@ const schema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("settings"),
-    key: z.enum(["content", "business", "appearance", "carousel"]),
+    key: z.enum(["content", "business", "appearance", "carousel", "marketing"]),
     value: z.record(z.string(), z.unknown()),
   }),
 ]);
@@ -175,7 +177,7 @@ function auditDescriptor(input: AdminMutation): {
       };
     case "cake-quote":
       return {
-        action: "CAKE_QUOTE_SENT",
+        action: "QUOTE_ISSUED",
         entityType: "custom_cake_order",
         entityId: input.id,
         target: { type: "cake-order", id: input.id },
@@ -235,6 +237,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "The current value could not be verified for auditing." }, { status: 500 });
   }
   let error: { message: string } | null | undefined;
+  let issuedQuote: IssuedDocument | undefined;
   if (input.action === "product-status")
     ({ error } = await supabase
       .from("products")
@@ -276,11 +279,17 @@ export async function POST(request: Request) {
       .from("custom_cake_orders")
       .update({
         quoted_total: input.quotedTotal,
-        status: "QUOTE_SENT",
-        quote_expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+        status: "DRAFT",
         updated_at: new Date().toISOString(),
       })
       .eq("id", input.id));
+  if (input.action === "cake-quote" && !error) {
+    try {
+      issuedQuote = await issueCakeQuote(supabase, input.id, auth.admin.id);
+    } catch {
+      error = { message: "The quote could not be issued." };
+    }
+  }
   if (input.action === "cake-status")
     ({ error } = await supabase
       .from("custom_cake_orders")
@@ -371,7 +380,9 @@ export async function POST(request: Request) {
           ? storefrontContentSchema
           : input.key === "carousel"
             ? storeCarouselSchema
-            : storeAppearanceSchema;
+            : input.key === "marketing"
+              ? marketingExportSchema
+              : storeAppearanceSchema;
       const settingValue = settingSchema.safeParse(input.value);
       if (!settingValue.success)
         return Response.json({ error: "Check the storefront settings and try again." }, { status: 400 });
@@ -392,6 +403,7 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-  if (input.action === "cake-quote") after(() => sendCakeQuoteEmail(supabase, input.id));
+  if (input.action === "cake-quote" && issuedQuote)
+    after(() => sendCakeQuoteEmail(supabase, input.id, issuedQuote as IssuedDocument));
   return Response.json({ ok: true });
 }

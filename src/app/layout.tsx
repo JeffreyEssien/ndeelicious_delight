@@ -4,6 +4,7 @@ import { Providers } from "@/components/providers";
 import { getDeliveryZones, getProducts } from "@/lib/data/catalog";
 import { getBusinessSettings, getStoreAppearance, getStorefrontContent, getStoreTheme } from "@/lib/data/settings";
 import { getSiteUrl } from "@/lib/site-url";
+import { resolveThemeTokens, themeTokenCss } from "@/lib/theme/tokens";
 import "./globals.css";
 import "./store.css";
 import "./admin.css";
@@ -41,18 +42,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     getBusinessSettings(),
     getStoreAppearance(),
   ]);
-  const customColors: StoreStyle = appearance.useCustomColors
-    ? ({
-        "--bg": appearance.colors.background,
-        "--surface": appearance.colors.surface,
-        "--ink": appearance.colors.text,
-        "--muted": appearance.colors.mutedText,
-        "--berry": appearance.colors.primary,
-        "--berry-dark": appearance.colors.primaryDark,
-        "--accent": appearance.colors.accent,
-      } satisfies StoreStyle)
-    : {};
-  const storeStyle: StoreStyle = { ...customColors, "--product-columns": appearance.productColumns };
+  const themeTokens = resolveThemeTokens(initialTheme, appearance);
+  const storeStyle: StoreStyle = {
+    ...themeTokenCss(themeTokens),
+    "--product-columns": appearance.productColumns,
+  };
   return (
     <html
       lang={business.locale}
@@ -64,7 +58,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       style={storeStyle}
     >
       <body>
-        <Providers products={products} deliveryZones={deliveryZones} initialTheme={initialTheme} business={business}>
+        <Providers
+          products={products}
+          deliveryZones={deliveryZones}
+          initialTheme={initialTheme}
+          business={business}
+          themeTokens={themeTokens}
+        >
           {children}
         </Providers>
       </body>

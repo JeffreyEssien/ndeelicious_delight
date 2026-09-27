@@ -18,6 +18,7 @@ import { CakeWorkspace, Coupons, Reviews } from "@/components/admin/live-section
 import { ProductEditor } from "@/components/admin/product-editor";
 import { ContentSettings } from "@/components/admin/content-settings";
 import { CarouselEditor } from "@/components/admin/carousel-editor";
+import { SocialPostGenerator } from "@/components/admin/social-post-generator";
 import { useBusinessSettings, useMoney, useStoreTheme, useToast, type StoreTheme } from "@/components/providers";
 import type {
   BusinessSettings as BusinessSettingsData,
@@ -25,6 +26,7 @@ import type {
   StoreAppearance,
   StoreCarousel,
   StorefrontContent,
+  MarketingExport,
 } from "@/types/content";
 
 type Props = {
@@ -41,6 +43,7 @@ type Props = {
   initialCakeConfiguration: CakeConfigurationData;
   initialAppearance: StoreAppearance;
   initialCarousel: StoreCarousel;
+  initialMarketing: MarketingExport;
   initialAuditLogs: AdminAuditLog[];
   siteUrl: string;
 };
@@ -55,6 +58,7 @@ const titles: Record<string, string> = {
   reviews: "Customer reviews",
   content: "Storefront content",
   carousel: "Homepage carousel",
+  marketing: "Marketing studio",
   delivery: "Delivery zones",
   settings: "Business settings",
   audit: "Audit log",
@@ -101,6 +105,7 @@ export function AdminPortal({
   initialCakeConfiguration,
   initialAppearance,
   initialCarousel,
+  initialMarketing,
   initialAuditLogs,
   siteUrl,
 }: Props) {
@@ -264,7 +269,10 @@ export function AdminPortal({
       {section === "coupons" && <Coupons initial={initialCoupons} products={products} categories={initialCategories} />}
       {section === "reviews" && <Reviews initial={initialReviews} />}
       {section === "content" && <ContentSettings initial={initialContent} />}
-      {section === "carousel" && <CarouselEditor products={products} initial={initialCarousel} siteUrl={siteUrl} />}
+      {section === "carousel" && <CarouselEditor products={products} initial={initialCarousel} />}
+      {section === "marketing" && (
+        <SocialPostGenerator products={products} initial={initialMarketing} siteUrl={siteUrl} />
+      )}
       {section === "delivery" && <DeliveryZones zones={zones} setZones={setZones} busy={zoneBusy} onSave={saveZones} />}
       {section === "audit" && <AuditLog entries={initialAuditLogs} />}
       {section === "settings" && (
@@ -631,23 +639,35 @@ function OrderDetail({
           <Button variant="secondary" onClick={() => window.print()}>
             Print summary
           </Button>
+        </div>
+        <section className="order-documents-area">
+          <span className="overline">Documents</span>
+          <h3>{order.payment?.paidAt ? "Payment receipt" : "Invoice and payment request"}</h3>
+          <p>
+            {order.payment?.paidAt
+              ? "The receipt is locked to the confirmed payment record."
+              : "Issue an invoice showing the current amount due."}
+          </p>
           <Link
-            className="button button-secondary"
-            href={`/admin/documents/orders/${encodeURIComponent(order.id)}/invoice`}
+            className="button button-primary"
+            href={`/admin/documents/orders/${encodeURIComponent(order.id)}/${order.payment?.paidAt ? "receipt" : "invoice"}`}
             target="_blank"
           >
-            Create invoice
+            {order.payment?.paidAt ? "View receipt" : "Create invoice"}
           </Link>
           {order.payment?.paidAt && (
-            <Link
-              className="button button-secondary"
-              href={`/admin/documents/orders/${encodeURIComponent(order.id)}/receipt`}
-              target="_blank"
-            >
-              Create receipt
-            </Link>
+            <details>
+              <summary>Other document</summary>
+              <Link
+                className="text-button"
+                href={`/admin/documents/orders/${encodeURIComponent(order.id)}/invoice`}
+                target="_blank"
+              >
+                View invoice
+              </Link>
+            </details>
           )}
-        </div>
+        </section>
         <section>
           <h3>Customer and fulfilment</h3>
           <dl className="order-detail-list">

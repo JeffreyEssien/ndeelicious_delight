@@ -4,11 +4,13 @@ import type {
   storeAppearanceSchema,
   storeCarouselSchema,
   storefrontContentSchema,
+  marketingExportSchema,
 } from "@/validations/settings";
 
 export type BusinessSettings = z.infer<typeof businessSettingsSchema>;
 export type StoreAppearance = z.infer<typeof storeAppearanceSchema>;
 export type StoreCarousel = z.infer<typeof storeCarouselSchema>;
+export type MarketingExport = z.infer<typeof marketingExportSchema>;
 
 export type StorefrontContent = z.infer<typeof storefrontContentSchema>;
 

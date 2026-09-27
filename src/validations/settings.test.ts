@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { storeCarouselSchema } from "./settings";
+import { marketingExportSchema, storeCarouselSchema } from "./settings";
 
 const validCarousel = {
   enabled: true,
@@ -13,15 +13,6 @@ const validCarousel = {
   loop: true,
   showPrices: true,
   showAddToCart: true,
-  social: {
-    headline: "Made fresh for you",
-    callToAction: "Order online",
-    websiteUrl: "https://example.com",
-    format: "portrait" as const,
-    template: "berry" as const,
-    showLogo: true,
-    showPrice: true,
-  },
 };
 
 describe("storeCarouselSchema", () => {
@@ -39,5 +30,24 @@ describe("storeCarouselSchema", () => {
       (_, index) => `72ac10f6-81bb-4f06-996c-e26865669a${index.toString().padStart(2, "0")}`,
     );
     expect(storeCarouselSchema.safeParse({ ...validCarousel, productIds }).success).toBe(false);
+  });
+});
+
+describe("marketingExportSchema", () => {
+  it("keeps marketing selection independent from carousel products", () => {
+    const marketing = marketingExportSchema.parse({
+      headline: "Made fresh for you",
+      callToAction: "Order online",
+      websiteUrl: "https://example.ca",
+      format: "story",
+      template: "brand",
+      showLogo: true,
+      showPrice: true,
+      showSafeZone: true,
+      logoUrl: "/logo.jpeg",
+      productIds: ["72ac10f6-81bb-4f06-996c-e26865669a33"],
+    });
+    expect(marketing.productIds).toHaveLength(1);
+    expect(marketing.template).toBe("brand");
   });
 });

@@ -2200,6 +2200,39 @@ html[data-theme] .admin-sidebar {
 .carousel-fields .field-wide {
   grid-column: 1 / -1;
 }
+.carousel-advanced {
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.carousel-advanced summary {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.carousel-advanced-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 4px 16px 18px;
+}
+.carousel-recommendation {
+  margin: 10px 0 0 !important;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--color-on-accent) !important;
+  line-height: 1.5;
+}
+.admin-save-bar .save-error {
+  color: var(--danger);
+}
 .carousel-toggles {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2341,7 +2374,7 @@ html[data-theme] .admin-sidebar {
   grid-template-columns: minmax(300px, 0.75fr) minmax(360px, 1.25fr);
   gap: 32px;
   padding: 28px;
-  background: #f7f5f3;
+  background: var(--color-surface-raised);
 }
 .social-controls {
   display: grid;
@@ -2377,16 +2410,16 @@ html[data-theme] .admin-sidebar {
   padding: 32px;
   overflow: hidden;
   border-radius: var(--radius-lg);
-  background: #2c2725;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  background: var(--color-feature-surface);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-feature-text) 8%, transparent);
 }
 .social-canvas-wrap canvas {
   display: block;
   width: auto;
   max-width: 100%;
   max-height: 690px;
-  background: #fff;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  background: var(--color-surface);
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--color-text) 28%, transparent);
 }
 .social-square canvas {
   aspect-ratio: 1;
@@ -2562,4 +2595,30 @@ html[data-theme] .admin-sidebar {
   .carousel-order-buttons {
     grid-column: 2 / -1;
   }
+}
+.social-canvas-wrap {
+  position: relative;
+}
+.story-safe-zone {
+  position: absolute;
+  inset: 8% 5% 14%;
+  display: grid;
+  place-items: start center;
+  padding: 8px;
+  border: 2px dashed color-mix(in srgb, var(--color-on-primary) 75%, transparent);
+  color: var(--color-on-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  font-size: 12px;
+  font-weight: 800;
+  pointer-events: none;
+}
+.marketing-product-picker {
+  display: grid;
+  max-height: 250px;
+  overflow: auto;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-raised);
 }

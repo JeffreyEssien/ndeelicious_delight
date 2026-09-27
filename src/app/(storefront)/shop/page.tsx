@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 import { Catalogue } from "@/components/product/catalogue";
-import { BudgetShop } from "@/components/product/budget-shop";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getCakeConfiguration, getStorefrontContent } from "@/lib/data/settings";
 export const metadata: Metadata = { title: "Shop the bakery", description: "Browse the live bakery catalogue." };
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
+export default async function ShopPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string; maxPrice?: string }>;
+}) {
   const [params, content, cakeConfiguration] = await Promise.all([
     searchParams,
     getStorefrontContent(),
     getCakeConfiguration(),
   ]);
   const category = params.category as "PASTRIES" | "READY_TO_BAKE" | "CUSTOM_CAKES" | undefined;
+  const maximumPrice =
+    params.maxPrice && Number(params.maxPrice) > 0 ? Math.round(Number(params.maxPrice) * 100) : undefined;
   const header = content.headers.shop;
   return (
     <>
@@ -21,11 +26,13 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         </h1>
         <p>{header.supportingText}</p>
       </header>
-      <div className="site-container">
-        <BudgetShop cakeConfiguration={cakeConfiguration} content={content.shopBudget} />
-      </div>
       <section className="site-container catalogue-section">
-        <Catalogue initialCategory={category} />
+        <Catalogue
+          initialCategory={category}
+          maximumPrice={maximumPrice}
+          cakeConfiguration={cakeConfiguration}
+          budgetContent={content.shopBudget}
+        />
       </section>
     </>
   );

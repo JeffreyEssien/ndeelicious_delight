@@ -1,25 +1,46 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useMoney } from "@/components/providers";
-import { Button, Checkbox, Input, Select } from "@/components/ui/primitives";
+import { zipSync } from "fflate";
+import { useMoney, useThemeTokens } from "@/components/providers";
+import { Button, Checkbox, Input, Select, Textarea } from "@/components/ui/primitives";
 import type { Product } from "@/types";
-import type { StoreCarousel } from "@/types/content";
+import type { MarketingExport } from "@/types/content";
+import { colorWithAlpha, type ThemeTokens } from "@/lib/theme/tokens";
+import {
+  marketingCaption,
+  marketingFilename,
+  marketingFormats,
+  selectedMarketingProducts,
+} from "@/features/marketing/export";
 
-type SocialSettings = StoreCarousel["social"];
-type Dimensions = { width: number; height: number; label: string };
+type SocialSettings = MarketingExport;
 
-const formats: Record<SocialSettings["format"], Dimensions> = {
-  square: { width: 1080, height: 1080, label: "Instagram square · 1080 × 1080" },
-  portrait: { width: 1080, height: 1350, label: "Instagram portrait · 1080 × 1350" },
-  story: { width: 1080, height: 1920, label: "Story / Reel cover · 1080 × 1920" },
-};
-
-const palettes = {
-  berry: { background: "#641b78", panel: "#ffffff", ink: "#251d23", accent: "#f1c65b", light: "#fff7fb" },
-  cream: { background: "#f3e7dd", panel: "#fffaf6", ink: "#321e29", accent: "#7a2f4a", light: "#7a2f4a" },
-  bold: { background: "#f05a1f", panel: "#fff5d9", ink: "#25170f", accent: "#6516a3", light: "#ffffff" },
-} as const;
+function exportPalette(template: SocialSettings["template"], tokens: ThemeTokens) {
+  if (template === "cream")
+    return {
+      background: tokens.accentSoft,
+      panel: tokens.surface,
+      ink: tokens.text,
+      accent: tokens.primary,
+      badgeText: tokens.onPrimary,
+    };
+  if (template === "bold")
+    return {
+      background: tokens.accent,
+      panel: tokens.primarySoft,
+      ink: tokens.text,
+      accent: tokens.primary,
+      badgeText: tokens.onPrimary,
+    };
+  return {
+    background: tokens.primary,
+    panel: tokens.surface,
+    ink: tokens.text,
+    accent: tokens.accent,
+    badgeText: tokens.onAccent,
+  };
+}
 
 function roundedRect(
   context: CanvasRenderingContext2D,
@@ -75,22 +96,28 @@ function loadImage(source: string) {
   });
 }
 
-async function renderPost(canvas: HTMLCanvasElement, product: Product, social: SocialSettings, price: string) {
+async function renderPost(
+  canvas: HTMLCanvasElement,
+  product: Product,
+  social: SocialSettings,
+  price: string,
+  tokens: ThemeTokens,
+) {
   if (!product.image) throw new Error(`${product.name} needs a product image before it can be exported.`);
   await document.fonts.ready;
   const exportImage = product.image.startsWith("data:")
     ? product.image
     : `/_next/image?url=${encodeURIComponent(product.image)}&w=1920&q=90`;
   const [{ width, height }, productImage, logo] = await Promise.all([
-    Promise.resolve(formats[social.format]),
+    Promise.resolve(marketingFormats[social.format]),
     loadImage(exportImage),
-    social.showLogo ? loadImage("/brand-logo.jpg") : Promise.resolve(null),
+    social.showLogo ? loadImage(social.logoUrl) : Promise.resolve(null),
   ]);
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Your browser could not create the social image.");
   canvas.width = width;
   canvas.height = height;
-  const palette = palettes[social.template];
+  const palette = exportPalette(social.template, tokens);
   const margin = social.format === "story" ? 76 : 58;
   const footerHeight = social.format === "story" ? 530 : social.format === "portrait" ? 405 : 360;
   const imageBottom = height - footerHeight;
@@ -99,8 +126,8 @@ async function renderPost(canvas: HTMLCanvasElement, product: Product, social: S
   context.fillRect(0, 0, width, height);
   coverImage(context, productImage, 0, 0, width, imageBottom + 60);
   const fade = context.createLinearGradient(0, imageBottom - 260, 0, imageBottom + 70);
-  fade.addColorStop(0, "rgba(20, 10, 16, 0)");
-  fade.addColorStop(1, "rgba(20, 10, 16, .68)");
+  fade.addColorStop(0, colorWithAlpha(tokens.text, 0));
+  fade.addColorStop(1, colorWithAlpha(tokens.text, 0.68));
   context.fillStyle = fade;
   context.fillRect(0, imageBottom - 260, width, 330);
 
@@ -120,7 +147,7 @@ async function renderPost(canvas: HTMLCanvasElement, product: Product, social: S
     roundedRect(context, width - margin - badgeWidth, margin, badgeWidth, 58, 29);
     context.fillStyle = palette.accent;
     context.fill();
-    context.fillStyle = social.template === "berry" ? "#31152b" : "#ffffff";
+    context.fillStyle = palette.badgeText;
     context.textAlign = "center";
     context.fillText(product.badge.toUpperCase(), width - margin - badgeWidth / 2, margin + 38);
   }
@@ -159,83 +186,89 @@ async function renderPost(canvas: HTMLCanvasElement, product: Product, social: S
   context.fillText(social.websiteUrl.replace(/^https?:\/\//, "").replace(/\/$/, ""), width - margin, footerY);
 }
 
-function slug(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function saveCanvas(canvas: HTMLCanvasElement, filename: string) {
-  return new Promise<void>((resolve, reject) => {
+function canvasBlob(canvas: HTMLCanvasElement) {
+  return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
         reject(new Error("The PNG file could not be generated."));
         return;
       }
-      const href = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = href;
-      anchor.download = filename;
-      anchor.click();
-      window.setTimeout(() => URL.revokeObjectURL(href), 1_000);
-      resolve();
+      resolve(blob);
     }, "image/png");
   });
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const href = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = href;
+  anchor.download = filename;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(href), 1_000);
+}
+
+function bytesBlob(bytes: Uint8Array, type: string) {
+  return new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type });
+}
+
 export function SocialPostGenerator({
   products,
-  settings,
+  initial,
   siteUrl,
-  onChange,
-  onSave,
 }: {
   products: Product[];
-  settings: StoreCarousel;
+  initial: MarketingExport;
   siteUrl: string;
-  onChange: (social: SocialSettings) => void;
-  onSave: () => Promise<void>;
 }) {
-  const selected = useMemo(
-    () => settings.productIds.flatMap((id) => products.find((product) => product.id === id) ?? []),
-    [products, settings.productIds],
-  );
+  const [social, setSocial] = useState({ ...initial, websiteUrl: initial.websiteUrl || siteUrl });
+  const [saved, setSaved] = useState(initial);
+  const [query, setQuery] = useState("");
+  const selected = useMemo(() => selectedMarketingProducts(products, social.productIds), [products, social.productIds]);
   const [productId, setProductId] = useState(selected[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const canvas = useRef<HTMLCanvasElement>(null);
   const money = useMoney();
-  const social = useMemo(
-    () => ({ ...settings.social, websiteUrl: settings.social.websiteUrl || siteUrl }),
-    [settings.social, siteUrl],
-  );
+  const themeTokens = useThemeTokens();
   const product = selected.find((item) => item.id === productId) ?? selected[0];
-  const update = (value: Partial<SocialSettings>) => onChange({ ...social, ...value });
+  const [caption, setCaption] = useState("");
+  const dirty = JSON.stringify(social) !== JSON.stringify(saved);
+  const update = (value: Partial<SocialSettings>) => setSocial((current) => ({ ...current, ...value }));
+
+  useEffect(() => {
+    if (product)
+      setCaption(
+        marketingCaption(product, money(product.discountPrice ?? product.price), siteUrl, social.callToAction),
+      );
+  }, [money, product, siteUrl, social.callToAction]);
 
   useEffect(() => {
     if (!product || !canvas.current) return;
     let cancelled = false;
-    renderPost(canvas.current, product, social, money(product.discountPrice ?? product.price))
+    renderPost(canvas.current, product, social, money(product.discountPrice ?? product.price), themeTokens)
       .then(() => !cancelled && setMessage(""))
       .catch((error) => !cancelled && setMessage(error instanceof Error ? error.message : "Preview unavailable."));
     return () => {
       cancelled = true;
     };
-  }, [money, product, social]);
+  }, [money, product, social, themeTokens]);
 
   async function download(items: Product[]) {
     if (!items.length) return;
     setBusy(true);
     setMessage("Preparing your high-resolution PNG…");
     try {
+      const files: Record<string, Uint8Array> = {};
       for (const item of items) {
         const output = document.createElement("canvas");
-        await renderPost(output, item, social, money(item.discountPrice ?? item.price));
-        await saveCanvas(output, `${slug(item.name)}-${social.format}.png`);
+        await renderPost(output, item, social, money(item.discountPrice ?? item.price), themeTokens);
+        const blob = await canvasBlob(output);
+        files[marketingFilename(item.name, social.format)] = new Uint8Array(await blob.arrayBuffer());
       }
-      setMessage(`${items.length} ${items.length === 1 ? "image" : "images"} downloaded.`);
+      if (items.length === 1) downloadBlob(bytesBlob(Object.values(files)[0], "image/png"), Object.keys(files)[0]);
+      else downloadBlob(bytesBlob(zipSync(files), "application/zip"), `ndeelicious-posts-${social.format}.zip`);
+      setMessage(`${items.length} ${items.length === 1 ? "image" : "images in one ZIP"} downloaded.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The images could not be downloaded.");
     } finally {
@@ -243,12 +276,27 @@ export function SocialPostGenerator({
     }
   }
 
+  async function save() {
+    if (!dirty || saving) return;
+    setSaving(true);
+    const response = await fetch("/api/admin/mutate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "settings", key: "marketing", value: social }),
+    });
+    setSaving(false);
+    if (response.ok) {
+      setSaved(social);
+      setMessage("Saved");
+    } else setMessage("Design defaults could not be saved.");
+  }
+
   return (
     <section className="admin-card social-generator">
       <div className="card-head">
         <div>
           <h2>Social post generator</h2>
-          <p>Create polished, ready-to-post PNGs from the same live products and prices.</p>
+          <p>Select any active product and create ready-to-post images using live photos and prices.</p>
         </div>
       </div>
       <div className="social-generator-grid">
@@ -260,12 +308,32 @@ export function SocialPostGenerator({
               </option>
             ))}
           </Select>
+          <div className="marketing-product-picker">
+            <Input label="Find products" type="search" value={query} onChange={(e) => setQuery(e.target.value)} />
+            {products
+              .filter((item) => item.status === "ACTIVE" && item.name.toLowerCase().includes(query.toLowerCase()))
+              .slice(0, 20)
+              .map((item) => (
+                <Checkbox
+                  key={item.id}
+                  label={item.name}
+                  checked={social.productIds.includes(item.id)}
+                  onChange={(event) =>
+                    update({
+                      productIds: event.target.checked
+                        ? [...social.productIds, item.id]
+                        : social.productIds.filter((id) => id !== item.id),
+                    })
+                  }
+                />
+              ))}
+          </div>
           <Select
             label="Post size"
             value={social.format}
             onChange={(e) => update({ format: e.target.value as SocialSettings["format"] })}
           >
-            {Object.entries(formats).map(([value, item]) => (
+            {Object.entries(marketingFormats).map(([value, item]) => (
               <option value={value} key={value}>
                 {item.label}
               </option>
@@ -276,7 +344,7 @@ export function SocialPostGenerator({
             value={social.template}
             onChange={(e) => update({ template: e.target.value as SocialSettings["template"] })}
           >
-            <option value="berry">Signature berry</option>
+            <option value="brand">Use my brand</option>
             <option value="cream">Warm cream</option>
             <option value="bold">Bright celebration</option>
           </Select>
@@ -306,7 +374,22 @@ export function SocialPostGenerator({
               checked={social.showPrice}
               onChange={(e) => update({ showPrice: e.target.checked })}
             />
+            {social.format === "story" && (
+              <Checkbox
+                label="Preview Story safe area"
+                checked={social.showSafeZone}
+                onChange={(e) => update({ showSafeZone: e.target.checked })}
+              />
+            )}
           </div>
+          <Textarea label="Caption" rows={7} value={caption} onChange={(event) => setCaption(event.target.value)} />
+          <Button
+            variant="secondary"
+            disabled={!caption}
+            onClick={() => navigator.clipboard.writeText(caption).then(() => setMessage("Caption copied."))}
+          >
+            Copy caption
+          </Button>
           <div className="social-download-actions">
             <Button disabled={busy || !product} onClick={() => product && download([product])}>
               Download this post
@@ -315,15 +398,7 @@ export function SocialPostGenerator({
               Download all {selected.length || ""}
             </Button>
           </div>
-          <Button
-            variant="ghost"
-            disabled={saving}
-            onClick={async () => {
-              setSaving(true);
-              await onSave();
-              setSaving(false);
-            }}
-          >
+          <Button variant="ghost" disabled={saving || !dirty} onClick={save}>
             {saving ? "Saving…" : "Save these design defaults"}
           </Button>
           <p className="social-generator-status" aria-live="polite">
@@ -334,8 +409,9 @@ export function SocialPostGenerator({
           {product ? (
             <canvas ref={canvas} aria-label={`Social post preview for ${product.name}`} />
           ) : (
-            <p>Select products for the carousel first.</p>
+            <p>Select one or more active products.</p>
           )}
+          {social.format === "story" && social.showSafeZone && <div className="story-safe-zone">Story safe area</div>}
         </div>
       </div>
     </section>

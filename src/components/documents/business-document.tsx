@@ -17,6 +17,7 @@ export type BusinessDocumentData = {
   number: string;
   issuedAt: string;
   validUntil?: string | null;
+  dueAt?: string | null;
   status: string;
   customer: { name: string; email: string; phone?: string; address?: string };
   lines: DocumentLine[];
@@ -27,6 +28,7 @@ export type BusinessDocumentData = {
   total: number;
   paid?: number;
   refunded?: number;
+  amountDue?: number;
   notes?: string[];
   business: BusinessSettings;
   footerMessage?: string;
@@ -36,6 +38,8 @@ export type BusinessDocumentData = {
   showBusinessTaxNumber?: boolean;
   showPaymentDetails?: boolean;
   customized?: boolean;
+  downloadHref?: string;
+  payNowUrl?: string;
 };
 
 export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocumentData & { showToolbar?: boolean }) {
@@ -46,7 +50,14 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
       {showToolbar && (
         <div className="document-toolbar no-print">
           <p>This document is generated from the saved database record.</p>
-          <PrintDocumentButton />
+          <div className="document-toolbar-actions">
+            {props.downloadHref && (
+              <a className="button button-secondary" href={props.downloadHref}>
+                Download PDF
+              </a>
+            )}
+            <PrintDocumentButton />
+          </div>
         </div>
       )}
       <article className={`business-document document-${props.design ?? "classic"}`} style={style}>
@@ -86,6 +97,12 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
               <div>
                 <dt>Valid until</dt>
                 <dd>{formatDate(props.validUntil, props.business.locale, props.business.timezone)}</dd>
+              </div>
+            )}
+            {props.dueAt && (
+              <div>
+                <dt>Due</dt>
+                <dd>{formatDate(props.dueAt, props.business.locale, props.business.timezone)}</dd>
               </div>
             )}
             <div>
@@ -145,7 +162,12 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
             )}
             {!!props.tax && (
               <div>
-                <dt>{props.business.taxLabel}</dt>
+                <dt>
+                  {props.business.taxLabel}
+                  {props.business.taxEnabled && props.business.taxRegistrationNumber && props.business.taxRateBps > 0
+                    ? ` (${props.business.taxRateBps / 100}%)`
+                    : ""}
+                </dt>
                 <dd>{money(props.tax)}</dd>
               </div>
             )}
@@ -165,6 +187,12 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
                 <dd>−{money(props.refunded)}</dd>
               </div>
             )}
+            {props.amountDue !== undefined && props.amountDue > 0 && (
+              <div className="document-total">
+                <dt>Amount due</dt>
+                <dd>{money(props.amountDue)}</dd>
+              </div>
+            )}
           </dl>
         </div>
         <footer>
@@ -174,6 +202,13 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
               ? "Customized printable copy. The permanent order and payment records are unchanged."
               : "Generated from the permanent order record. Keep this document for your records."}
           </small>
+          {props.kind === "Invoice" && props.amountDue && props.payNowUrl && (
+            <p className="no-print">
+              <a className="button button-primary" href={props.payNowUrl}>
+                Pay now
+              </a>
+            </p>
+          )}
         </footer>
       </article>
     </main>

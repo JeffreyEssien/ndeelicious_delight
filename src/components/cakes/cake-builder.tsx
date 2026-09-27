@@ -5,6 +5,7 @@ import type { CakeConfigurationData, CakeOptionType } from "@/types/content";
 import { useMoney } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 import { Input, Textarea } from "@/components/ui/primitives";
+import { calculateCakeConfigurationPrice } from "@/features/cakes/pricing";
 const initial: CakeConfiguration = {
   occasion: "",
   size: "",
@@ -69,9 +70,11 @@ export function CakeBuilder({
   const options = (type: CakeOptionType) =>
     configuration.options.filter((option) => option.active && option.type === type);
   const pricing = useMemo(() => {
-    return configuration.options
-      .filter((option) => [config.size, config.flavour, config.filling, config.design].includes(option.name))
-      .reduce((total, option) => total + option.priceAdjustment, 0);
+    try {
+      return calculateCakeConfigurationPrice(config, configuration.options).total;
+    } catch {
+      return 0;
+    }
   }, [config, configuration.options]);
   const quote = configuration.options.some(
     (option) =>

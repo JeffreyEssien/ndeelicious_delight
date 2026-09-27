@@ -18,6 +18,15 @@ export default async function Page({
     getCakeConfiguration(),
     searchParams,
   ]);
+  const recommendedValue = (type: "occasion" | "size" | "flavour" | "filling" | "design") => {
+    const id = params[`${type}Id`];
+    const legacyName = params[type];
+    const option =
+      typeof id === "string"
+        ? configuration.options.find((item) => item.id === id && item.type === type && item.active)
+        : undefined;
+    return option?.name ?? (typeof legacyName === "string" ? legacyName : undefined);
+  };
   const hero = content.customCakes.hero;
   return (
     <>
@@ -39,11 +48,11 @@ export default async function Page({
           initialSelection={
             params.recommended === "1"
               ? {
-                  occasion: typeof params.occasion === "string" ? params.occasion : undefined,
-                  size: typeof params.size === "string" ? params.size : undefined,
-                  flavour: typeof params.flavour === "string" ? params.flavour : undefined,
-                  filling: typeof params.filling === "string" ? params.filling : undefined,
-                  design: typeof params.design === "string" ? params.design : undefined,
+                  occasion: recommendedValue("occasion"),
+                  size: recommendedValue("size"),
+                  flavour: recommendedValue("flavour"),
+                  filling: recommendedValue("filling"),
+                  design: recommendedValue("design"),
                 }
               : undefined
           }

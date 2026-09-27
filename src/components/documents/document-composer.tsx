@@ -1,276 +1,147 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BusinessDocument, type BusinessDocumentData } from "./business-document";
-import { Button, Checkbox, Input, Select, Textarea } from "@/components/ui/primitives";
+import { BusinessDocument } from "./business-document";
+import { Button, Checkbox, Select, Textarea } from "@/components/ui/primitives";
+import type { DocumentDTO } from "@/lib/documents/dto";
 
-const toMajor = (value?: number) => ((value ?? 0) / 100).toFixed(2);
-const toMinor = (value: string) => Math.round((Number(value) || 0) * 100);
-
-export function DocumentComposer({ initial }: { initial: BusinessDocumentData }) {
-  const [draft, setDraft] = useState(initial);
-  const [customized, setCustomized] = useState(false);
-  const [active, setActive] = useState<"details" | "customer" | "items" | "design">("details");
-  const update = (value: Partial<BusinessDocumentData>) => {
-    setCustomized(true);
-    setDraft((current) => ({ ...current, ...value }));
+export function DocumentComposer({ initial }: { initial: DocumentDTO }) {
+  const [presentation, setPresentation] = useState({
+    notes: initial.notes ?? [],
+    footerMessage: initial.footerMessage ?? "",
+    design: initial.design ?? ("classic" as const),
+    accentColor: initial.accentColor ?? "#792f49",
+    showSku: initial.showSku ?? true,
+    showBusinessTaxNumber: initial.showBusinessTaxNumber ?? true,
+    showPaymentDetails: initial.showPaymentDetails ?? true,
+  });
+  const [changed, setChanged] = useState(false);
+  const [sharing, setSharing] = useState<"link" | "email" | null>(null);
+  const [shareState, setShareState] = useState("");
+  const update = (value: Partial<typeof presentation>) => {
+    setChanged(true);
+    setPresentation((current) => ({ ...current, ...value }));
   };
-  const computed = useMemo(() => ({ ...draft, customized }), [customized, draft]);
-  const setLine = (index: number, value: Partial<BusinessDocumentData["lines"][number]>) =>
-    update({ lines: draft.lines.map((line, at) => (at === index ? { ...line, ...value } : line)) });
-  const recalculate = () => {
-    const subtotal = draft.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
-    const lines = draft.lines.map((line) => ({ ...line, total: line.quantity * line.unitPrice }));
-    update({ lines, subtotal, total: subtotal - (draft.discount ?? 0) + (draft.delivery ?? 0) + (draft.tax ?? 0) });
-  };
+  const computed = useMemo(() => ({ ...initial, ...presentation }), [initial, presentation]);
+  async function share(action: "link" | "email") {
+    if (sharing) return;
+    setSharing(action);
+    setShareState("");
+    const response = await fetch(`/api/admin/documents/${initial.id}/share`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    const payload = await response.json().catch(() => null);
+    setSharing(null);
+    if (!response.ok) {
+      setShareState(payload?.error ?? "The document could not be shared.");
+      return;
+    }
+    if (action === "link") await navigator.clipboard.writeText(payload.url);
+    setShareState(action === "link" ? "Secure link copied" : "Email sent");
+  }
   return (
     <main className="document-studio">
       <aside className="document-editor no-print">
         <div className="document-editor-head">
-          <span>Document studio</span>
-          <h1>Edit and print</h1>
-          <p>Changes here only affect this printable copy. The paid order and Stripe record stay unchanged.</p>
+          <span>Official {initial.kind.toLowerCase()}</span>
+          <h1>Prepare for printing</h1>
+          <p>Amounts, customer details, dates, and line items are locked to the permanent order and payment record.</p>
         </div>
-        <nav aria-label="Document editing sections">
-          {(["details", "customer", "items", "design"] as const).map((section) => (
-            <button
-              type="button"
-              className={active === section ? "active" : ""}
-              onClick={() => setActive(section)}
-              key={section}
-            >
-              {section}
-            </button>
-          ))}
-        </nav>
         <div className="document-editor-fields">
-          {active === "details" && (
-            <>
-              <Select
-                label="Document type"
-                value={draft.kind}
-                onChange={(e) => update({ kind: e.target.value as BusinessDocumentData["kind"] })}
-              >
-                <option>Receipt</option>
-                <option>Invoice</option>
-                <option>Quote</option>
-              </Select>
-              <Input
-                label="Document number"
-                value={draft.number}
-                onChange={(e) => update({ number: e.target.value })}
-              />
-              <Input
-                label="Issue date"
-                type="datetime-local"
-                value={draft.issuedAt.slice(0, 16)}
-                onChange={(e) => update({ issuedAt: new Date(e.target.value).toISOString() })}
-              />
-              <Input label="Status shown" value={draft.status} onChange={(e) => update({ status: e.target.value })} />
-              <Textarea
-                label="Notes — one per line"
-                rows={5}
-                value={(draft.notes ?? []).join("\n")}
-                onChange={(e) => update({ notes: e.target.value.split("\n").filter(Boolean) })}
-              />
-              <Textarea
-                label="Footer message"
-                rows={3}
-                value={draft.footerMessage ?? ""}
-                placeholder={`Thank you for choosing ${draft.business.businessName}.`}
-                onChange={(e) => update({ footerMessage: e.target.value })}
-              />
-            </>
-          )}
-          {active === "customer" && (
-            <>
-              <Input
-                label="Customer name"
-                value={draft.customer.name}
-                onChange={(e) => update({ customer: { ...draft.customer, name: e.target.value } })}
-              />
-              <Input
-                label="Email"
-                type="email"
-                value={draft.customer.email}
-                onChange={(e) => update({ customer: { ...draft.customer, email: e.target.value } })}
-              />
-              <Input
-                label="Phone"
-                value={draft.customer.phone ?? ""}
-                onChange={(e) => update({ customer: { ...draft.customer, phone: e.target.value } })}
-              />
-              <Textarea
-                label="Billing / delivery address"
-                rows={4}
-                value={draft.customer.address ?? ""}
-                onChange={(e) => update({ customer: { ...draft.customer, address: e.target.value } })}
-              />
-            </>
-          )}
-          {active === "items" && (
-            <>
-              <div className="document-line-editor">
-                {draft.lines.map((line, index) => (
-                  <fieldset key={line.id}>
-                    <legend>Item {index + 1}</legend>
-                    <Input label="Name" value={line.name} onChange={(e) => setLine(index, { name: e.target.value })} />
-                    <Input
-                      label="Description"
-                      value={line.detail}
-                      onChange={(e) => setLine(index, { detail: e.target.value })}
-                    />
-                    <Input
-                      label="SKU"
-                      value={line.sku ?? ""}
-                      onChange={(e) => setLine(index, { sku: e.target.value })}
-                    />
-                    <div className="document-number-row">
-                      <Input
-                        label="Quantity"
-                        type="number"
-                        min="1"
-                        value={line.quantity}
-                        onChange={(e) => setLine(index, { quantity: Number(e.target.value) })}
-                      />
-                      <Input
-                        label="Unit price"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={toMajor(line.unitPrice)}
-                        onChange={(e) => setLine(index, { unitPrice: toMinor(e.target.value) })}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      className="text-button"
-                      onClick={() => update({ lines: draft.lines.filter((_, at) => at !== index) })}
-                    >
-                      Remove item
-                    </button>
-                  </fieldset>
-                ))}
-                <Button
-                  variant="secondary"
-                  onClick={() =>
-                    update({
-                      lines: [
-                        ...draft.lines,
-                        {
-                          id: crypto.randomUUID(),
-                          name: "New item",
-                          detail: "",
-                          sku: "",
-                          quantity: 1,
-                          unitPrice: 0,
-                          total: 0,
-                        },
-                      ],
-                    })
-                  }
-                >
-                  Add item
-                </Button>
-              </div>
-              <div className="document-totals-editor">
-                <Input
-                  label="Subtotal"
-                  type="number"
-                  step="0.01"
-                  value={toMajor(draft.subtotal)}
-                  onChange={(e) => update({ subtotal: toMinor(e.target.value) })}
-                />
-                <Input
-                  label="Discount"
-                  type="number"
-                  step="0.01"
-                  value={toMajor(draft.discount)}
-                  onChange={(e) => update({ discount: toMinor(e.target.value) })}
-                />
-                <Input
-                  label="Delivery"
-                  type="number"
-                  step="0.01"
-                  value={toMajor(draft.delivery)}
-                  onChange={(e) => update({ delivery: toMinor(e.target.value) })}
-                />
-                <Input
-                  label={draft.business.taxLabel}
-                  type="number"
-                  step="0.01"
-                  value={toMajor(draft.tax)}
-                  onChange={(e) => update({ tax: toMinor(e.target.value) })}
-                />
-                <Input
-                  label="Amount paid"
-                  type="number"
-                  step="0.01"
-                  value={toMajor(draft.paid)}
-                  onChange={(e) => update({ paid: toMinor(e.target.value) })}
-                />
-                <Input
-                  label="Document total"
-                  type="number"
-                  step="0.01"
-                  value={toMajor(draft.total)}
-                  onChange={(e) => update({ total: toMinor(e.target.value) })}
-                />
-                <Button variant="secondary" onClick={recalculate}>
-                  Recalculate totals
-                </Button>
-              </div>
-            </>
-          )}
-          {active === "design" && (
-            <>
+          <fieldset className="document-integrity-summary">
+            <legend>Locked financial details</legend>
+            <b>{initial.number}</b>
+            <span>{initial.customer.name}</span>
+            <span>{initial.lines.length} item(s)</span>
+            <span>Financial details locked</span>
+          </fieldset>
+          <details>
+            <summary>Presentation options</summary>
+            <div className="form-stack">
               <Select
                 label="Document layout"
-                value={draft.design ?? "classic"}
-                onChange={(e) => update({ design: e.target.value as BusinessDocumentData["design"] })}
+                value={presentation.design}
+                onChange={(event) => update({ design: event.target.value as typeof presentation.design })}
               >
                 <option value="classic">Classic</option>
                 <option value="modern">Modern</option>
                 <option value="minimal">Minimal</option>
               </Select>
               <label className="field">
-                <span>Accent colour</span>
+                <span>Brand accent</span>
                 <input
                   type="color"
-                  value={draft.accentColor ?? "#792f49"}
-                  onChange={(e) => update({ accentColor: e.target.value })}
+                  value={presentation.accentColor}
+                  onChange={(event) => update({ accentColor: event.target.value })}
                 />
               </label>
               <Checkbox
                 label="Show item SKUs"
-                checked={draft.showSku ?? true}
-                onChange={(e) => update({ showSku: e.target.checked })}
+                checked={presentation.showSku}
+                onChange={(event) => update({ showSku: event.target.checked })}
               />
               <Checkbox
                 label="Show business tax number"
-                checked={draft.showBusinessTaxNumber ?? true}
-                onChange={(e) => update({ showBusinessTaxNumber: e.target.checked })}
+                checked={presentation.showBusinessTaxNumber}
+                onChange={(event) => update({ showBusinessTaxNumber: event.target.checked })}
               />
               <Checkbox
                 label="Show paid and refunded amounts"
-                checked={draft.showPaymentDetails ?? true}
-                onChange={(e) => update({ showPaymentDetails: e.target.checked })}
+                checked={presentation.showPaymentDetails}
+                onChange={(event) => update({ showPaymentDetails: event.target.checked })}
               />
-            </>
-          )}
+              <Textarea
+                label="Non-financial notes — one per line"
+                rows={4}
+                value={presentation.notes.join("\n")}
+                onChange={(event) => update({ notes: event.target.value.split("\n").filter(Boolean) })}
+              />
+              <Textarea
+                label="Footer message"
+                rows={3}
+                value={presentation.footerMessage}
+                placeholder={`Thank you for choosing ${initial.business.businessName}.`}
+                onChange={(event) => update({ footerMessage: event.target.value })}
+              />
+            </div>
+          </details>
+          <p className="document-save-state" role="status">
+            {changed ? "Preview has unsaved presentation changes" : "Showing the issued document"}
+          </p>
         </div>
         <div className="document-editor-actions">
           <Button
             variant="ghost"
+            disabled={!changed}
             onClick={() => {
-              setDraft(initial);
-              setCustomized(false);
+              setPresentation({
+                notes: initial.notes ?? [],
+                footerMessage: initial.footerMessage ?? "",
+                design: initial.design ?? "classic",
+                accentColor: initial.accentColor ?? "#792f49",
+                showSku: initial.showSku ?? true,
+                showBusinessTaxNumber: initial.showBusinessTaxNumber ?? true,
+                showPaymentDetails: initial.showPaymentDetails ?? true,
+              });
+              setChanged(false);
             }}
           >
-            Reset from order
+            Reset presentation
           </Button>
-          <Button onClick={() => window.print()}>Print / save PDF</Button>
+          <a className="button button-secondary" href={`/api/admin/documents/${initial.id}/pdf`}>
+            Download PDF
+          </a>
+          <Button variant="secondary" disabled={!!sharing} onClick={() => share("link")}>
+            {sharing === "link" ? "Copying…" : "Copy secure link"}
+          </Button>
+          <Button variant="secondary" disabled={!!sharing} onClick={() => share("email")}>
+            {sharing === "email" ? "Sending…" : "Email customer"}
+          </Button>
+          <Button onClick={() => window.print()}>Print</Button>
         </div>
+        {shareState && <p className="document-save-state">{shareState}</p>}
       </aside>
       <section className="document-preview" aria-label="Document preview">
         <BusinessDocument {...computed} showToolbar={false} />

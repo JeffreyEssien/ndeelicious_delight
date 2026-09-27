@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
 import { sendEmailToActiveAdmins } from "@/lib/email/admin-recipients";
-import { createDocumentToken } from "@/lib/documents/tokens";
+import { createAccessToken, issueOrderDocument, latestDocument } from "@/lib/documents/service";
 import { getSiteUrl } from "@/lib/site-url";
 
 const messages: Record<string, { subject: string; title: string; body: string }> = {
@@ -107,12 +107,25 @@ async function deliver(db: SupabaseClient, notificationId: string) {
             .filter(Boolean)
             .join(", "),
         );
+  let receiptUrl = "";
+  let receiptDocumentId = "";
+  if (notification.event_type === "PAID") {
+    const existing = await latestDocument(db, "RECEIPT", "order_id", notification.order_id);
+    const receipt = existing
+      ? {
+          document: existing,
+          token: await createAccessToken(db, existing.id, new Date(Date.now() + 3650 * 86400000).toISOString()),
+        }
+      : await issueOrderDocument(db, order.order_number, "RECEIPT");
+    receiptUrl = `${getSiteUrl()}/documents/orders/${encodeURIComponent(order.order_number)}/receipt?token=${receipt.token}`;
+    receiptDocumentId = receipt.document.id;
+  }
   const result = await sendTransactionalEmail({
     to: notification.recipient,
     subject: `${message.subject} · ${order.order_number}`,
     html: emailFrame(
       message.title,
-      `<p>Hello ${escapeHtml(order.customer_name)},</p><p>${escapeHtml(message.body)}</p><p><b>Order ${escapeHtml(order.order_number)}</b></p><ul>${summary}</ul><p>${fulfilment}</p>${notification.event_type === "PAID" ? `<p><a href="${getSiteUrl()}/documents/orders/${encodeURIComponent(order.order_number)}/receipt?token=${createDocumentToken("receipt", order.order_number)}">View, print or save your receipt</a></p>` : ""}`,
+      `<p>Hello ${escapeHtml(order.customer_name)},</p><p>${escapeHtml(message.body)}</p><p><b>Order ${escapeHtml(order.order_number)}</b></p><ul>${summary}</ul><p>${fulfilment}</p>${receiptUrl ? `<p><a href="${receiptUrl}">View or download your receipt</a></p>` : ""}`,
     ),
   });
   const now = new Date().toISOString();
@@ -135,6 +148,8 @@ async function deliver(db: SupabaseClient, notificationId: string) {
     event_type: result.sent ? "EMAIL_SENT" : "EMAIL_FAILED",
     metadata: { notificationId: notification.id, eventType: notification.event_type },
   });
+  if (result.sent && receiptDocumentId)
+    await db.from("document_events").insert({ document_id: receiptDocumentId, action: "RECEIPT_SENT" });
   return result.sent;
 }
 

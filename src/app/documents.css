@@ -303,6 +303,43 @@
 .business-document footer small {
   color: var(--muted);
 }
+.document-toolbar-actions,
+.quote-response-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.document-integrity-summary {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+.document-integrity-summary legend {
+  padding-inline: 6px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.document-save-state {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.quote-response {
+  width: min(100% - 24px, 900px);
+  margin: 0 auto 48px;
+  padding: clamp(22px, 4vw, 38px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-soft);
+}
+.quote-response h2 {
+  margin-top: 0;
+}
 @media (max-width: 700px) {
   .document-studio {
     grid-template-columns: 1fr;

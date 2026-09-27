@@ -3,26 +3,21 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { ProductCarousel } from "@/components/product/product-carousel";
-import { SocialPostGenerator } from "@/components/admin/social-post-generator";
 import { Button, Checkbox, Input, Select, Textarea } from "@/components/ui/primitives";
 import { useMoney, useToast } from "@/components/providers";
 import type { Product } from "@/types";
 import type { StoreCarousel } from "@/types/content";
 
-export function CarouselEditor({
-  products,
-  initial,
-  siteUrl,
-}: {
-  products: Product[];
-  initial: StoreCarousel;
-  siteUrl: string;
-}) {
+export function CarouselEditor({ products, initial }: { products: Product[]; initial: StoreCarousel }) {
   const [draft, setDraft] = useState(initial);
+  const [published, setPublished] = useState(initial);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState("");
   const notify = useToast();
   const money = useMoney();
+  const dirty = JSON.stringify(draft) !== JSON.stringify(published);
   const selected = draft.productIds.flatMap((id) => {
     const product = products.find((item) => item.id === id);
     return product ? [product] : [];
@@ -46,7 +41,9 @@ export function CarouselEditor({
     patch({ productIds: next });
   };
   async function save() {
+    if (!dirty || busy) return;
     setBusy(true);
+    setSaveError("");
     const response = await fetch("/api/admin/mutate", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -54,8 +51,11 @@ export function CarouselEditor({
     });
     setBusy(false);
     const payload = await response.json().catch(() => null);
-    if (response.ok) notify("Homepage carousel published.");
-    else notify(payload?.error ?? "Carousel settings could not be saved.");
+    if (response.ok) {
+      setPublished(draft);
+      setSavedAt(new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
+      notify("Homepage carousel published.");
+    } else setSaveError(payload?.error ?? "Carousel settings could not be saved.");
   }
   return (
     <div className="carousel-editor">
@@ -89,40 +89,41 @@ export function CarouselEditor({
             <option value="cards">Soft cards</option>
             <option value="spotlight">Dramatic spotlight</option>
           </Select>
-          <Select
-            label="Slide timing"
-            value={draft.intervalMs}
-            onChange={(e) => patch({ intervalMs: Number(e.target.value) })}
-            disabled={!draft.autoplay}
-          >
-            <option value={3000}>3 seconds</option>
-            <option value={5000}>5 seconds</option>
-            <option value={6000}>6 seconds</option>
-            <option value={8000}>8 seconds</option>
-            <option value={12000}>12 seconds</option>
-          </Select>
-          <div className="carousel-toggles field-wide">
-            <Checkbox
-              label="Move through products automatically"
-              checked={draft.autoplay}
-              onChange={(e) => patch({ autoplay: e.target.checked })}
-            />
-            <Checkbox
-              label="Loop back to the first product"
-              checked={draft.loop}
-              onChange={(e) => patch({ loop: e.target.checked })}
-            />
-            <Checkbox
-              label="Show current prices"
-              checked={draft.showPrices}
-              onChange={(e) => patch({ showPrices: e.target.checked })}
-            />
-            <Checkbox
-              label="Show Add to basket"
-              checked={draft.showAddToCart}
-              onChange={(e) => patch({ showAddToCart: e.target.checked })}
-            />
-          </div>
+          <details className="carousel-advanced field-wide">
+            <summary>Advanced display and movement</summary>
+            <div className="carousel-advanced-fields">
+              <Checkbox
+                label="Move through products automatically"
+                checked={draft.autoplay}
+                onChange={(e) => patch({ autoplay: e.target.checked })}
+              />
+              <Select
+                label="Slide timing"
+                value={draft.intervalMs}
+                onChange={(e) => patch({ intervalMs: Number(e.target.value) })}
+                disabled={!draft.autoplay}
+              >
+                <option value={6000}>6 seconds</option>
+                <option value={8000}>8 seconds</option>
+                <option value={12000}>12 seconds</option>
+              </Select>
+              <Checkbox
+                label="Loop back to the first product"
+                checked={draft.loop}
+                onChange={(e) => patch({ loop: e.target.checked })}
+              />
+              <Checkbox
+                label="Show current prices"
+                checked={draft.showPrices}
+                onChange={(e) => patch({ showPrices: e.target.checked })}
+              />
+              <Checkbox
+                label="Show the basket action"
+                checked={draft.showAddToCart}
+                onChange={(e) => patch({ showAddToCart: e.target.checked })}
+              />
+            </div>
+          </details>
         </div>
         <div className="carousel-product-editor">
           <div>
@@ -130,6 +131,12 @@ export function CarouselEditor({
               Selected products <small>{selected.length}/12</small>
             </h3>
             <p>Drag-free ordering keeps this easy on phones: use the arrows to arrange the slides.</p>
+            {selected.length > 6 && (
+              <p className="carousel-recommendation">
+                For a calmer storefront, 4–6 products is recommended. Your {selected.length} saved products will still
+                work.
+              </p>
+            )}
           </div>
           <div className="carousel-selected-list">
             {selected.map((product, index) => (
@@ -197,9 +204,12 @@ export function CarouselEditor({
           </div>
         </div>
         <div className="admin-save-bar">
-          <p>Prices and availability update automatically from Products.</p>
-          <Button onClick={save} disabled={busy || (draft.enabled && !draft.productIds.length)}>
-            {busy ? "Publishing…" : "Publish carousel"}
+          <p className={saveError ? "save-error" : ""}>
+            {saveError ||
+              (busy ? "Publishing…" : dirty ? "Unsaved changes" : savedAt ? `Published at ${savedAt}` : "Published")}
+          </p>
+          <Button onClick={save} disabled={busy || !dirty || (draft.enabled && !draft.productIds.length)}>
+            {busy ? "Publishing…" : "Publish"}
           </Button>
         </div>
       </section>
@@ -212,13 +222,6 @@ export function CarouselEditor({
         </div>
         <ProductCarousel products={products} settings={{ ...draft, enabled: true }} preview />
       </section>
-      <SocialPostGenerator
-        products={products}
-        settings={draft}
-        siteUrl={siteUrl}
-        onChange={(social) => patch({ social })}
-        onSave={save}
-      />
     </div>
   );
 }
