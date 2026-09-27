@@ -10,8 +10,11 @@ import {
   availableProductPrice,
   cakeRecommendationBands,
   cakeRecommendationHref,
+  closestProductsAboveBudget,
   deriveBudgetPresets,
+  productsInBudget,
 } from "@/features/budget/recommendations";
+import { isProductPurchasable } from "@/features/catalog/availability";
 import type { Category } from "@/types";
 import type { CakeConfigurationData, StorefrontContent } from "@/types/content";
 
@@ -46,26 +49,34 @@ export function Catalogue({
     () => (budget ? cakeRecommendationBands(cakeConfiguration.options, budget, 3, 12) : []),
     [budget, cakeConfiguration.options],
   );
+  const filteredProducts = useMemo(
+    () =>
+      products.filter(
+        (product) =>
+          (category === "ALL" || product.category === category) &&
+          (!available || isProductPurchasable(product)) &&
+          `${product.name} ${product.shortDescription} ${product.description} ${product.category}`
+            .toLowerCase()
+            .includes(query.toLowerCase()),
+      ),
+    [category, available, query, products],
+  );
   const items = useMemo(
     () =>
-      products
-        .filter(
-          (product) =>
-            (category === "ALL" || product.category === category) &&
-            (budget === undefined || availableProductPrice(product) <= budget) &&
-            (!available || product.status === "ACTIVE") &&
-            `${product.name} ${product.shortDescription}`.toLowerCase().includes(query.toLowerCase()),
-        )
-        .sort((a, b) =>
-          sort === "low"
-            ? a.price - b.price
-            : sort === "high"
-              ? b.price - a.price
-              : sort === "newest"
-                ? b.id.localeCompare(a.id)
-                : Number(!!b.featured) - Number(!!a.featured),
-        ),
-    [category, available, sort, query, products, budget],
+      [...(budget === undefined ? filteredProducts : productsInBudget(filteredProducts, budget))].sort((a, b) =>
+        sort === "low"
+          ? a.price - b.price
+          : sort === "high"
+            ? b.price - a.price
+            : sort === "newest"
+              ? b.id.localeCompare(a.id)
+              : Number(!!b.featured) - Number(!!a.featured),
+      ),
+    [filteredProducts, sort, budget],
+  );
+  const closest = useMemo(
+    () => (budget !== undefined && items.length === 0 ? closestProductsAboveBudget(filteredProducts, budget) : []),
+    [budget, filteredProducts, items.length],
   );
   const visible = items.slice((page - 1) * perPage, page * perPage);
   const reset = () => setPage(1);
@@ -226,20 +237,31 @@ export function Catalogue({
           ) : (
             <EmptyState
               title="Nothing matched that search"
-              body="Try a broader search, another budget, or clear your filters."
+              body={
+                closest.length
+                  ? `${budgetContent.closestPrefix} ${money(availableProductPrice(closest[0]))}.`
+                  : "Try a broader search, another budget, or clear your filters."
+              }
               action={
                 <button
                   type="button"
                   className="button button-secondary"
                   onClick={() => {
-                    setQuery("");
-                    setCategory("ALL");
-                    setAvailable(false);
-                    setBudget(undefined);
-                    setBudgetInput("");
+                    if (closest.length) {
+                      const next = availableProductPrice(closest.at(-1) ?? closest[0]);
+                      setBudget(next);
+                      setBudgetInput(String(next / 100));
+                    } else {
+                      setQuery("");
+                      setCategory("ALL");
+                      setAvailable(false);
+                      setBudget(undefined);
+                      setBudgetInput("");
+                    }
+                    reset();
                   }}
                 >
-                  Clear filters
+                  {closest.length ? budgetContent.raiseBudgetLabel : "Clear filters"}
                 </button>
               }
             />

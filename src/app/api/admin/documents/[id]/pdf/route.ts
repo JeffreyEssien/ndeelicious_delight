@@ -3,6 +3,8 @@ import type { PersistedDocument } from "@/lib/documents/dto";
 import { persistedDocumentToDTO } from "@/lib/documents/dto";
 import { renderDocumentPdf } from "@/lib/documents/pdf";
 
+export const runtime = "nodejs";
+
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdminRequest(request);
   if (!auth.ok) return auth.response;

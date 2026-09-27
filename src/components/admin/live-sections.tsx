@@ -21,7 +21,7 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
   const [amount, setAmount] = useState(selected?.quotedTotal ? String(selected.quotedTotal / 100) : "");
   const [filter, setFilter] = useState("OPEN");
   const [busy, setBusy] = useState(false);
-  const [saveState, setSaveState] = useState<"idle" | "changed" | "saving" | "sent" | "error">("idle");
+  const [saveState, setSaveState] = useState<"idle" | "changed" | "saving" | "queued" | "error">("idle");
   const notify = useToast();
   if (!selected) return <EmptyState title="No cake requests" body="New customer requests will appear here." />;
   async function save() {
@@ -31,18 +31,58 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
     const selectedId = selected.id;
     const quotedTotal = Math.round(Number(amount) * 100);
     const response = await mutate({ action: "cake-quote", id: selectedId, quotedTotal });
+    const payload = await response.json().catch(() => null);
     setBusy(false);
     if (response.ok) {
       setItems((v) =>
-        v.map((item) => (item.id === selectedId ? { ...item, status: "QUOTE_SENT", quotedTotal } : item)),
+        v.map((item) =>
+          item.id === selectedId
+            ? {
+                ...item,
+                quotedTotal,
+                quoteDelivery: payload?.documentId
+                  ? { documentId: payload.documentId, status: "PENDING", attempts: 0, lastError: null }
+                  : item.quoteDelivery,
+              }
+            : item,
+        ),
       );
-      setSelected((v) => (v ? { ...v, status: "QUOTE_SENT", quotedTotal } : v));
-      setSaveState("sent");
-      notify("Quote sent.");
+      setSelected((v) =>
+        v
+          ? {
+              ...v,
+              quotedTotal,
+              quoteDelivery: payload?.documentId
+                ? { documentId: payload.documentId, status: "PENDING", attempts: 0, lastError: null }
+                : v.quoteDelivery,
+            }
+          : v,
+      );
+      setSaveState("queued");
+      notify("Quote saved and queued for email.");
     } else {
       setSaveState("error");
       notify("Quote could not be sent.");
     }
+  }
+  async function retryQuoteEmail() {
+    if (!selected.quoteDelivery || busy) return;
+    setBusy(true);
+    const response = await mutate({
+      action: "cake-quote-retry",
+      id: selected.id,
+      documentId: selected.quoteDelivery.documentId,
+    });
+    setBusy(false);
+    if (!response.ok) {
+      notify("Quote email could not be queued again.");
+      return;
+    }
+    const quoteDelivery = { ...selected.quoteDelivery, status: "PENDING" as const, lastError: null };
+    setItems((current) => current.map((item) => (item.id === selected.id ? { ...item, quoteDelivery } : item)));
+    setSelected((current) => (current ? { ...current, quoteDelivery } : current));
+    setSaveState("queued");
+    notify("Quote email queued again.");
   }
   async function changeStatus(status: string) {
     const response = await mutate({ action: "cake-status", id: selected.id, status });
@@ -168,7 +208,10 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
           </p>
           {selected.customerNote && <p className="cake-customer-note">“{selected.customerNote}”</p>}
           <div className="cake-request-actions">
-            <Button disabled={!Number(amount) || busy || saveState === "idle"} onClick={save}>
+            <Button
+              disabled={!Number(amount) || busy || saveState === "idle" || Boolean(selected.orderId)}
+              onClick={save}
+            >
               {busy ? "Sending…" : selected.quotedTotal ? "Send revised quote" : "Send quote"}
             </Button>
             {selected.quotedTotal && (
@@ -181,9 +224,18 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
                 View quote
               </a>
             )}
+            {selected.quoteDelivery?.status === "FAILED" && (
+              <Button variant="secondary" disabled={busy} onClick={retryQuoteEmail}>
+                Retry quote email
+              </Button>
+            )}
             <label className="field">
               <span>Request stage</span>
-              <select value={selected.status} onChange={(event) => changeStatus(event.target.value)}>
+              <select
+                value={selected.status}
+                disabled={Boolean(selected.orderId)}
+                onChange={(event) => changeStatus(event.target.value)}
+              >
                 <option value="QUOTE_REQUIRED">Needs quote</option>
                 <option value="QUOTE_SENT">Quote sent</option>
                 <option value="CUSTOMER_APPROVED">Customer approved</option>
@@ -196,10 +248,20 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
               </select>
             </label>
           </div>
+          {selected.orderId && (
+            <p className="admin-inline-state">This cake is linked to an order. Update its progress from Orders.</p>
+          )}
+          {selected.quoteDelivery && (
+            <p className="admin-inline-state" role="status">
+              Email:{" "}
+              {selected.quoteDelivery.status === "PENDING" ? "Queued" : selected.quoteDelivery.status.toLowerCase()}
+              {selected.quoteDelivery.status === "FAILED" && " — delivery failed; retry when ready."}
+            </p>
+          )}
           <p className="admin-inline-state" role="status">
             {saveState === "changed" && "Unsaved quote amount"}
             {saveState === "saving" && "Issuing and emailing quote…"}
-            {saveState === "sent" && "Quote sent"}
+            {saveState === "queued" && "Quote saved. Email queued for delivery."}
             {saveState === "error" && "Quote was not sent. Try again."}
           </p>
         </div>

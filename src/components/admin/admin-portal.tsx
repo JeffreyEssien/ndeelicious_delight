@@ -333,6 +333,8 @@ const auditMessages: Record<string, string> = {
   ORDER_NOTIFICATION_RETRY_REQUESTED: "retried an order email",
   REFUND_INITIATED: "started a refund",
   CAKE_QUOTE_SENT: "sent a custom cake quote",
+  QUOTE_ISSUED: "created and queued a custom cake quote",
+  CAKE_QUOTE_DELIVERY_RETRY_REQUESTED: "retried a custom cake quote email",
   CAKE_REQUEST_STATUS_CHANGED: "updated a cake request",
   CAKE_OPTIONS_CHANGED: "updated cake builder choices",
   REVIEW_STATUS_CHANGED: "moderated a customer review",

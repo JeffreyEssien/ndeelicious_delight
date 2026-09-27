@@ -3,6 +3,8 @@ import { renderDocumentPdf } from "@/lib/documents/pdf";
 import { resolveAccessToken } from "@/lib/documents/service";
 import { createServiceClient } from "@/lib/supabase/service";
 
+export const runtime = "nodejs";
+
 export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token") ?? "";
   const document = await resolveAccessToken(createServiceClient(), token);

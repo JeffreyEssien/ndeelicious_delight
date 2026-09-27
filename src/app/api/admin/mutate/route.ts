@@ -10,8 +10,8 @@ import {
   transitionAdminOrderStatus,
 } from "@/lib/data/inventory";
 import { deliverPendingOrderNotifications } from "@/lib/orders/notifications";
-import { sendCakeQuoteEmail } from "@/lib/cakes/notifications";
-import { issueCakeQuote, type IssuedDocument } from "@/lib/documents/service";
+import { deliverCakeQuoteEmail, queueCakeQuoteEmail } from "@/lib/cakes/notifications";
+import { issueCakeQuote } from "@/lib/documents/service";
 import {
   businessSettingsSchema,
   storeAppearanceSchema,
@@ -41,6 +41,7 @@ const schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("notification-retry"), orderNumber: z.string() }),
   z.object({ action: z.literal("theme"), theme: z.enum(["berry", "purple", "sunrise"]) }),
   z.object({ action: z.literal("cake-quote"), id: z.uuid(), quotedTotal: z.number().int().positive() }),
+  z.object({ action: z.literal("cake-quote-retry"), id: z.uuid(), documentId: z.uuid() }),
   z.object({
     action: z.literal("cake-status"),
     id: z.uuid(),
@@ -182,6 +183,13 @@ function auditDescriptor(input: AdminMutation): {
         entityId: input.id,
         target: { type: "cake-order", id: input.id },
       };
+    case "cake-quote-retry":
+      return {
+        action: "CAKE_QUOTE_DELIVERY_RETRY_REQUESTED",
+        entityType: "custom_cake_order",
+        entityId: input.id,
+        target: { type: "cake-order", id: input.id },
+      };
     case "cake-status":
       return {
         action: "CAKE_REQUEST_STATUS_CHANGED",
@@ -237,7 +245,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "The current value could not be verified for auditing." }, { status: 500 });
   }
   let error: { message: string } | null | undefined;
-  let issuedQuote: IssuedDocument | undefined;
+  let quoteDeliveryId: string | undefined;
+  let quoteDocumentId: string | undefined;
   if (input.action === "product-status")
     ({ error } = await supabase
       .from("products")
@@ -279,15 +288,23 @@ export async function POST(request: Request) {
       .from("custom_cake_orders")
       .update({
         quoted_total: input.quotedTotal,
-        status: "DRAFT",
         updated_at: new Date().toISOString(),
       })
       .eq("id", input.id));
   if (input.action === "cake-quote" && !error) {
     try {
-      issuedQuote = await issueCakeQuote(supabase, input.id, auth.admin.id);
+      const issuedQuote = await issueCakeQuote(supabase, input.id, auth.admin.id);
+      quoteDocumentId = issuedQuote.id;
+      quoteDeliveryId = await queueCakeQuoteEmail(supabase, input.id, issuedQuote.id);
     } catch {
       error = { message: "The quote could not be issued." };
+    }
+  }
+  if (input.action === "cake-quote-retry") {
+    try {
+      quoteDeliveryId = await queueCakeQuoteEmail(supabase, input.id, input.documentId);
+    } catch {
+      error = { message: "The quote email could not be queued." };
     }
   }
   if (input.action === "cake-status")
@@ -393,7 +410,14 @@ export async function POST(request: Request) {
           { onConflict: "key" },
         ));
     }
-  if (error) return Response.json({ error: "The update could not be saved." }, { status: 500 });
+  if (error) {
+    if (error.message.includes("LINKED_ORDER_STATUS_AUTHORITATIVE"))
+      return Response.json(
+        { error: "Update this cake from its linked order. The payment and order stages control its progress." },
+        { status: 409 },
+      );
+    return Response.json({ error: "The update could not be saved." }, { status: 500 });
+  }
   try {
     const newValue = await readAdminAuditState(supabase, audit.target);
     await recordAdminAudit(supabase, auth, { ...audit, previousValue, newValue });
@@ -403,7 +427,9 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-  if (input.action === "cake-quote" && issuedQuote)
-    after(() => sendCakeQuoteEmail(supabase, input.id, issuedQuote as IssuedDocument));
-  return Response.json({ ok: true });
+  if (quoteDeliveryId) after(() => deliverCakeQuoteEmail(supabase, quoteDeliveryId));
+  return Response.json({
+    ok: true,
+    ...(quoteDeliveryId ? { deliveryStatus: "PENDING", documentId: quoteDocumentId } : {}),
+  });
 }

@@ -32,6 +32,7 @@ export type PersistedDocument = {
     notes?: string[];
     footerMessage?: string;
     design?: "classic" | "modern" | "minimal";
+    accentColor?: string;
     showSku?: boolean;
     showBusinessTaxNumber?: boolean;
     showPaymentDetails?: boolean;
@@ -70,6 +71,7 @@ export function persistedDocumentToDTO(document: PersistedDocument): DocumentDTO
     amountDue: totals.amountDue,
     business: document.business_snapshot,
     accentColor: document.branding_snapshot.accentColor,
+    logoUrl: document.branding_snapshot.logoUrl,
     ...presentation,
   };
 }

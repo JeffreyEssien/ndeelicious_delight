@@ -112,6 +112,15 @@ describe("POST /api/admin/mutate inventory operations", () => {
     );
   });
 
+  it("prevents direct cake status changes after an order becomes authoritative", async () => {
+    mocks.eq.mockResolvedValueOnce({ error: { message: "LINKED_ORDER_STATUS_AUTHORITATIVE" } });
+    const response = await POST(
+      request({ action: "cake-status", id: "11111111-1111-4111-8111-111111111111", status: "DELIVERED" }),
+    );
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({ error: expect.stringContaining("linked order") });
+  });
+
   it("reports a conflict when an adjustment would consume reserved units", async () => {
     const { InventoryConflictError } = await import("@/lib/data/inventory");
     mocks.setVariantInventory.mockRejectedValueOnce(

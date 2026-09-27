@@ -25,7 +25,7 @@ async function brandSnapshot(db: SupabaseClient) {
   const tokens = resolveThemeTokens(theme, appearance);
   return {
     business,
-    branding: { accentColor: tokens.primary, logoUrl: "/WhatsApp Image 2026-09-15 at 22.16.43.jpeg" },
+    branding: { accentColor: tokens.primary, logoUrl: "/brand-logo.jpg" },
   };
 }
 
@@ -192,16 +192,21 @@ export async function issueOrderDocument(
   return { document: data as PersistedDocument, token: await createAccessToken(db, data.id, expiresAt) };
 }
 
-export async function issueCakeQuote(db: SupabaseClient, cakeId: string, createdBy?: string): Promise<IssuedDocument> {
+export async function issueCakeQuote(
+  db: SupabaseClient,
+  cakeId: string,
+  createdBy?: string,
+): Promise<PersistedDocument> {
   const { data: cake, error } = await db
     .from("custom_cake_orders")
     .select(
-      "id,request_number,customer_name,email,phone,status,configuration,requested_date,quoted_total,quote_expires_at,customer_note",
+      "id,request_number,order_id,customer_name,email,phone,status,configuration,requested_date,quoted_total,quote_expires_at,customer_note",
     )
     .eq("id", cakeId)
     .maybeSingle();
   if (error) throw error;
   if (!cake?.quoted_total) throw new Error("QUOTE_NOT_READY");
+  if (cake.order_id) throw new Error("QUOTE_ALREADY_CONVERTED");
   const { revision, previous } = await nextRevision(db, "QUOTE", "cake_order_id", cake.id);
   const { business, branding } = await brandSnapshot(db);
   const issuedAt = new Date();
@@ -263,9 +268,9 @@ export async function issueCakeQuote(db: SupabaseClient, cakeId: string, created
   }
   await db
     .from("custom_cake_orders")
-    .update({ status: "QUOTE_SENT", quote_expires_at: validUntil, updated_at: issuedAt.toISOString() })
+    .update({ quote_expires_at: validUntil, updated_at: issuedAt.toISOString() })
     .eq("id", cake.id);
-  return { document: data as PersistedDocument, token: await createAccessToken(db, data.id, validUntil) };
+  return data as PersistedDocument;
 }
 
 export async function latestDocument(
