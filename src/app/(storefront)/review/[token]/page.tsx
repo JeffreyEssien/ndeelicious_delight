@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { VerifiedReviewForm } from "@/components/reviews/verified-review-form";
 import { readReviewToken } from "@/lib/reviews/invitations";
 import { createServiceClient } from "@/lib/supabase/service";
+
+export const metadata: Metadata = { title: "Leave a review", robots: { index: false, follow: false } };
 
 export default async function Page({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

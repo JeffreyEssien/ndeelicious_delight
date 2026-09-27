@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ProductGrid } from "@/components/product/product-grid";
@@ -7,6 +8,8 @@ import { Icon } from "@/components/ui/icons";
 import { getProducts } from "@/lib/data/catalog";
 import { getApprovedReviews } from "@/lib/data/reviews";
 import { getBusinessSettings, getStoreCarousel, getStorefrontContent } from "@/lib/data/settings";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function Home() {
   const [products, content, business, reviews, carousel] = await Promise.all([

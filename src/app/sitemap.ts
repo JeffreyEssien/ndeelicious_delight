@@ -8,12 +8,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     "",
     "/shop",
+    "/shop/pastries",
     "/custom-cakes",
     "/ready-to-bake",
     "/about",
     "/contact",
     "/faq",
     "/delivery-information",
+    "/privacy",
+    "/terms",
+    "/refund-policy",
     ...products.map((product) => `/product/${product.slug}`),
   ].map((path) => ({ url: `${base}${path}`, lastModified: new Date() }));
 }

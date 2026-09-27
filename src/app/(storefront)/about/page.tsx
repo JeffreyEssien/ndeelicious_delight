@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ContentLines } from "@/components/ui/content-lines";
 import { Icon } from "@/components/ui/icons";
 import { getStorefrontContent } from "@/lib/data/settings";
+
+export const metadata: Metadata = { title: "About", alternates: { canonical: "/about" } };
 
 export default async function Page() {
   const { about } = await getStorefrontContent();

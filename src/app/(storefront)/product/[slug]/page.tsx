@@ -11,12 +11,29 @@ import { Badge } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 import { getBusinessSettings, getStorefrontContent } from "@/lib/data/settings";
 import { getApprovedReviews } from "@/lib/data/reviews";
+import { getSiteUrl } from "@/lib/site-url";
+import { productBreadcrumbJsonLd, productJsonLd, serializeJsonLd } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const p = await getProduct((await params).slug);
-  return p ? { title: p.name, description: p.shortDescription } : {};
+  if (!p) return { title: "Product not found", robots: { index: false, follow: false } };
+  const path = `/product/${encodeURIComponent(p.slug)}`;
+  const images = p.image ? [{ url: p.image, alt: p.images?.[0]?.altText || p.name }] : [];
+  return {
+    title: p.name,
+    description: p.shortDescription,
+    alternates: { canonical: path },
+    openGraph: {
+      title: p.name,
+      description: p.shortDescription,
+      url: path,
+      type: "website",
+      images,
+    },
+    twitter: { card: "summary_large_image", title: p.name, description: p.shortDescription, images },
+  };
 }
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const product = await getProduct((await params).slug);
@@ -28,8 +45,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     getBusinessSettings(),
   ]);
   const related = products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 3);
+  const siteUrl = getSiteUrl();
+  const structuredData = [productJsonLd({ product, business, siteUrl }), productBreadcrumbJsonLd(product, siteUrl)];
   return (
     <>
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: serializeJsonLd escapes HTML-significant characters. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
       <div className="site-container breadcrumbs">
         <Link href="/">Home</Link>
         <span>/</span>

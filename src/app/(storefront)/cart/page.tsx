@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import { CartPage } from "@/components/cart/cart-page";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getStorefrontContent } from "@/lib/data/settings";
+export const metadata: Metadata = { title: "Your basket", robots: { index: false, follow: false } };
 export default async function Page() {
   const { headers } = await getStorefrontContent();
   return (

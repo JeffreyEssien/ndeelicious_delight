@@ -7,6 +7,7 @@ import { getCakeConfiguration, getStorefrontContent } from "@/lib/data/settings"
 export const metadata: Metadata = {
   title: "Build your custom cake",
   description: "Create a cake made especially for your celebration.",
+  alternates: { canonical: "/custom-cakes" },
 };
 export default async function Page({
   searchParams,

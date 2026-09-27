@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import { Catalogue } from "@/components/product/catalogue";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getCakeConfiguration, getStorefrontContent } from "@/lib/data/settings";
+export const metadata: Metadata = { title: "Pastries", alternates: { canonical: "/shop/pastries" } };
 export default async function Page() {
   const [content, cakeConfiguration] = await Promise.all([getStorefrontContent(), getCakeConfiguration()]);
   const header = content.headers.pastries;

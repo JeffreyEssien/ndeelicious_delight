@@ -5,7 +5,7 @@ import { ContentLines } from "@/components/ui/content-lines";
 import { getProducts } from "@/lib/data/catalog";
 import { getStorefrontContent } from "@/lib/data/settings";
 
-export const metadata: Metadata = { title: "Ready to bake" };
+export const metadata: Metadata = { title: "Ready to bake", alternates: { canonical: "/ready-to-bake" } };
 export default async function Page() {
   const [products, content] = await Promise.all([getProducts(), getStorefrontContent()]);
   const page = content.readyToBake;

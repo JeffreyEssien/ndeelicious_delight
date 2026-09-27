@@ -22,7 +22,7 @@ The initial full-stack application is committed on `main`. The current `develop`
 - Incremental Biome linting and formatting for every changed file, locally and in CI.
 - A clean full-repository Biome lint baseline; the former 82-error/141-warning backlog is resolved.
 
-The Canada commerce, owner-managed storefront settings, complete order lifecycle, and immutable admin audit ledger are implemented. The active implementation checkpoint is now **G12 · SEO**.
+The Canada commerce, owner-managed storefront settings, complete order lifecycle, immutable admin audit ledger, and search/social metadata are implemented. The active implementation checkpoint is now **G13 · Analytics and monitoring**.
 
 The first-party admin OTP/SMTP security remediation is implemented and verified locally. Migrations `0003` through `0017` are applied to the project's configured Supabase database. Deployment remains blocked on production environment configuration and revocation of legacy Supabase Auth sessions.
 
@@ -87,7 +87,7 @@ Verified locally on 2026-09-19 before introducing the CI files:
 
 Checkpoint verification history:
 
-- `npm run check` — 81 regression tests, 52 functional tests, strict TypeScript, and the 46-route production build passed after the integrated shop-budget and tiered cake recommendation pass on 2026-09-27.
+- SEO verification — 84 regression tests, 52 functional tests, strict TypeScript, quality checks, and the 46-route production build passed after the canonical metadata and structured-data pass on 2026-09-27.
 - Migrations `0022_carousel_safe_timing.sql`, `0023_budget_maximum_copy.sql`, `0024_persisted_business_documents.sql`, `0025_marketing_export_settings.sql`, and `0026_quote_order_conversion.sql` were transactionally applied to the configured Supabase environment.
 
 - `npm run test:regression` — 9 files and 29 tests passed.
@@ -166,7 +166,7 @@ Complete these checkpoints in order unless a newly discovered dependency require
 - [x] **G09 · Phase 21 — Reviews:** replace placeholder reviews with persisted submission, moderation, and approved public display.
 - [x] **G10 · Phases 22–23 — Content and settings:** make saved admin content and centralized business settings drive the storefront.
 - [x] **G11 · Phase 24 — Audit logging:** record sensitive admin changes with before/after values and actor identity.
-- [ ] **G12 · Phase 25 — SEO:** add Twitter metadata and Product, Organization, and Breadcrumb structured data.
+- [x] **G12 · Phase 25 — SEO:** add Twitter metadata and Product, Organization, and Breadcrumb structured data.
 - [ ] **G13 · Phase 26 — Analytics and monitoring:** add privacy-conscious commerce events, error monitoring, and structured operational logs.
 - [ ] **G14 · Phases 27–28 — Performance and accessibility:** measure targets, fix material issues, and automate critical accessibility checks.
 - [ ] **G15 · Phases 29–30 — Security and test depth:** add durable public-endpoint abuse protection, database integration tests, browser E2E, and concurrency/payment edge cases.

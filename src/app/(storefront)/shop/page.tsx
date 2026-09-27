@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { Catalogue } from "@/components/product/catalogue";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getCakeConfiguration, getStorefrontContent } from "@/lib/data/settings";
-export const metadata: Metadata = { title: "Shop the bakery", description: "Browse the live bakery catalogue." };
+export const metadata: Metadata = {
+  title: "Shop the bakery",
+  description: "Browse the live bakery catalogue.",
+  alternates: { canonical: "/shop" },
+};
 export default async function ShopPage({
   searchParams,
 }: {

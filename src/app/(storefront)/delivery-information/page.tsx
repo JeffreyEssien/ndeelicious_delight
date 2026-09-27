@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getDeliveryZones } from "@/lib/data/catalog";
 import { getBusinessSettings, getStorefrontContent } from "@/lib/data/settings";
 import { formatMoney } from "@/lib/format";
+
+export const metadata: Metadata = {
+  title: "Delivery information",
+  alternates: { canonical: "/delivery-information" },
+};
 
 export default async function Page() {
   const [deliveryZones, content, business] = await Promise.all([
