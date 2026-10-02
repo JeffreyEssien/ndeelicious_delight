@@ -23,6 +23,8 @@ export type ThemeTokens = {
   featureSurface: string;
   featureText: string;
   featureMuted: string;
+  featureHighlight: string;
+  onFeatureHighlight: string;
 };
 
 type Rgb = { red: number; green: number; blue: number };
@@ -112,13 +114,54 @@ export function contrastSafeForeground(background: string) {
   return contrastRatio(background, light) >= contrastRatio(background, dark) ? light : dark;
 }
 
+export function ensureReadableForeground(background: string, preferred: string, minimum = 4.5) {
+  return contrastRatio(background, preferred) >= minimum ? preferred : contrastSafeForeground(background);
+}
+
+function readableAcross(backgrounds: string[], preferred: string, minimum = 4.5) {
+  if (backgrounds.every((background) => contrastRatio(background, preferred) >= minimum)) return preferred;
+  return ["#17120f", "#ffffff"].sort(
+    (first, second) =>
+      Math.min(...backgrounds.map((background) => contrastRatio(background, second))) -
+      Math.min(...backgrounds.map((background) => contrastRatio(background, first))),
+  )[0];
+}
+
+function surfaceCompatibleWithText(requested: string, background: string, text: string) {
+  if (contrastRatio(requested, text) >= 4.5) return requested;
+  for (const backgroundWeight of [0.2, 0.4, 0.6, 0.8, 1]) {
+    const candidate = mixColors(requested, background, backgroundWeight);
+    if (contrastRatio(candidate, text) >= 4.5) return candidate;
+  }
+  return background;
+}
+
+function readableMuted(backgrounds: string[], preferred: string, text: string) {
+  if (backgrounds.every((background) => contrastRatio(background, preferred) >= 4.5)) return preferred;
+  for (const weight of [0.82, 0.9, 1]) {
+    const candidate = mixColors(backgrounds[0], text, weight);
+    if (backgrounds.every((background) => contrastRatio(background, candidate) >= 4.5)) return candidate;
+  }
+  return readableAcross(backgrounds, text);
+}
+
+function accessibleHover(primary: string, requested: string, foreground: string) {
+  if (contrastRatio(requested, foreground) >= 4.5) return requested;
+  const destination = foreground === "#ffffff" ? "#000000" : "#ffffff";
+  for (const weight of [0.12, 0.24, 0.36, 0.48, 0.6, 0.72, 0.84]) {
+    const candidate = mixColors(primary, destination, weight);
+    if (contrastRatio(candidate, foreground) >= 4.5) return candidate;
+  }
+  return primary;
+}
+
 export function colorWithAlpha(color: string, alpha: number) {
   const rgb = parseHexColor(color);
   return `rgba(${rgb.red}, ${rgb.green}, ${rgb.blue}, ${Math.max(0, Math.min(1, alpha))})`;
 }
 
 export function resolveThemeTokens(theme: StoreTheme, appearance: StoreAppearance): ThemeTokens {
-  const base = appearance.useCustomColors
+  const selected = appearance.useCustomColors
     ? {
         background: appearance.colors.background,
         surface: appearance.colors.surface,
@@ -129,23 +172,45 @@ export function resolveThemeTokens(theme: StoreTheme, appearance: StoreAppearanc
         accent: appearance.colors.accent,
       }
     : presets[theme];
+  const requestedSurfaces = [selected.background, selected.surface];
+  let text = readableAcross(requestedSurfaces, selected.text);
+  let surface = selected.surface;
+  if (requestedSurfaces.some((background) => contrastRatio(background, text) < 4.5)) {
+    text = ensureReadableForeground(selected.background, selected.text);
+    surface = surfaceCompatibleWithText(selected.surface, selected.background, text);
+  }
+  const neutralSurfaces = [selected.background, surface];
+  const base = {
+    ...selected,
+    surface,
+    text,
+    textMuted: readableMuted(neutralSurfaces, selected.textMuted, text),
+  };
   const onPrimary = contrastSafeForeground(base.primary);
   const onAccent = contrastSafeForeground(base.accent);
+  const requestedHover = appearance.useCustomColors
+    ? appearance.colors.primaryDark
+    : mixColors(base.primary, "#000000", 0.18);
+  const primaryHover = accessibleHover(base.primary, requestedHover, onPrimary);
+  const featureHighlight = base.accent;
+  const focus = readableAcross(neutralSurfaces, base.primary, 3);
   return {
     ...base,
     surfaceRaised: mixColors(base.surface, base.text, 0.025),
-    primaryHover: appearance.useCustomColors ? appearance.colors.primaryDark : mixColors(base.primary, "#000000", 0.18),
+    primaryHover,
     primarySoft: mixColors(base.background, base.primary, 0.13),
     onPrimary,
     accentSoft: mixColors(base.background, base.accent, 0.22),
     onAccent,
-    focus: base.primary,
+    focus,
     success: "#2f765d",
     warning: "#9a5b18",
     danger: "#aa343d",
     featureSurface: base.primary,
     featureText: onPrimary,
-    featureMuted: mixColors(base.primary, onPrimary, 0.72),
+    featureMuted: readableMuted([base.primary], mixColors(base.primary, onPrimary, 0.72), onPrimary),
+    featureHighlight,
+    onFeatureHighlight: contrastSafeForeground(featureHighlight),
   };
 }
 
@@ -172,6 +237,8 @@ export function themeTokenCss(tokens: ThemeTokens): Record<`--${string}`, string
     "--color-feature-surface": tokens.featureSurface,
     "--color-feature-text": tokens.featureText,
     "--color-feature-muted": tokens.featureMuted,
+    "--color-feature-highlight": tokens.featureHighlight,
+    "--color-on-feature-highlight": tokens.onFeatureHighlight,
     "--focus-rgb": `${focus.red}, ${focus.green}, ${focus.blue}`,
   };
 }

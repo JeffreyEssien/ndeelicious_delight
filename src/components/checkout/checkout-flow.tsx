@@ -471,57 +471,64 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
           </div>
         )}
       </section>
-      <aside className="checkout-summary">
-        <h2>Order summary</h2>
-        {resolved.map(({ p, v, quantity }) => (
-          <div className="checkout-item" key={`${p.id}-${v.id}`}>
-            {p.image ? (
-              <Image
-                src={p.image}
-                alt=""
-                width={64}
-                height={72}
-                style={{ width: 64, height: 72, objectPosition: p.imagePosition }}
-              />
-            ) : (
-              <span className="checkout-image-empty missing-image">No image</span>
-            )}
-            <span>
-              <b>{p.name}</b>
-              <small>
-                {v.name} · Qty {quantity}
-              </small>
-            </span>
-            <strong>{money((p.price + v.priceAdjustment) * quantity)}</strong>
-          </div>
-        ))}
-        <dl>
-          <div>
-            <dt>Subtotal</dt>
-            <dd>{money(cart.subtotal)}</dd>
-          </div>
-          <div>
-            <dt>{fulfilment === "pickup" ? "Pickup" : "Delivery"}</dt>
-            <dd>{fulfilment === "pickup" ? "Free" : delivery ? money(delivery) : "—"}</dd>
-          </div>
-          {applied && (
-            <div className="discount-row">
-              <dt>Discount</dt>
-              <dd>−{money(discount)}</dd>
+      <details className="checkout-summary">
+        <summary>
+          <span>Order summary</span>
+          <b>{money(total)}</b>
+          <small>Show</small>
+        </summary>
+        <div className="checkout-summary-content">
+          <h2>Order summary</h2>
+          {resolved.map(({ p, v, quantity }) => (
+            <div className="checkout-item" key={`${p.id}-${v.id}`}>
+              {p.image ? (
+                <Image
+                  src={p.image}
+                  alt=""
+                  width={64}
+                  height={72}
+                  style={{ width: 64, height: 72, objectPosition: p.imagePosition }}
+                />
+              ) : (
+                <span className="checkout-image-empty missing-image">No image</span>
+              )}
+              <span>
+                <b>{p.name}</b>
+                <small>
+                  {v.name} · Qty {quantity}
+                </small>
+              </span>
+              <strong>{money((p.price + v.priceAdjustment) * quantity)}</strong>
             </div>
-          )}
-          {business.taxEnabled && (
+          ))}
+          <dl>
             <div>
-              <dt>{business.taxLabel}</dt>
-              <dd>{money(tax)}</dd>
+              <dt>Subtotal</dt>
+              <dd>{money(cart.subtotal)}</dd>
             </div>
-          )}
-          <div className="total-row">
-            <dt>Total</dt>
-            <dd>{money(total)}</dd>
-          </div>
-        </dl>
-      </aside>
+            <div>
+              <dt>{fulfilment === "pickup" ? "Pickup" : "Delivery"}</dt>
+              <dd>{fulfilment === "pickup" ? "Free" : delivery ? money(delivery) : "—"}</dd>
+            </div>
+            {applied && (
+              <div className="discount-row">
+                <dt>Discount</dt>
+                <dd>−{money(discount)}</dd>
+              </div>
+            )}
+            {business.taxEnabled && (
+              <div>
+                <dt>{business.taxLabel}</dt>
+                <dd>{money(tax)}</dd>
+              </div>
+            )}
+            <div className="total-row">
+              <dt>Total</dt>
+              <dd>{money(total)}</dd>
+            </div>
+          </dl>
+        </div>
+      </details>
     </div>
   );
 }

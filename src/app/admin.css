@@ -1,3 +1,35 @@
+.admin-mode {
+  --color-background: #f4f3f1;
+  --color-surface: #ffffff;
+  --color-surface-raised: #faf9f7;
+  --color-text: #282220;
+  --color-text-muted: #6c625e;
+  --color-border: #ded8d4;
+  --color-primary: #5b3342;
+  --color-primary-hover: #442430;
+  --color-primary-soft: #f0e6e9;
+  --color-on-primary: #ffffff;
+  --color-accent: #9f6f25;
+  --color-accent-soft: #f6eddc;
+  --color-on-accent: #24190b;
+  --color-focus: #5b3342;
+  --color-feature-surface: #282220;
+  --color-feature-text: #ffffff;
+  --color-feature-muted: #d8cfca;
+  --bg: var(--color-background);
+  --surface: var(--color-surface);
+  --surface-2: var(--color-surface-raised);
+  --ink: var(--color-text);
+  --muted: var(--color-text-muted);
+  --line: var(--color-border);
+  --berry: var(--color-primary);
+  --berry-dark: var(--color-primary-hover);
+  --berry-soft: var(--color-primary-soft);
+  --accent: var(--color-accent);
+  --accent-soft: var(--color-accent-soft);
+  --admin-bg: #282220;
+}
+
 .admin-shell {
   min-height: 100vh;
   display: grid;
@@ -834,6 +866,65 @@ html[data-theme] .admin-sidebar {
   padding: 0;
   border: 0;
 }
+.store-theme-preview {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) auto minmax(190px, 0.7fr);
+  align-items: center;
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-background);
+  color: var(--color-text);
+  box-shadow: var(--shadow-soft);
+}
+.store-theme-preview h3 {
+  margin: 4px 0 8px;
+  font-size: 24px;
+}
+.store-theme-preview p,
+.store-theme-preview small {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+.store-theme-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.store-theme-preview .field {
+  grid-column: 1;
+}
+.store-theme-preview-product {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+}
+.store-theme-preview > aside {
+  grid-column: 2 / -1;
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border-radius: var(--radius-card);
+  background: var(--color-feature-surface);
+  color: var(--color-feature-text);
+}
+.store-theme-preview > aside span {
+  color: var(--color-feature-muted);
+}
+.theme-publish-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
 .theme-options > button {
   min-height: 180px;
   display: flex;
@@ -1624,7 +1715,7 @@ html[data-theme] .admin-sidebar {
   justify-content: flex-start;
 }
 .audit-details summary {
-  color: var(--primary);
+  color: var(--color-primary);
   cursor: pointer;
   font-weight: 700;
   white-space: nowrap;
@@ -1633,7 +1724,7 @@ html[data-theme] .admin-sidebar {
   width: min(560px, 70vw);
   margin-top: 10px;
   padding: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
 }
@@ -2611,6 +2702,227 @@ html[data-theme] .admin-sidebar {
   font-size: 12px;
   font-weight: 800;
   pointer-events: none;
+}
+
+@media (max-width: 800px) {
+  .desktop-admin-sidebar {
+    display: none;
+  }
+  .mobile-admin-sidebar {
+    display: flex;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+  .admin-drawer {
+    width: min(100%, 680px);
+    max-width: 100%;
+    padding: 22px 18px max(22px, env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
+  }
+  .mobile-card-table {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+  .mobile-card-table .admin-table,
+  .mobile-card-table tbody,
+  .mobile-card-table tr,
+  .mobile-card-table td {
+    display: block;
+    width: 100%;
+  }
+  .mobile-card-table thead {
+    display: none;
+  }
+  .mobile-card-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+  .mobile-card-table tr {
+    padding: 18px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    box-shadow: var(--shadow-soft);
+  }
+  .mobile-card-table td {
+    min-width: 0;
+    padding: 8px 0;
+    border: 0;
+    white-space: normal;
+  }
+  .mobile-card-table td::before {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .orders-table td:nth-child(1)::before {
+    content: "Order";
+  }
+  .orders-table td:nth-child(2)::before {
+    content: "Customer";
+  }
+  .orders-table td:nth-child(3)::before {
+    content: "Date";
+  }
+  .orders-table td:nth-child(4)::before {
+    content: "Total";
+  }
+  .orders-table td:nth-child(5)::before {
+    content: "Status";
+  }
+  .orders-table td:nth-child(6)::before {
+    content: "Action";
+  }
+  .products-table td:nth-child(1)::before {
+    content: "Product";
+  }
+  .products-table td:nth-child(2)::before {
+    content: "Category";
+  }
+  .products-table td:nth-child(3)::before {
+    content: "Price";
+  }
+  .products-table td:nth-child(4)::before {
+    content: "Stock";
+  }
+  .products-table td:nth-child(5)::before {
+    content: "Options";
+  }
+  .products-table td:nth-child(6)::before {
+    content: "Status";
+  }
+  .products-table td:nth-child(7)::before {
+    content: "Actions";
+  }
+  .customers-table td:nth-child(1)::before {
+    content: "Customer";
+  }
+  .customers-table td:nth-child(2)::before {
+    content: "Contact";
+  }
+  .customers-table td:nth-child(3)::before {
+    content: "Orders";
+  }
+  .customers-table td:nth-child(4)::before {
+    content: "Total spent";
+  }
+  .customers-table td:nth-child(5)::before {
+    content: "Last order";
+  }
+  .coupons-table td:nth-child(1)::before {
+    content: "Eligibility";
+  }
+  .coupons-table td:nth-child(2)::before {
+    content: "Uses";
+  }
+  .coupons-table td:nth-child(3)::before {
+    content: "Code";
+  }
+  .coupons-table td:nth-child(4)::before {
+    content: "Offer";
+  }
+  .coupons-table td:nth-child(5)::before {
+    content: "Minimum";
+  }
+  .coupons-table td:nth-child(6)::before {
+    content: "Max discount";
+  }
+  .coupons-table td:nth-child(7)::before {
+    content: "Total limit";
+  }
+  .coupons-table td:nth-child(8)::before {
+    content: "Per customer";
+  }
+  .coupons-table td:nth-child(9)::before {
+    content: "Starts";
+  }
+  .coupons-table td:nth-child(10)::before {
+    content: "Expires";
+  }
+  .coupons-table td:nth-child(11)::before {
+    content: "Active";
+  }
+  .coupons-table td:nth-child(12)::before {
+    content: "Action";
+  }
+  .mobile-card-table input,
+  .mobile-card-table select,
+  .mobile-card-table button:not(.switch) {
+    min-height: 44px;
+  }
+  .coupons-table input,
+  .coupons-table select {
+    width: 100%;
+    max-width: none;
+  }
+  .coupons-table .coupon-restrictions > summary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .store-theme-preview {
+    grid-template-columns: 1fr;
+  }
+  .store-theme-preview .field,
+  .store-theme-preview > aside {
+    grid-column: 1;
+  }
+  .theme-publish-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .theme-publish-row .button {
+    width: 100%;
+  }
+  .admin-save-bar {
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  .zone-order-actions button,
+  .zone-card-actions button,
+  .cake-option-types button,
+  .admin-section-tabs button,
+  .inventory-toolbar > div button,
+  .inventory-toolbar > fieldset button,
+  .cake-request-filters button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .variant-editor,
+  .carousel-advanced-fields,
+  .carousel-fields,
+  .carousel-toggles,
+  .zone-fields,
+  .cake-request-actions,
+  .cake-option-main {
+    grid-template-columns: 1fr;
+  }
+  .admin-page {
+    padding-inline: 12px;
+  }
+  .admin-topbar {
+    padding-inline: 8px;
+  }
+  .admin-topbar a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .social-canvas-wrap {
+    min-height: 360px;
+    padding: 10px;
+  }
+  .content-page-nav {
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 30px), transparent);
+  }
 }
 .marketing-product-picker {
   display: grid;

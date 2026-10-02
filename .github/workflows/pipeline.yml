@@ -55,7 +55,33 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
       - name: Run domain regression suite
-        run: npm run test:regression
+        run: npm run test:css && npm run test:regression
+
+  browser-tests:
+    name: Responsive visual and accessibility tests
+    if: vars.E2E_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser suite against isolated staging
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ secrets.E2E_BASE_URL }}
+          PLAYWRIGHT_ADMIN_STORAGE_STATE: ${{ secrets.E2E_ADMIN_STORAGE_STATE }}
+          PLAYWRIGHT_QUOTE_RESPONSE_PATH: ${{ secrets.E2E_QUOTE_RESPONSE_PATH }}
+          PLAYWRIGHT_DOCUMENT_PATH: ${{ secrets.E2E_DOCUMENT_PATH }}
+        run: npm run test:e2e
 
   functional-tests:
     name: Functional API tests

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { AdminCakeRequest, AdminCategory, AdminCoupon, AdminReview } from "@/lib/data/admin";
 import type { Product } from "@/types";
 import { Badge, Button, EmptyState, Input } from "@/components/ui/primitives";
@@ -273,18 +274,22 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
 const optionTypes: CakeOptionType[] = ["occasion", "size", "flavour", "filling", "design"];
 
 export function CakeConfigurationEditor({ initial }: { initial: CakeConfigurationData }) {
+  const router = useRouter();
   const { currency } = useBusinessSettings();
   const [options, setOptions] = useState(initial.options);
   const [selectedType, setSelectedType] = useState<CakeOptionType>("occasion");
   const [busy, setBusy] = useState(false);
+  const [saveState, setSaveState] = useState<"saved" | "unsaved" | "saving" | "failed">("saved");
   const notify = useToast();
   function update(index: number, values: Partial<CakeOption>) {
     setOptions((current) =>
       current.map((option, itemIndex) => (itemIndex === index ? { ...option, ...values } : option)),
     );
+    setSaveState("unsaved");
   }
   async function save() {
     setBusy(true);
+    setSaveState("saving");
     const normalized = options.map((option) => ({
       ...option,
       sortOrder: options.filter((item) => item.type === option.type).findIndex((item) => item.id === option.id),
@@ -292,9 +297,11 @@ export function CakeConfigurationEditor({ initial }: { initial: CakeConfiguratio
     const response = await mutate({ action: "cake-options", options: normalized });
     setBusy(false);
     if (response.ok) {
+      setSaveState("saved");
       notify("Cake configuration saved.");
-      window.location.reload();
+      router.refresh();
     } else {
+      setSaveState("failed");
       const payload = await response.json().catch(() => null);
       notify(payload?.error ?? "Cake configuration could not be saved.");
     }
@@ -304,7 +311,15 @@ export function CakeConfigurationEditor({ initial }: { initial: CakeConfiguratio
       <div className="card-head">
         <div>
           <h2>Cake builder configuration</h2>
-          <p>Live options, pricing adjustments, and quote rules.</p>
+          <p role="status">
+            {saveState === "saved"
+              ? "All options are saved."
+              : saveState === "saving"
+                ? "Saving changes…"
+                : saveState === "failed"
+                  ? "Save failed — retry."
+                  : "You have unsaved option changes."}
+          </p>
         </div>
         <Button disabled={busy} onClick={save}>
           {busy ? "Saving…" : "Save options"}
@@ -445,11 +460,14 @@ export function Coupons({
   products: Product[];
   categories: AdminCategory[];
 }) {
+  const router = useRouter();
   const [items, setItems] = useState(initial);
   const [busy, setBusy] = useState(false);
+  const [saveState, setSaveState] = useState<"saved" | "unsaved" | "saving" | "failed">("saved");
   const notify = useToast();
   function update(index: number, values: Partial<AdminCoupon>) {
     setItems((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...values } : item)));
+    setSaveState("unsaved");
   }
   async function save() {
     if (items.some((item) => item.code.trim().length < 2 || item.value <= 0)) {
@@ -461,12 +479,15 @@ export function Coupons({
       return;
     }
     setBusy(true);
+    setSaveState("saving");
     const response = await mutate({ action: "coupons", coupons: items });
     setBusy(false);
     if (response.ok) {
+      setSaveState("saved");
       notify("Coupons saved.");
-      window.location.reload();
+      router.refresh();
     } else {
+      setSaveState("failed");
       const payload = await response.json().catch(() => null);
       notify(payload?.error ?? "Coupons could not be saved.");
     }
@@ -474,6 +495,15 @@ export function Coupons({
   return (
     <>
       <div className="admin-page-head compact">
+        <span className="document-save-state" role="status">
+          {saveState === "saved"
+            ? "Saved"
+            : saveState === "saving"
+              ? "Saving…"
+              : saveState === "failed"
+                ? "Failed — retry"
+                : "Unsaved changes"}
+        </span>
         <Button
           variant="secondary"
           onClick={() =>
@@ -504,10 +534,12 @@ export function Coupons({
           {busy ? "Saving…" : "Save coupons"}
         </Button>
       </div>
-      <div className="admin-card table-scroll">
+      <div className="admin-card table-scroll mobile-card-table coupons-table">
         <table className="admin-table">
           <thead>
             <tr>
+              <th>Eligibility</th>
+              <th>Uses</th>
               <th>Code</th>
               <th>Offer</th>
               <th>Minimum</th>
@@ -516,8 +548,6 @@ export function Coupons({
               <th>Per customer</th>
               <th>Starts</th>
               <th>Expires</th>
-              <th>Eligibility</th>
-              <th>Uses</th>
               <th>Active</th>
               <th />
             </tr>

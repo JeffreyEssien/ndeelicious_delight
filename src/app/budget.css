@@ -311,7 +311,7 @@
 }
 .sidebar-budget > p {
   margin: 0 0 18px;
-  color: var(--color-text-muted);
+  color: var(--color-text);
   font-size: 12px;
   line-height: 1.55;
 }
@@ -325,6 +325,10 @@
 .sidebar-budget .sidebar-budget-note {
   margin: 10px 0 14px;
   font-size: 10px;
+}
+.filters .sidebar-budget .field > span,
+.filters .sidebar-budget .sidebar-budget-note {
+  color: var(--color-text);
 }
 .sidebar-budget-presets {
   display: grid;
@@ -474,6 +478,8 @@
   }
   .budget-segments {
     overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 34px), transparent);
   }
   .budget-segments button {
     flex: 0 0 auto;
@@ -493,6 +499,11 @@
   }
   .cake-budget-scroll {
     grid-auto-columns: minmax(230px, 82%);
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+  }
+  .cake-budget-scroll > * {
+    scroll-snap-align: start;
   }
   .cake-budget-band > header {
     align-items: flex-start;

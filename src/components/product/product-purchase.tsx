@@ -3,31 +3,35 @@ import { useState } from "react";
 import type { Product } from "@/types";
 import { useCart, useMoney } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
+import { getDefaultPurchasableVariant, isVariantPurchasable } from "@/features/catalog/availability";
 export function ProductPurchase({ product }: { product: Product }) {
-  const [variant, setVariant] = useState(product.variants[0]?.id ?? "");
+  const [variant, setVariant] = useState(getDefaultPurchasableVariant(product)?.id ?? product.variants[0]?.id ?? "");
   const [quantity, setQuantity] = useState(1);
   const cart = useCart();
   const formatMoney = useMoney();
   const selected = product.variants.find((v) => v.id === variant);
   if (!selected) return <p className="stock-note">This product does not have an available option.</p>;
-  const unavailable = product.status !== "ACTIVE" || selected.stockQuantity === 0;
+  const unavailable = !isVariantPurchasable(product, selected);
   return (
     <div className="purchase-box">
       <fieldset className="variant-options">
         <legend>Choose an option</legend>
-        {product.variants.map((v) => (
-          <label key={v.id} className={variant === v.id ? "selected" : ""}>
-            <input
-              type="radio"
-              name="variant"
-              value={v.id}
-              checked={variant === v.id}
-              onChange={() => setVariant(v.id)}
-            />
-            <span>{v.name}</span>
-            <b>{v.priceAdjustment ? `+${formatMoney(v.priceAdjustment)}` : "Included"}</b>
-          </label>
-        ))}
+        {product.variants
+          .filter((item) => item.active)
+          .map((v) => (
+            <label key={v.id} className={variant === v.id ? "selected" : ""}>
+              <input
+                type="radio"
+                name="variant"
+                value={v.id}
+                checked={variant === v.id}
+                disabled={!isVariantPurchasable(product, v)}
+                onChange={() => setVariant(v.id)}
+              />
+              <span>{v.name}</span>
+              <b>{v.priceAdjustment ? `+${formatMoney(v.priceAdjustment)}` : "Included"}</b>
+            </label>
+          ))}
       </fieldset>
       <div className="purchase-row">
         <div className="quantity large">

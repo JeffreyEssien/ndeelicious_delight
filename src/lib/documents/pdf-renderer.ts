@@ -180,7 +180,9 @@ export function renderPaginatedDocumentPdf(document: DocumentDTO) {
   text(page, document.business.businessName, MARGIN, page.y - 17, 11, true);
   wrap(document.business.address, 43)
     .slice(0, 2)
-    .forEach((value, index) => text(page, value, MARGIN, page.y - 33 - index * 12, 9));
+    .forEach((value, index) => {
+      text(page, value, MARGIN, page.y - 33 - index * 12, 9);
+    });
   text(
     page,
     [document.business.contactEmail, document.business.phone].filter(Boolean).join(" · "),
@@ -197,7 +199,9 @@ export function renderPaginatedDocumentPdf(document: DocumentDTO) {
   if (document.customer.address)
     wrap(document.customer.address, 42)
       .slice(0, 2)
-      .forEach((value, index) => text(page, value, 322, page.y - 58 - index * 11, 8));
+      .forEach((value, index) => {
+        text(page, value, 322, page.y - 58 - index * 11, 8);
+      });
   page.y -= 92;
 
   text(
@@ -237,10 +241,12 @@ export function renderPaginatedDocumentPdf(document: DocumentDTO) {
       page = addPage(true);
       tableHeader(page, accent, document.design);
     }
-    nameLines.forEach((value, index) => text(page, value, MARGIN + 8, page.y - 15 - index * 11, 10, true));
-    detailLines.forEach((value, index) =>
-      text(page, value, MARGIN + 8, page.y - 17 - nameLines.length * 11 - index * 10, 8, false, [0.4, 0.37, 0.35]),
-    );
+    nameLines.forEach((value, index) => {
+      text(page, value, MARGIN + 8, page.y - 15 - index * 11, 10, true);
+    });
+    detailLines.forEach((value, index) => {
+      text(page, value, MARGIN + 8, page.y - 17 - nameLines.length * 11 - index * 10, 8, false, [0.4, 0.37, 0.35]);
+    });
     text(page, String(item.quantity), 373, page.y - 15, 9);
     text(page, money(item.unitPrice), 420, page.y - 15, 9);
     text(page, money(item.total), 514, page.y - 15, 9, true);
@@ -270,7 +276,9 @@ export function renderPaginatedDocumentPdf(document: DocumentDTO) {
   if (page.y - required < 70) page = addPage(true);
   const summaryTop = page.y - 18;
   text(page, "NOTES", MARGIN, summaryTop, 8, true, accent);
-  noteLines.forEach((value, index) => text(page, value, MARGIN, summaryTop - 17 - index * 12, 9));
+  noteLines.forEach((value, index) => {
+    text(page, value, MARGIN, summaryTop - 17 - index * 12, 9);
+  });
   totals.forEach(([label, value, bold], index) => {
     const y = summaryTop - index * 17;
     text(page, label, 395, y, bold ? 10 : 9, bold);

@@ -21,7 +21,7 @@ export function ProductGallery({ product }: { product: Product }) {
   }
 
   return (
-    <div className="gallery">
+    <div className={`gallery ${images.length === 1 ? "gallery-single" : ""}`}>
       <div className="gallery-main">
         <Image
           src={selected.url}
@@ -29,7 +29,7 @@ export function ProductGallery({ product }: { product: Product }) {
           fill
           priority
           sizes="(max-width:800px) 100vw, 55vw"
-          style={{ objectPosition: product.imagePosition }}
+          style={{ objectFit: "contain", objectPosition: product.imagePosition }}
         />
       </div>
       {images.length > 1 && (
@@ -39,10 +39,11 @@ export function ProductGallery({ product }: { product: Product }) {
               type="button"
               className={image.id === selected.id ? "active" : ""}
               aria-pressed={image.id === selected.id}
+              aria-label={`View image: ${image.altText}`}
               onClick={() => setSelectedId(image.id)}
               key={image.id}
             >
-              <Image src={image.url} alt={image.altText} fill sizes="100px" />
+              <Image src={image.url} alt="" fill sizes="100px" />
             </button>
           ))}
         </div>

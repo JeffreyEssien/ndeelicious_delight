@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { Icon } from "./icons";
+import { ModalOverlay } from "./modal-overlay";
 
 export function Button({
   className = "",
@@ -173,17 +174,14 @@ export function Dialog({
 }) {
   if (!open) return null;
   return (
-    <>
-      <button type="button" className="scrim" onClick={onClose} aria-label="Close dialog" />
-      <section className="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
-        <div className="panel-head">
-          <h2 id="dialog-title">{title}</h2>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Close dialog">
-            <Icon name="close" />
-          </button>
-        </div>
-        {children}
-      </section>
-    </>
+    <ModalOverlay open={open} onClose={onClose} className="dialog" labelledBy="dialog-title">
+      <div className="panel-head">
+        <h2 id="dialog-title">{title}</h2>
+        <button type="button" className="icon-button" onClick={onClose} aria-label="Close dialog">
+          <Icon name="close" />
+        </button>
+      </div>
+      {children}
+    </ModalOverlay>
   );
 }

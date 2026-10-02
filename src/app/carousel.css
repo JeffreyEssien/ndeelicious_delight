@@ -202,6 +202,13 @@
   border-color: var(--color-on-primary);
   color: var(--color-on-primary);
 }
+.carousel-mobile-position {
+  display: none;
+  min-width: 64px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+}
 @media (max-width: 800px) {
   .carousel-heading,
   .carousel-stage {
@@ -227,6 +234,24 @@
   }
   .carousel-cards .carousel-stage {
     padding: 12px 12px 72px;
+  }
+  .carousel-controls fieldset.many-slides {
+    display: none;
+  }
+  .carousel-controls fieldset.many-slides + .carousel-mobile-position {
+    display: inline-block;
+  }
+}
+@media (max-width: 480px) {
+  .carousel-controls fieldset {
+    display: none;
+  }
+  .carousel-controls fieldset + .carousel-mobile-position {
+    display: inline-block;
+  }
+  .carousel-controls {
+    max-width: calc(100% - 24px);
+    justify-content: center;
   }
 }
 @media (prefers-reduced-motion: reduce) {

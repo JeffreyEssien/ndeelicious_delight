@@ -12,6 +12,9 @@ export function isProductPurchasable(product: Product) {
 }
 
 export function getDefaultPurchasableVariant(product: Product) {
-  const variants = getPurchasableVariants(product);
-  return variants.length === 1 ? variants[0] : undefined;
+  return getPurchasableVariants(product)[0];
+}
+
+export function isVariantPurchasable(product: Product, variant: ProductVariant) {
+  return getPurchasableVariants(product).some((item) => item.id === variant.id);
 }

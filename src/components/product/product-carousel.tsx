@@ -143,7 +143,7 @@ export function ProductCarousel({
             <Link className="button button-secondary" href={`/product/${product.slug}`}>
               View details <Icon name="arrow" />
             </Link>
-            {settings.showAddToCart && defaultVariant && (
+            {settings.showAddToCart && defaultVariant && purchasableVariants.length === 1 && (
               <button
                 className="button button-primary"
                 type="button"
@@ -174,7 +174,7 @@ export function ProductCarousel({
             >
               ←
             </button>
-            <fieldset aria-label="Choose a product slide">
+            <fieldset className={count > 5 ? "many-slides" : ""} aria-label="Choose a product slide">
               {chosen.map((item, itemIndex) => (
                 <button
                   type="button"
@@ -188,6 +188,9 @@ export function ProductCarousel({
                 </button>
               ))}
             </fieldset>
+            <span className="carousel-mobile-position" aria-hidden="true">
+              {index + 1} of {count}
+            </span>
             <button
               type="button"
               onClick={() => go(index + 1)}

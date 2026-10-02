@@ -1,7 +1,8 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { type FormEvent, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from "react";
 import type {
   AdminAuditLog,
   AdminCakeRequest,
@@ -14,6 +15,7 @@ import type { DeliveryZone, OrderStatus, Product, ProductStatus } from "@/types"
 import { formatDate } from "@/lib/format";
 import { Badge, Button, EmptyState, Input, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
+import { ModalOverlay } from "@/components/ui/modal-overlay";
 import { CakeWorkspace, Coupons, Reviews } from "@/components/admin/live-sections";
 import { ProductEditor } from "@/components/admin/product-editor";
 import { ContentSettings } from "@/components/admin/content-settings";
@@ -28,6 +30,7 @@ import type {
   StorefrontContent,
   MarketingExport,
 } from "@/types/content";
+import { resolveThemeTokens, themeTokenCss } from "@/lib/theme/tokens";
 
 type Props = {
   section?: string;
@@ -118,7 +121,11 @@ export function AdminPortal({
   const [zoneBusy, setZoneBusy] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string>();
   const notify = useToast();
+  const router = useRouter();
   const { theme, setTheme } = useStoreTheme();
+  useEffect(() => setProducts(initialProducts), [initialProducts]);
+  useEffect(() => setOrders(initialOrders), [initialOrders]);
+  useEffect(() => setZones(initialZones), [initialZones]);
   async function productStatus(id: string, value: ProductStatus) {
     const before = products;
     setProducts((v) => v.map((p) => (p.id === id ? { ...p, status: value } : p)));
@@ -134,7 +141,7 @@ export function AdminPortal({
     const payload = await response.json();
     if (response.ok) {
       notify(`${product.name} duplicated as a draft.`);
-      window.location.reload();
+      router.refresh();
     } else notify(payload.error ?? "Product could not be duplicated.");
   }
   async function orderStatus(id: string, value: OrderStatus) {
@@ -188,7 +195,7 @@ export function AdminPortal({
     setZoneBusy(false);
     if (response.ok) {
       notify("Delivery zones saved.");
-      window.location.reload();
+      router.refresh();
     } else notify("Delivery zones could not be saved.");
   }
   async function changeTheme(value: StoreTheme) {
@@ -199,7 +206,7 @@ export function AdminPortal({
     ]);
     if (themeResponse.ok && appearanceResponse.ok) {
       notify("Storefront theme is now live.");
-      window.location.reload();
+      router.refresh();
     } else notify("Theme changed locally but could not be saved.");
   }
   return (
@@ -284,30 +291,38 @@ export function AdminPortal({
         />
       )}
       {editor !== undefined && (
-        <>
-          <button
-            type="button"
-            className="scrim admin-scrim"
-            onClick={() => setEditor(undefined)}
-            aria-label="Close product drawer"
-          />
+        <ModalOverlay
+          open
+          onClose={() => setEditor(undefined)}
+          className="admin-drawer product-editor"
+          scrimClassName="admin-scrim"
+          ariaLabel={editor ? `Edit ${editor.name}` : "Add product"}
+        >
           <ProductEditor
             product={editor}
             close={() => setEditor(undefined)}
             onSaved={() => {
               setEditor(undefined);
               notify("Product saved. Storefront visibility is up to date.");
-              window.location.reload();
+              router.refresh();
             }}
           />
-        </>
+        </ModalOverlay>
       )}
       {selectedOrderId && orders.find((order) => order.id === selectedOrderId) && (
-        <OrderDetail
-          order={orders.find((order) => order.id === selectedOrderId) as AdminOrder}
-          close={() => setSelectedOrderId(undefined)}
-          onStatus={orderStatus}
-        />
+        <ModalOverlay
+          open
+          onClose={() => setSelectedOrderId(undefined)}
+          className="admin-drawer order-detail"
+          scrimClassName="admin-scrim"
+          ariaLabel={`Order ${selectedOrderId}`}
+        >
+          <OrderDetail
+            order={orders.find((order) => order.id === selectedOrderId) as AdminOrder}
+            close={() => setSelectedOrderId(undefined)}
+            onStatus={orderStatus}
+          />
+        </ModalOverlay>
       )}
     </div>
   );
@@ -517,7 +532,7 @@ function OrderTable({
   const money = useMoney();
   const business = useBusinessSettings();
   return orders.length ? (
-    <div className="table-scroll">
+    <div className="table-scroll mobile-card-table orders-table">
       <table className="admin-table">
         <thead>
           <tr>
@@ -577,6 +592,7 @@ function OrderDetail({
   const money = useMoney();
   const business = useBusinessSettings();
   const notify = useToast();
+  const router = useRouter();
   const refundable = Math.max(0, (order.payment?.amount ?? 0) - (order.payment?.refundedAmount ?? 0));
   const [note, setNote] = useState(order.internalNote);
   const [refundAmount, setRefundAmount] = useState(refundable ? String(refundable / 100) : "");
@@ -617,215 +633,212 @@ function OrderDetail({
             ? "Full refund completed."
             : "Partial refund completed.",
       );
-      window.location.reload();
+      router.refresh();
     } else notify(payload?.error ?? "The refund could not be processed.");
   }
   return (
-    <>
-      <button type="button" className="scrim admin-scrim" onClick={close} aria-label="Close order details" />
-      <aside className="admin-drawer order-detail" aria-label={`Order ${order.id}`}>
-        <div className="panel-head">
+    <div className="order-detail-content">
+      <div className="panel-head">
+        <div>
+          <span className="overline">Order details</span>
+          <h2>{order.id}</h2>
+        </div>
+        <button type="button" className="icon-button" onClick={close} aria-label="Close order details">
+          <Icon name="close" />
+        </button>
+      </div>
+      <div className="order-detail-actions no-print">
+        <OrderStatusSelect value={order.status} onChange={(value) => onStatus(order.id, value)} />
+        <Button variant="secondary" disabled={busy} onClick={retryNotifications}>
+          Retry customer emails
+        </Button>
+        <Button variant="secondary" onClick={() => window.print()}>
+          Print summary
+        </Button>
+      </div>
+      <section className="order-documents-area">
+        <span className="overline">Documents</span>
+        <h3>{order.payment?.paidAt ? "Payment receipt" : "Invoice and payment request"}</h3>
+        <p>
+          {order.payment?.paidAt
+            ? "The receipt is locked to the confirmed payment record."
+            : "Issue an invoice showing the current amount due."}
+        </p>
+        <Link
+          className="button button-primary"
+          href={`/admin/documents/orders/${encodeURIComponent(order.id)}/${order.payment?.paidAt ? "receipt" : "invoice"}`}
+          target="_blank"
+        >
+          {order.payment?.paidAt ? "View receipt" : "Create invoice"}
+        </Link>
+        {order.payment?.paidAt && (
+          <details>
+            <summary>Other document</summary>
+            <Link
+              className="text-button"
+              href={`/admin/documents/orders/${encodeURIComponent(order.id)}/invoice`}
+              target="_blank"
+            >
+              View invoice
+            </Link>
+          </details>
+        )}
+      </section>
+      <section>
+        <h3>Customer and fulfilment</h3>
+        <dl className="order-detail-list">
           <div>
-            <span className="overline">Order details</span>
-            <h2>{order.id}</h2>
+            <dt>Customer</dt>
+            <dd>{order.customer}</dd>
           </div>
-          <button type="button" className="icon-button" onClick={close} aria-label="Close order details">
-            <Icon name="close" />
-          </button>
-        </div>
-        <div className="order-detail-actions no-print">
-          <OrderStatusSelect value={order.status} onChange={(value) => onStatus(order.id, value)} />
-          <Button variant="secondary" disabled={busy} onClick={retryNotifications}>
-            Retry customer emails
-          </Button>
-          <Button variant="secondary" onClick={() => window.print()}>
-            Print summary
-          </Button>
-        </div>
-        <section className="order-documents-area">
-          <span className="overline">Documents</span>
-          <h3>{order.payment?.paidAt ? "Payment receipt" : "Invoice and payment request"}</h3>
-          <p>
-            {order.payment?.paidAt
-              ? "The receipt is locked to the confirmed payment record."
-              : "Issue an invoice showing the current amount due."}
-          </p>
-          <Link
-            className="button button-primary"
-            href={`/admin/documents/orders/${encodeURIComponent(order.id)}/${order.payment?.paidAt ? "receipt" : "invoice"}`}
-            target="_blank"
-          >
-            {order.payment?.paidAt ? "View receipt" : "Create invoice"}
-          </Link>
-          {order.payment?.paidAt && (
-            <details>
-              <summary>Other document</summary>
-              <Link
-                className="text-button"
-                href={`/admin/documents/orders/${encodeURIComponent(order.id)}/invoice`}
-                target="_blank"
-              >
-                View invoice
-              </Link>
-            </details>
-          )}
-        </section>
-        <section>
-          <h3>Customer and fulfilment</h3>
-          <dl className="order-detail-list">
+          <div>
+            <dt>Contact</dt>
+            <dd>
+              {order.email}
+              <br />
+              {order.phone}
+            </dd>
+          </div>
+          <div>
+            <dt>Method</dt>
+            <dd>{order.fulfilment === "pickup" ? "Bakery pickup" : "Delivery"}</dd>
+          </div>
+          {order.address && (
             <div>
-              <dt>Customer</dt>
-              <dd>{order.customer}</dd>
-            </div>
-            <div>
-              <dt>Contact</dt>
+              <dt>Address</dt>
               <dd>
-                {order.email}
-                <br />
-                {order.phone}
+                {[
+                  order.address.street,
+                  order.address.addressLine2,
+                  order.address.city,
+                  order.address.province,
+                  order.address.postalCode,
+                ]
+                  .filter(Boolean)
+                  .join(", ")}
               </dd>
             </div>
+          )}
+          {order.customerNote && (
             <div>
-              <dt>Method</dt>
-              <dd>{order.fulfilment === "pickup" ? "Bakery pickup" : "Delivery"}</dd>
+              <dt>Customer note</dt>
+              <dd>{order.customerNote}</dd>
             </div>
-            {order.address && (
-              <div>
-                <dt>Address</dt>
-                <dd>
-                  {[
-                    order.address.street,
-                    order.address.addressLine2,
-                    order.address.city,
-                    order.address.province,
-                    order.address.postalCode,
-                  ]
-                    .filter(Boolean)
-                    .join(", ")}
-                </dd>
-              </div>
-            )}
-            {order.customerNote && (
-              <div>
-                <dt>Customer note</dt>
-                <dd>{order.customerNote}</dd>
-              </div>
-            )}
-          </dl>
-        </section>
-        <section>
-          <h3>Immutable purchase snapshot</h3>
-          <div className="order-lines">
-            {order.lines.map((line) => (
-              <div key={line.id}>
-                <span>
-                  <b>{line.productName}</b>
-                  <small>
-                    {line.variantName} × {line.quantity}
-                  </small>
-                </span>
-                <b>{money(line.finalPrice)}</b>
-              </div>
-            ))}
+          )}
+        </dl>
+      </section>
+      <section>
+        <h3>Immutable purchase snapshot</h3>
+        <div className="order-lines">
+          {order.lines.map((line) => (
+            <div key={line.id}>
+              <span>
+                <b>{line.productName}</b>
+                <small>
+                  {line.variantName} × {line.quantity}
+                </small>
+              </span>
+              <b>{money(line.finalPrice)}</b>
+            </div>
+          ))}
+        </div>
+        <dl className="order-totals">
+          <div>
+            <dt>Subtotal</dt>
+            <dd>{money(order.subtotal)}</dd>
           </div>
-          <dl className="order-totals">
+          <div>
+            <dt>Discount</dt>
+            <dd>−{money(order.discountTotal)}</dd>
+          </div>
+          <div>
+            <dt>Delivery</dt>
+            <dd>{money(order.deliveryFee)}</dd>
+          </div>
+          {order.taxTotal > 0 && (
             <div>
-              <dt>Subtotal</dt>
-              <dd>{money(order.subtotal)}</dd>
+              <dt>Tax</dt>
+              <dd>{money(order.taxTotal)}</dd>
+            </div>
+          )}
+          <div>
+            <dt>Total</dt>
+            <dd>{money(order.total)}</dd>
+          </div>
+        </dl>
+      </section>
+      <section>
+        <h3>Payment</h3>
+        {order.payment ? (
+          <dl className="order-detail-list">
+            <div>
+              <dt>Status</dt>
+              <dd>{order.payment.status.replaceAll("_", " ")}</dd>
             </div>
             <div>
-              <dt>Discount</dt>
-              <dd>−{money(order.discountTotal)}</dd>
+              <dt>Paid</dt>
+              <dd>{money(order.payment.amount)}</dd>
             </div>
             <div>
-              <dt>Delivery</dt>
-              <dd>{money(order.deliveryFee)}</dd>
-            </div>
-            {order.taxTotal > 0 && (
-              <div>
-                <dt>Tax</dt>
-                <dd>{money(order.taxTotal)}</dd>
-              </div>
-            )}
-            <div>
-              <dt>Total</dt>
-              <dd>{money(order.total)}</dd>
+              <dt>Refunded</dt>
+              <dd>{money(order.payment.refundedAmount)}</dd>
             </div>
           </dl>
-        </section>
-        <section>
-          <h3>Payment</h3>
-          {order.payment ? (
-            <dl className="order-detail-list">
-              <div>
-                <dt>Status</dt>
-                <dd>{order.payment.status.replaceAll("_", " ")}</dd>
-              </div>
-              <div>
-                <dt>Paid</dt>
-                <dd>{money(order.payment.amount)}</dd>
-              </div>
-              <div>
-                <dt>Refunded</dt>
-                <dd>{money(order.payment.refundedAmount)}</dd>
-              </div>
-            </dl>
-          ) : (
-            <p>No payment attempt has been recorded.</p>
-          )}
-          {refundable > 0 && !["PENDING_PAYMENT", "FAILED", "CANCELLED"].includes(order.status) && (
-            <div className="refund-form no-print">
-              <Input
-                label={`Refund amount (${order.currency})`}
-                type="number"
-                min="0.01"
-                max={refundable / 100}
-                step="0.01"
-                value={refundAmount}
-                onChange={(event) => setRefundAmount(event.target.value)}
-              />
-              <Textarea
-                label="Reason for refund"
-                rows={3}
-                value={refundReason}
-                onChange={(event) => setRefundReason(event.target.value)}
-              />
-              <Button disabled={busy} variant="secondary" onClick={refund}>
-                {busy ? "Processing…" : "Process Stripe refund"}
-              </Button>
-            </div>
-          )}
-        </section>
-        <section className="no-print">
-          <h3>Internal note</h3>
-          <Textarea
-            label="Only administrators can see this"
-            rows={4}
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-          />
-          <Button disabled={busy} variant="secondary" onClick={saveNote}>
-            Save internal note
-          </Button>
-        </section>
-        <section>
-          <h3>Activity</h3>
-          <ol className="order-timeline">
-            {order.events.map((event) => (
-              <li key={event.id}>
-                <b>
-                  {event.toStatus
-                    ? `${event.fromStatus?.replaceAll("_", " ")} → ${event.toStatus.replaceAll("_", " ")}`
-                    : event.eventType.replaceAll("_", " ")}
-                </b>
-                {event.note && <p>{event.note}</p>}
-                <small>{formatDate(event.createdAt, business.locale, business.timezone)}</small>
-              </li>
-            ))}
-          </ol>
-        </section>
-      </aside>
-    </>
+        ) : (
+          <p>No payment attempt has been recorded.</p>
+        )}
+        {refundable > 0 && !["PENDING_PAYMENT", "FAILED", "CANCELLED"].includes(order.status) && (
+          <div className="refund-form no-print">
+            <Input
+              label={`Refund amount (${order.currency})`}
+              type="number"
+              min="0.01"
+              max={refundable / 100}
+              step="0.01"
+              value={refundAmount}
+              onChange={(event) => setRefundAmount(event.target.value)}
+            />
+            <Textarea
+              label="Reason for refund"
+              rows={3}
+              value={refundReason}
+              onChange={(event) => setRefundReason(event.target.value)}
+            />
+            <Button disabled={busy} variant="secondary" onClick={refund}>
+              {busy ? "Processing…" : "Process Stripe refund"}
+            </Button>
+          </div>
+        )}
+      </section>
+      <section className="no-print">
+        <h3>Internal note</h3>
+        <Textarea
+          label="Only administrators can see this"
+          rows={4}
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+        />
+        <Button disabled={busy} variant="secondary" onClick={saveNote}>
+          Save internal note
+        </Button>
+      </section>
+      <section>
+        <h3>Activity</h3>
+        <ol className="order-timeline">
+          {order.events.map((event) => (
+            <li key={event.id}>
+              <b>
+                {event.toStatus
+                  ? `${event.fromStatus?.replaceAll("_", " ")} → ${event.toStatus.replaceAll("_", " ")}`
+                  : event.eventType.replaceAll("_", " ")}
+              </b>
+              {event.note && <p>{event.note}</p>}
+              <small>{formatDate(event.createdAt, business.locale, business.timezone)}</small>
+            </li>
+          ))}
+        </ol>
+      </section>
+    </div>
   );
 }
 function StatusBadge({ status }: { status: string }) {
@@ -948,7 +961,7 @@ function Products({
         setStatus={setStatus}
         options={["ALL", "ACTIVE", "OUT_OF_STOCK", "DRAFT", "ARCHIVED"]}
       />
-      <div className="admin-card table-scroll">
+      <div className="admin-card table-scroll mobile-card-table products-table">
         <table className="admin-table">
           <thead>
             <tr>
@@ -1194,7 +1207,7 @@ function Customers({ orders }: { orders: AdminOrder[] }) {
     [orders],
   );
   return (
-    <div className="admin-card table-scroll">
+    <div className="admin-card table-scroll mobile-card-table customers-table">
       <table className="admin-table">
         <thead>
           <tr>
@@ -1388,9 +1401,16 @@ function BusinessSettings({
   theme: StoreTheme;
   changeTheme: (value: StoreTheme) => void;
 }) {
+  const router = useRouter();
   const notify = useToast();
+  const [previewTheme, setPreviewTheme] = useState(theme);
+  const [appearanceState, setAppearanceState] = useState<"saved" | "unsaved" | "saving" | "failed">("saved");
+  const [businessState, setBusinessState] = useState<"saved" | "unsaved" | "saving" | "failed">("saved");
+  const previewTokens = resolveThemeTokens(previewTheme, { ...appearance, useCustomColors: false });
+  const previewStyle = themeTokenCss(previewTokens) as CSSProperties;
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setBusinessState("saving");
     const fields = Object.fromEntries(new FormData(e.currentTarget));
     const value = {
       ...initial,
@@ -1404,10 +1424,12 @@ function BusinessSettings({
       taxDelivery: fields.taxDelivery === "on",
     };
     const response = await mutate({ action: "settings", key: "business", value });
+    setBusinessState(response.ok ? "saved" : "failed");
     notify(response.ok ? "Business settings saved." : "Settings could not be saved.");
   }
   async function saveAppearance(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setAppearanceState("saving");
     const fields = Object.fromEntries(new FormData(e.currentTarget));
     const value: StoreAppearance = {
       useCustomColors: fields.useCustomColors === "on",
@@ -1427,9 +1449,13 @@ function BusinessSettings({
     };
     const response = await mutate({ action: "settings", key: "appearance", value });
     if (response.ok) {
+      setAppearanceState("saved");
       notify("Store appearance is now live.");
-      window.location.reload();
-    } else notify("Store appearance could not be saved.");
+      router.refresh();
+    } else {
+      setAppearanceState("failed");
+      notify("Store appearance could not be saved.");
+    }
   }
   return (
     <div className="settings-grid">
@@ -1458,10 +1484,10 @@ function BusinessSettings({
           {themes.map((option) => (
             <button
               type="button"
-              aria-pressed={theme === option.id}
-              className={theme === option.id ? "selected" : ""}
+              aria-pressed={previewTheme === option.id}
+              className={previewTheme === option.id ? "selected" : ""}
               key={option.id}
-              onClick={() => changeTheme(option.id)}
+              onClick={() => setPreviewTheme(option.id)}
             >
               <span className="theme-swatches">
                 {option.colors.map((color) => (
@@ -1470,12 +1496,53 @@ function BusinessSettings({
               </span>
               <b>{option.name}</b>
               <small>{option.description}</small>
-              <span className="theme-selected">{theme === option.id ? "Selected ✓" : "Use theme"}</span>
+              <span className="theme-selected">{previewTheme === option.id ? "Previewing ✓" : "Preview theme"}</span>
             </button>
           ))}
         </fieldset>
+        <div className="store-theme-preview" style={previewStyle} data-theme-preview={previewTheme}>
+          <div className="store-theme-preview-head">
+            <span className="overline">Live storefront preview</span>
+            <h3>Made for your sweetest moments</h3>
+            <p>See headings, supporting text, actions, fields, cards, and feature areas together.</p>
+          </div>
+          <div className="store-theme-preview-actions">
+            <button type="button" className="button button-primary">
+              Order a treat
+            </button>
+            <button type="button" className="button button-secondary">
+              View details
+            </button>
+          </div>
+          <label className="field">
+            <span>Delivery area</span>
+            <input readOnly value="Toronto" />
+          </label>
+          <article className="store-theme-preview-product">
+            <span className="badge badge-berry">Bestseller</span>
+            <b>Celebration cake</b>
+            <small>From CAD $65.00</small>
+          </article>
+          <aside>
+            <b>Freshly baked for you</b>
+            <span>Feature sections remain readable in every theme.</span>
+          </aside>
+        </div>
+        <div className="theme-publish-row">
+          <span>
+            {previewTheme === theme ? "This is the live theme." : "Preview only — the storefront has not changed yet."}
+          </span>
+          <Button disabled={previewTheme === theme} onClick={() => changeTheme(previewTheme)}>
+            Publish this theme
+          </Button>
+        </div>
       </div>
-      <form className="admin-card form-stack" id="layout-settings" onSubmit={saveAppearance}>
+      <form
+        className="admin-card form-stack"
+        id="layout-settings"
+        onSubmit={saveAppearance}
+        onChange={() => setAppearanceState("unsaved")}
+      >
         <h2>Store colours and layout</h2>
         <p>
           These safe controls update the customer storefront immediately. Mobile layouts remain optimized automatically.
@@ -1534,9 +1601,25 @@ function BusinessSettings({
             <option value="4">4 products</option>
           </select>
         </label>
-        <Button type="submit">Save store appearance</Button>
+        <span className="document-save-state" role="status">
+          {appearanceState === "saved"
+            ? "Appearance saved"
+            : appearanceState === "saving"
+              ? "Saving appearance…"
+              : appearanceState === "failed"
+                ? "Save failed — retry"
+                : "Unsaved appearance changes"}
+        </span>
+        <Button type="submit" disabled={appearanceState === "saving"}>
+          Save store appearance
+        </Button>
       </form>
-      <form className="admin-card form-stack business-settings-form" id="business-settings" onSubmit={save}>
+      <form
+        className="admin-card form-stack business-settings-form"
+        id="business-settings"
+        onSubmit={save}
+        onChange={() => setBusinessState("unsaved")}
+      >
         <h2>Business details</h2>
         <Input name="businessName" label="Business name" defaultValue={initial.businessName} />
         <Input name="contactEmail" label="Contact email" type="email" defaultValue={initial.contactEmail} />
@@ -1597,7 +1680,18 @@ function BusinessSettings({
           min="1"
           defaultValue={initial.cakeLeadHours}
         />
-        <Button type="submit">Save settings</Button>
+        <span className="document-save-state" role="status">
+          {businessState === "saved"
+            ? "Business settings saved"
+            : businessState === "saving"
+              ? "Saving settings…"
+              : businessState === "failed"
+                ? "Save failed — retry"
+                : "Unsaved business changes"}
+        </span>
+        <Button type="submit" disabled={businessState === "saving"}>
+          Save settings
+        </Button>
       </form>
     </div>
   );

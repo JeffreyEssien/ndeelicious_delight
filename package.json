@@ -13,8 +13,11 @@
     "test": "vitest run",
     "test:regression": "vitest run src/features src/lib src/validations",
     "test:functional": "vitest run src/app/api",
+    "test:css": "node scripts/audit-css-tokens.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
     "test:structural": "npm run typecheck && npm run build",
-    "check": "npm run quality && npm run test:regression && npm run test:functional && npm run test:structural",
+    "check": "npm run quality && npm run test:css && npm run test:regression && npm run test:functional && npm run test:structural",
     "admin:bootstrap": "node scripts/bootstrap-admin.mjs",
     "db:seed": "node scripts/seed-catalog.mjs",
     "start": "next start"
@@ -31,7 +34,9 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@biomejs/biome": "2.5.14",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.2",

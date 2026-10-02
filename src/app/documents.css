@@ -383,8 +383,45 @@
   .document-summary {
     grid-template-columns: 1fr;
   }
-  .business-document {
-    overflow-x: auto;
+  .business-document table,
+  .business-document tbody,
+  .business-document tr,
+  .business-document td {
+    display: block;
+    width: 100%;
+  }
+  .business-document thead {
+    display: none;
+  }
+  .business-document tr {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .business-document td {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 5px 0;
+    border: 0;
+    text-align: right;
+  }
+  .business-document td:first-child {
+    display: grid;
+    text-align: left;
+  }
+  .business-document td:nth-child(2)::before {
+    content: "Quantity";
+  }
+  .business-document td:nth-child(3)::before {
+    content: "Unit price";
+  }
+  .business-document td:nth-child(4)::before {
+    content: "Amount";
+  }
+  .business-document td::before {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 600;
   }
 }
 @media print {
@@ -431,10 +468,29 @@
     -webkit-print-color-adjust: exact;
   }
   .business-document table {
+    display: table;
+    width: 100%;
     break-inside: auto;
   }
+  .business-document thead {
+    display: table-header-group;
+  }
+  .business-document tbody {
+    display: table-row-group;
+  }
   .business-document tr {
+    display: table-row;
+    padding: 0;
     break-inside: avoid;
+  }
+  .business-document td {
+    display: table-cell;
+    width: auto;
+    padding: 14px 10px;
+    text-align: initial;
+  }
+  .business-document td::before {
+    content: none !important;
   }
   .business-document footer {
     break-inside: avoid;

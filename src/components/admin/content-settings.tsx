@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button, Input, Textarea } from "@/components/ui/primitives";
 import { useToast } from "@/components/providers";
 import type { StorefrontContent } from "@/types/content";
@@ -185,13 +186,17 @@ function ContentField({
 export function ContentSettings({ initial }: { initial: StorefrontContent }) {
   const [content, setContent] = useState(initial);
   const [busy, setBusy] = useState(false);
+  const [saveState, setSaveState] = useState<"saved" | "unsaved" | "saving" | "failed">("saved");
   const [section, setSection] = useState(Object.keys(initial)[0]);
   const notify = useToast();
+  const router = useRouter();
   function update(path: Path, value: JsonValue) {
     setContent((current) => updateAtPath(current as JsonObject, path, value) as StorefrontContent);
+    setSaveState("unsaved");
   }
   async function save() {
     setBusy(true);
+    setSaveState("saving");
     const response = await fetch("/api/admin/mutate", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -199,9 +204,11 @@ export function ContentSettings({ initial }: { initial: StorefrontContent }) {
     });
     setBusy(false);
     if (response.ok) {
+      setSaveState("saved");
       notify("Storefront content is now live.");
-      window.location.reload();
+      router.refresh();
     } else {
+      setSaveState("failed");
       const payload = await response.json().catch(() => null);
       notify(payload?.error ?? "Content could not be saved.");
     }
@@ -240,7 +247,15 @@ export function ContentSettings({ initial }: { initial: StorefrontContent }) {
         </section>
       </div>
       <div className="admin-save-bar content-save-bar">
-        <span>Review your changes, then publish them to the storefront.</span>
+        <span role="status">
+          {saveState === "saved"
+            ? "Saved — the storefront is up to date."
+            : saveState === "saving"
+              ? "Saving…"
+              : saveState === "failed"
+                ? "Save failed — retry when ready."
+                : "Unsaved changes — review and publish when ready."}
+        </span>
         <Button disabled={busy} onClick={save}>
           {busy ? "Publishing…" : "Publish website text"}
         </Button>
