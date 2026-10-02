@@ -118,7 +118,7 @@ export function ProductEditor({
   }
 
   return (
-    <aside className="admin-drawer product-editor" aria-label={product ? `Edit ${product.name}` : "Add product"}>
+    <div className="product-editor-content">
       <div className="panel-head">
         <div>
           <span className="overline">Catalogue</span>
@@ -397,6 +397,6 @@ export function ProductEditor({
           </Button>
         </div>
       </form>
-    </aside>
+    </div>
   );
 }

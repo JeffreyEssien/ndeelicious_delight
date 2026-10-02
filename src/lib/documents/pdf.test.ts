@@ -45,4 +45,21 @@ describe("document PDF", () => {
     expect(documentTextLines(document)).toContain("HST (13%): $1.30");
     expect(renderDocumentPdf(document).subarray(0, 8).toString()).toBe("%PDF-1.4");
   });
+
+  it("paginates long documents without dropping line items", () => {
+    const lines = Array.from({ length: 70 }, (_, index) => ({
+      id: String(index),
+      name: `Celebration cake line ${index + 1}`,
+      detail: "Vanilla sponge with a detailed buttercream finish",
+      quantity: 1,
+      unitPrice: 1000,
+      total: 1000,
+    }));
+    const pdf = renderDocumentPdf({ ...document, lines, subtotal: 70_000, total: 70_000, paid: 70_000 }).toString(
+      "latin1",
+    );
+    expect(pdf).toMatch(/\/Count [2-9]/);
+    expect(pdf).toContain("Celebration cake line 70");
+    expect(pdf).toContain("Page 1 of");
+  });
 });

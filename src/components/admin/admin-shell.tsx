@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/icons";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { ModalOverlay } from "@/components/ui/modal-overlay";
 
 const links = [
   { label: "Dashboard", href: "/admin", icon: "grid" },
@@ -25,10 +26,14 @@ const links = [
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    document.body.classList.add("admin-mode");
+    return () => document.body.classList.remove("admin-mode");
+  }, []);
   if (path === "/admin/login") return <>{children}</>;
   return (
     <div className="admin-shell">
-      <aside className={`admin-sidebar ${mobile ? "is-open" : ""}`}>
+      <aside className="admin-sidebar desktop-admin-sidebar">
         <div className="admin-brand">
           <span className="brand brand-light">
             <BrandLogo compact />
@@ -67,6 +72,34 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </form>
         </div>
       </aside>
+      <ModalOverlay
+        open={mobile}
+        onClose={() => setMobile(false)}
+        className="admin-sidebar is-open mobile-admin-sidebar"
+        ariaLabel="Admin navigation"
+      >
+        <div className="admin-brand">
+          <span className="brand brand-light">
+            <BrandLogo compact />
+          </span>
+          <button type="button" className="icon-button" onClick={() => setMobile(false)} aria-label="Close navigation">
+            <Icon name="close" />
+          </button>
+        </div>
+        <nav>
+          {links.map((link) => (
+            <Link
+              className={path === link.href ? "active" : ""}
+              href={link.href}
+              key={link.href}
+              onClick={() => setMobile(false)}
+            >
+              <Icon name={link.icon} />
+              <span>{link.label}</span>
+            </Link>
+          ))}
+        </nav>
+      </ModalOverlay>
       <div className="admin-content">
         <header className="admin-topbar">
           <button
@@ -86,14 +119,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </header>
         <main>{children}</main>
       </div>
-      {mobile && (
-        <button
-          type="button"
-          className="scrim mobile-only"
-          onClick={() => setMobile(false)}
-          aria-label="Close navigation"
-        />
-      )}
     </div>
   );
 }

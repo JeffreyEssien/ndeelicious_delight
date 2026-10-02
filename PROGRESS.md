@@ -12,6 +12,8 @@ The premium UX/system-simplicity pass is implemented through its application and
 
 Migrations `0022` through `0026` are additive and have been applied to the currently configured Supabase database. Browser E2E remains intentionally open until isolated Supabase/Stripe services and a browser harness are configured; production services must not be used for destructive automated journeys.
 
+Migration `0027_workflow_integrity.sql` is implemented but still needs to be applied and transactionally verified in each environment. It makes custom-cake quote orders inventory-neutral, makes linked order status authoritative, persists document presentation, and adds durable quote-email delivery state.
+
 The initial full-stack application is committed on `main`. The current `develop` branch adds:
 
 - Provider-neutral SMTP transactional email through Gmail-compatible STARTTLS, app-password, or OAuth2 credentials.
@@ -37,6 +39,10 @@ The first-party admin OTP/SMTP security remediation is implemented and verified 
 - [x] Added atomic quote responses and quote-to-order conversion, linked custom-cake order lifecycle, server-side Canada delivery/tax calculation, final-total review, and Stripe handoff through the existing payment infrastructure.
 - [x] Separated Marketing from homepage carousel merchandising, enabled all-active-product selection, brand-aware exports, editable captions, Story safe-zone preview, centralized logo setting, and one-ZIP bulk PNG downloads.
 - [x] Made newly added nested Budget Match copy fields backward-compatible with individually applied validation defaults, preventing older content records from producing runtime Zod errors.
+- [x] Wired budget zero-result recovery into the catalogue and made presets, budget matches, closest alternatives, and “Available now” use the same purchasable-product rule.
+- [x] Replaced the fixed 48-line document PDF with a visually verified, branded, wrapped, multi-page table renderer; saved document layouts, accents, notes, and visibility options now drive downloads and customer copies.
+- [x] Added durable custom-cake quote delivery state with queued/sent/failed visibility, admin retry, interrupted-delivery lease recovery, and status changes only after SMTP succeeds.
+- [x] Made linked order status authoritative for custom cakes and allowed only explicitly marked custom-cake lines to bypass catalogue inventory reservation.
 
 - [x] Next.js App Router storefront and shared layout.
 - [x] Product catalogue, category pages, product details, cart, and local cart state.
@@ -87,6 +93,7 @@ Verified locally on 2026-09-19 before introducing the CI files:
 
 Checkpoint verification history:
 
+- Workflow-integrity verification — 88 regression tests, 55 functional tests, strict TypeScript, quality checks, and the 46-route production build passed after the budget, quote-payment, document, and quote-delivery corrections on 2026-09-27. The PDF was also visually checked as a branded two-page invoice.
 - SEO verification — 84 regression tests, 52 functional tests, strict TypeScript, quality checks, and the 46-route production build passed after the canonical metadata and structured-data pass on 2026-09-27.
 - Migrations `0022_carousel_safe_timing.sql`, `0023_budget_maximum_copy.sql`, `0024_persisted_business_documents.sql`, `0025_marketing_export_settings.sql`, and `0026_quote_order_conversion.sql` were transactionally applied to the configured Supabase environment.
 
@@ -132,6 +139,7 @@ CI command ownership:
 
 ## TODO — immediate
 
+- [ ] Apply `db/migrations/0027_workflow_integrity.sql` to each environment, then transactionally verify custom-quote payment, normal inventory reservation, linked cake/order status, document presentation persistence, and quote-email retry.
 - [ ] Configure isolated browser-test Supabase and Stripe services, then add the Phase 7 Playwright journeys for themes, mobile, reduced motion, carousel, budget, quote/payment, and immutable receipt workflows.
 - [x] Add admin email and copy-secure-link controls for issued invoices and receipts; generated links create new revocable opaque access tokens.
 - [ ] Add live database integration tests for document immutability, revoked/expired access, revision races, and concurrent quote conversion. Unit/functional coverage is present, but production Supabase is intentionally not used as an automated destructive test target.

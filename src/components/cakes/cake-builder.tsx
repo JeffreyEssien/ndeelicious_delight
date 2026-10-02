@@ -80,6 +80,14 @@ export function CakeBuilder({
     (option) =>
       option.quoteRequired && [config.size, config.flavour, config.filling, config.design].includes(option.name),
   );
+  const selectionCount = [
+    config.occasion,
+    config.size,
+    config.flavour,
+    config.filling,
+    config.design,
+    config.colours,
+  ].filter(Boolean).length;
   const minDate = new Date(Date.now() + configuration.leadTimeHours * 60 * 60 * 1000).toISOString().slice(0, 10);
   function choose(key: keyof CakeConfiguration, value: string) {
     setConfig((v) => ({ ...v, [key]: value }));
@@ -399,6 +407,35 @@ export function CakeBuilder({
             </button>
           </div>
         </div>
+        <details className="cake-summary-mobile">
+          <summary>
+            <span>
+              <small>{quote ? "Starting estimate" : "Estimated total"}</small>
+              <b>{pricing ? formatMoney(pricing) : "—"}</b>
+            </span>
+            <span>{selectionCount} selections · View</span>
+          </summary>
+          <dl>
+            {config.size && (
+              <div>
+                <dt>Size</dt>
+                <dd>{config.size}</dd>
+              </div>
+            )}
+            {config.flavour && (
+              <div>
+                <dt>Flavour</dt>
+                <dd>{config.flavour}</dd>
+              </div>
+            )}
+            {config.design && (
+              <div>
+                <dt>Style</dt>
+                <dd>{config.design}</dd>
+              </div>
+            )}
+          </dl>
+        </details>
         <aside className="cake-summary">
           <span className="overline">Your cake</span>
           <div className="summary-cake">

@@ -1,7 +1,5 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import { Providers } from "@/components/providers";
-import { getDeliveryZones, getProducts } from "@/lib/data/catalog";
 import {
   getBusinessSettings,
   getMarketingExport,
@@ -13,14 +11,6 @@ import { organizationJsonLd, serializeJsonLd } from "@/lib/seo";
 import { getSiteUrl } from "@/lib/site-url";
 import { resolveThemeTokens, themeTokenCss } from "@/lib/theme/tokens";
 import "./globals.css";
-import "./store.css";
-import "./admin.css";
-import "./extras.css";
-import "./gallery.css";
-import "./reviews.css";
-import "./documents.css";
-import "./carousel.css";
-import "./budget.css";
 
 type StoreStyle = CSSProperties & { [key: `--${string}`]: string | number };
 
@@ -54,9 +44,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [products, deliveryZones, initialTheme, business, appearance, marketing] = await Promise.all([
-    getProducts(),
-    getDeliveryZones(),
+  const [initialTheme, business, appearance, marketing] = await Promise.all([
     getStoreTheme(),
     getBusinessSettings(),
     getStoreAppearance(),
@@ -81,15 +69,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: serializeJsonLd escapes HTML-significant characters. */}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(organization) }} />
-        <Providers
-          products={products}
-          deliveryZones={deliveryZones}
-          initialTheme={initialTheme}
-          business={business}
-          themeTokens={themeTokens}
-        >
-          {children}
-        </Providers>
+        {children}
       </body>
     </html>
   );

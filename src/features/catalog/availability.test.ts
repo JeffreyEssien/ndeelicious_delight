@@ -35,7 +35,7 @@ describe("catalog availability", () => {
     expect(isProductPurchasable(product({ status: "OUT_OF_STOCK" }))).toBe(false);
   });
 
-  it("only chooses a default when exactly one purchasable option exists", () => {
+  it("chooses the first purchasable option as the default", () => {
     expect(getDefaultPurchasableVariant(product())?.id).toBe("one");
     expect(
       getDefaultPurchasableVariant(
@@ -46,6 +46,6 @@ describe("catalog availability", () => {
           ],
         }),
       ),
-    ).toBeUndefined();
+    ).toMatchObject({ id: "one" });
   });
 });

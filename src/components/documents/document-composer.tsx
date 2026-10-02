@@ -6,7 +6,7 @@ import { Button, Checkbox, Select, Textarea } from "@/components/ui/primitives";
 import type { DocumentDTO } from "@/lib/documents/dto";
 
 export function DocumentComposer({ initial }: { initial: DocumentDTO }) {
-  const [presentation, setPresentation] = useState({
+  const initialPresentation = {
     notes: initial.notes ?? [],
     footerMessage: initial.footerMessage ?? "",
     design: initial.design ?? ("classic" as const),
@@ -14,8 +14,11 @@ export function DocumentComposer({ initial }: { initial: DocumentDTO }) {
     showSku: initial.showSku ?? true,
     showBusinessTaxNumber: initial.showBusinessTaxNumber ?? true,
     showPaymentDetails: initial.showPaymentDetails ?? true,
-  });
+  };
+  const [presentation, setPresentation] = useState(initialPresentation);
+  const [savedPresentation, setSavedPresentation] = useState(initialPresentation);
   const [changed, setChanged] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [sharing, setSharing] = useState<"link" | "email" | null>(null);
   const [shareState, setShareState] = useState("");
   const update = (value: Partial<typeof presentation>) => {
@@ -23,8 +26,31 @@ export function DocumentComposer({ initial }: { initial: DocumentDTO }) {
     setPresentation((current) => ({ ...current, ...value }));
   };
   const computed = useMemo(() => ({ ...initial, ...presentation }), [initial, presentation]);
+  async function save() {
+    if (!changed || saving) return;
+    setSaving(true);
+    setShareState("");
+    const response = await fetch(`/api/admin/documents/${initial.id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ presentation }),
+    });
+    const payload = await response.json().catch(() => null);
+    setSaving(false);
+    if (!response.ok) {
+      setShareState(payload?.error ?? "Presentation changes could not be saved.");
+      return;
+    }
+    setSavedPresentation(presentation);
+    setChanged(false);
+    setShareState("Presentation saved. Downloads and customer links now use this design.");
+  }
   async function share(action: "link" | "email") {
     if (sharing) return;
+    if (changed) {
+      setShareState("Save the presentation before downloading or sharing this document.");
+      return;
+    }
     setSharing(action);
     setShareState("");
     const response = await fetch(`/api/admin/documents/${initial.id}/share`, {
@@ -108,7 +134,11 @@ export function DocumentComposer({ initial }: { initial: DocumentDTO }) {
             </div>
           </details>
           <p className="document-save-state" role="status">
-            {changed ? "Preview has unsaved presentation changes" : "Showing the issued document"}
+            {saving
+              ? "Saving presentation…"
+              : changed
+                ? "Preview has unsaved presentation changes"
+                : "Preview matches the saved document"}
           </p>
         </div>
         <div className="document-editor-actions">
@@ -116,27 +146,29 @@ export function DocumentComposer({ initial }: { initial: DocumentDTO }) {
             variant="ghost"
             disabled={!changed}
             onClick={() => {
-              setPresentation({
-                notes: initial.notes ?? [],
-                footerMessage: initial.footerMessage ?? "",
-                design: initial.design ?? "classic",
-                accentColor: initial.accentColor ?? "#792f49",
-                showSku: initial.showSku ?? true,
-                showBusinessTaxNumber: initial.showBusinessTaxNumber ?? true,
-                showPaymentDetails: initial.showPaymentDetails ?? true,
-              });
+              setPresentation(savedPresentation);
               setChanged(false);
             }}
           >
             Reset presentation
           </Button>
-          <a className="button button-secondary" href={`/api/admin/documents/${initial.id}/pdf`}>
+          <Button disabled={!changed || saving} onClick={save}>
+            {saving ? "Saving…" : "Save presentation"}
+          </Button>
+          <a
+            className={`button button-secondary${changed ? " is-disabled" : ""}`}
+            href={`/api/admin/documents/${initial.id}/pdf`}
+            aria-disabled={changed}
+            onClick={(event) => {
+              if (changed) event.preventDefault();
+            }}
+          >
             Download PDF
           </a>
-          <Button variant="secondary" disabled={!!sharing} onClick={() => share("link")}>
+          <Button variant="secondary" disabled={!!sharing || changed} onClick={() => share("link")}>
             {sharing === "link" ? "Copying…" : "Copy secure link"}
           </Button>
-          <Button variant="secondary" disabled={!!sharing} onClick={() => share("email")}>
+          <Button variant="secondary" disabled={!!sharing || changed} onClick={() => share("email")}>
             {sharing === "email" ? "Sending…" : "Email customer"}
           </Button>
           <Button onClick={() => window.print()}>Print</Button>

@@ -34,6 +34,7 @@ export type BusinessDocumentData = {
   footerMessage?: string;
   design?: "classic" | "modern" | "minimal";
   accentColor?: string;
+  logoUrl?: string;
   showSku?: boolean;
   showBusinessTaxNumber?: boolean;
   showPaymentDetails?: boolean;

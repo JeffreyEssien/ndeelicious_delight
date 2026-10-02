@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useCart, useProducts } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
+import { ModalOverlay } from "@/components/ui/modal-overlay";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import type { BusinessSettings, StorefrontContent } from "@/types/content";
 
@@ -14,11 +15,16 @@ export function Header({ content, business }: { content: StorefrontContent["glob
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState(false);
   const [query, setQuery] = useState("");
+  const [interactive, setInteractive] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const previousPath = useRef(path);
   const nav = content.navigation;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Navigation should always close the mobile menu.
   useEffect(() => {
-    setMenu(false);
+    setInteractive(true);
+  }, []);
+  useEffect(() => {
+    if (previousPath.current !== path) setMenu(false);
+    previousPath.current = path;
   }, [path]);
   useEffect(() => {
     if (search) input.current?.focus();
@@ -40,11 +46,12 @@ export function Header({ content, business }: { content: StorefrontContent["glob
             className="icon-button mobile-only"
             onClick={() => setMenu(true)}
             aria-label="Open navigation"
+            data-ui-ready={interactive}
           >
             <Icon name="menu" />
           </button>
           <Link className="brand" href="/" aria-label={`${business.businessName} home`}>
-            <BrandLogo compact />
+            <BrandLogo compact priority />
           </Link>
           <nav className="desktop-nav" aria-label="Primary">
             {nav.map((n) => (
@@ -73,7 +80,7 @@ export function Header({ content, business }: { content: StorefrontContent["glob
           </div>
         </div>
       </header>
-      <div className={`mobile-panel ${menu ? "is-open" : ""}`} aria-hidden={!menu}>
+      <ModalOverlay open={menu} onClose={() => setMenu(false)} className="mobile-panel is-open" ariaLabel="Navigation">
         <div className="panel-head">
           <span className="brand">
             <BrandLogo compact />
@@ -101,9 +108,17 @@ export function Header({ content, business }: { content: StorefrontContent["glob
             {business.openingHours}
           </p>
         )}
-      </div>
-      {menu && <button type="button" className="scrim" onClick={() => setMenu(false)} aria-label="Close navigation" />}
-      <div className={`search-overlay ${search ? "is-open" : ""}`} aria-hidden={!search}>
+      </ModalOverlay>
+      <ModalOverlay
+        open={search}
+        onClose={() => {
+          setSearch(false);
+          setQuery("");
+        }}
+        className="search-overlay is-open"
+        ariaLabel="Search products"
+        initialFocusRef={input}
+      >
         <div className="site-container">
           <div className="search-bar">
             <Icon name="search" />
@@ -164,7 +179,7 @@ export function Header({ content, business }: { content: StorefrontContent["glob
             </div>
           )}
         </div>
-      </div>
+      </ModalOverlay>
     </>
   );
 }

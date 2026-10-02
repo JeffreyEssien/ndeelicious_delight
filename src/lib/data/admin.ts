@@ -10,6 +10,8 @@ import {
   getStorefrontContent,
 } from "./settings";
 
+export type QuoteDeliveryStatus = "PENDING" | "SENDING" | "SENT" | "FAILED";
+
 export type AdminCakeRequest = {
   id: string;
   requestNumber: string;
@@ -23,6 +25,13 @@ export type AdminCakeRequest = {
   quotedTotal: number | null;
   customerNote: string | null;
   referenceUrls: string[];
+  orderId: string | null;
+  quoteDelivery: {
+    documentId: string;
+    status: QuoteDeliveryStatus;
+    attempts: number;
+    lastError: string | null;
+  } | null;
 };
 export type AdminCoupon = {
   id: string;
@@ -124,7 +133,7 @@ export async function getAdminData(supabase: SupabaseClient) {
     supabase
       .from("custom_cake_orders")
       .select(
-        "id,request_number,customer_name,email,phone,status,configuration,requested_date,estimated_total,quoted_total,customer_note,reference_urls",
+        "id,request_number,order_id,customer_name,email,phone,status,configuration,requested_date,estimated_total,quoted_total,customer_note,reference_urls",
       )
       .order("created_at", { ascending: false })
       .limit(100),
@@ -200,12 +209,37 @@ export async function getAdminData(supabase: SupabaseClient) {
         createdAt: event.created_at,
       })),
   }));
+  const cakeIds = (cakeResult.data ?? []).map((row) => row.id);
+  const quoteDocuments = cakeIds.length
+    ? await supabase
+        .from("business_documents")
+        .select("id,cake_order_id,revision")
+        .eq("kind", "QUOTE")
+        .in("cake_order_id", cakeIds)
+        .order("revision", { ascending: false })
+    : { data: [], error: null };
+  if (quoteDocuments.error) throw quoteDocuments.error;
+  const latestQuoteByCake = new Map<string, { id: string }>();
+  for (const document of quoteDocuments.data ?? [])
+    if (document.cake_order_id && !latestQuoteByCake.has(document.cake_order_id))
+      latestQuoteByCake.set(document.cake_order_id, document);
+  const documentIds = [...latestQuoteByCake.values()].map((document) => document.id);
+  const deliveryResult = documentIds.length
+    ? await supabase
+        .from("document_deliveries")
+        .select("document_id,status,attempts,last_error")
+        .in("document_id", documentIds)
+    : { data: [], error: null };
+  if (deliveryResult.error) throw deliveryResult.error;
+  const deliveryByDocument = new Map((deliveryResult.data ?? []).map((delivery) => [delivery.document_id, delivery]));
   const cakes: AdminCakeRequest[] = await Promise.all(
     (cakeResult.data ?? []).map(async (row) => {
       const paths = row.reference_urls ?? [];
       const signed = paths.length
         ? await supabase.storage.from("cake-reference-images").createSignedUrls(paths, 60 * 60)
         : { data: [] };
+      const quoteDocument = latestQuoteByCake.get(row.id);
+      const delivery = quoteDocument ? deliveryByDocument.get(quoteDocument.id) : undefined;
       return {
         id: row.id,
         requestNumber: row.request_number,
@@ -219,6 +253,16 @@ export async function getAdminData(supabase: SupabaseClient) {
         quotedTotal: row.quoted_total,
         customerNote: row.customer_note,
         referenceUrls: (signed.data ?? []).flatMap((item) => (item.signedUrl ? [item.signedUrl] : [])),
+        orderId: row.order_id,
+        quoteDelivery:
+          quoteDocument && delivery
+            ? {
+                documentId: quoteDocument.id,
+                status: delivery.status as QuoteDeliveryStatus,
+                attempts: delivery.attempts,
+                lastError: delivery.last_error,
+              }
+            : null,
       };
     }),
   );
