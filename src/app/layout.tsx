@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import {
   getBusinessSettings,
   getMarketingExport,
@@ -15,6 +16,7 @@ import "./globals.css";
 type StoreStyle = CSSProperties & { [key: `--${string}`]: string | number };
 
 export async function generateMetadata(): Promise<Metadata> {
+  await connection();
   const [content, business] = await Promise.all([getStorefrontContent(), getBusinessSettings()]);
   const title = `${business.businessName} — Cakes & Pastries`;
   const description = content.home.hero.supportingText;
@@ -44,6 +46,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
+  await connection();
   const [initialTheme, business, appearance, marketing] = await Promise.all([
     getStoreTheme(),
     getBusinessSettings(),

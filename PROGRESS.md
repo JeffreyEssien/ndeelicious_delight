@@ -1,6 +1,6 @@
 # Project Progress and TODOs
 
-Last updated: 2026-09-27
+Last updated: 2026-10-02
 Active development branch: `develop`
 Baseline commit for the premium pass: `9818e17`
 
@@ -85,6 +85,13 @@ The first-party admin OTP/SMTP security remediation is implemented and verified 
 
 ## Verification status
 
+Verified on 2026-10-02 after the responsive-system CI stabilization:
+
+- `npm run check` — quality, CSS token audit, 93 regression tests, 55 functional tests, strict TypeScript, and the 46-route production build passed.
+- A clean production build with no `.env.local` passed after marking database-backed root metadata and layout rendering as request-time work.
+- The formerly flaky custom-cake builder overflow check passed 21 consecutive runs across all seven configured Playwright viewports.
+- GitHub scheduled notifications still require repository/environment secrets `PRODUCTION_SITE_URL` and `CRON_SECRET`; the workflow exits before dispatch while they are unset.
+
 Verified locally on 2026-09-19 before introducing the CI files:
 
 - `npm run typecheck` — passed.
@@ -154,6 +161,7 @@ CI command ownership:
 - [ ] Run `npm run admin:bootstrap` in each intended environment after its variables and migration are ready.
 - [ ] Globally revoke existing Supabase Auth admin sessions and correct the Supabase Auth Site URL to an absolute `https://...` URL until every old deployment is retired.
 - [ ] Configure GitHub/Vercel deployment values, then set repository variable `VERCEL_CD_ENABLED=true`.
+- [ ] Configure GitHub production secrets `PRODUCTION_SITE_URL` and `CRON_SECRET` so the scheduled notification workflow can dispatch successfully.
 - [ ] Subscribe each Stripe webhook endpoint to `refund.created`, `refund.updated`, and `refund.failed` in addition to the Checkout Session events before enabling live refunds.
 - [ ] Add branch protection for `main` and `develop`, requiring all four CI jobs.
 - [x] Apply `db/migrations/0003_product_media.sql` to the currently configured Supabase environment before deploying G02 image management.

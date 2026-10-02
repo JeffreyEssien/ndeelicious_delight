@@ -90,20 +90,35 @@ const themes = {
 };
 
 async function settle(page: Page) {
-  await page.waitForLoadState("domcontentloaded");
-  await page.locator("body").waitFor({ state: "visible" });
-  await page.evaluate(() => document.fonts.ready);
+  await expect
+    .poll(async () => {
+      try {
+        await page.waitForLoadState("domcontentloaded");
+        if (!(await page.locator("body").isVisible())) return false;
+        await page.evaluate(() => document.fonts.ready);
+        return true;
+      } catch (error) {
+        if (page.isClosed()) throw error;
+        return false;
+      }
+    })
+    .toBe(true);
   const readyControl = page.locator("[data-ui-ready]");
   if (await readyControl.count()) await expect(readyControl.first()).toHaveAttribute("data-ui-ready", "true");
 }
 
 async function expectNoPageOverflow(page: Page) {
   await expect
-    .poll(() =>
-      page.evaluate(() =>
-        document.documentElement ? document.documentElement.scrollWidth <= window.innerWidth : false,
-      ),
-    )
+    .poll(async () => {
+      try {
+        return await page.evaluate(() =>
+          document.documentElement ? document.documentElement.scrollWidth <= window.innerWidth : false,
+        );
+      } catch (error) {
+        if (page.isClosed()) throw error;
+        return false;
+      }
+    })
     .toBe(true);
 }
 
