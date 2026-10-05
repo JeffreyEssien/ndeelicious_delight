@@ -1,8 +1,10 @@
 import type { MetadataRoute } from "next";
+import { connection } from "next/server";
 import { getProducts } from "@/lib/data/catalog";
 import { getSiteUrl } from "@/lib/site-url";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  await connection();
   const products = await getProducts();
   const base = getSiteUrl();
   return [

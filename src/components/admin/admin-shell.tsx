@@ -8,6 +8,7 @@ import { ModalOverlay } from "@/components/ui/modal-overlay";
 
 const links = [
   { label: "Dashboard", href: "/admin", icon: "grid" },
+  { label: "Analytics", href: "/admin/analytics", icon: "chart" },
   { label: "Orders", href: "/admin/orders", icon: "orders" },
   { label: "Custom cakes", href: "/admin/custom-cakes", icon: "heart" },
   { label: "Products", href: "/admin/products", icon: "box" },
@@ -33,6 +34,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   if (path === "/admin/login") return <>{children}</>;
   return (
     <div className="admin-shell">
+      <a className="skip-link" href="#admin-main-content">
+        Skip to main content
+      </a>
       <aside className="admin-sidebar desktop-admin-sidebar">
         <div className="admin-brand">
           <span className="brand brand-light">
@@ -117,7 +121,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </a>
           </div>
         </header>
-        <main>{children}</main>
+        <main id="admin-main-content" tabIndex={-1}>
+          {children}
+        </main>
       </div>
     </div>
   );

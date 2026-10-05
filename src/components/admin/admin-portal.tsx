@@ -31,6 +31,8 @@ import type {
   MarketingExport,
 } from "@/types/content";
 import { resolveThemeTokens, themeTokenCss } from "@/lib/theme/tokens";
+import type { AnalyticsSnapshot } from "@/features/analytics/analytics";
+import { AnalyticsWorkspace } from "@/components/admin/analytics-workspace";
 
 type Props = {
   section?: string;
@@ -48,6 +50,7 @@ type Props = {
   initialCarousel: StoreCarousel;
   initialMarketing: MarketingExport;
   initialAuditLogs: AdminAuditLog[];
+  initialAnalytics: AnalyticsSnapshot | null;
   siteUrl: string;
 };
 const titles: Record<string, string> = {
@@ -65,6 +68,7 @@ const titles: Record<string, string> = {
   delivery: "Delivery zones",
   settings: "Business settings",
   audit: "Audit log",
+  analytics: "Analytics & insights",
 };
 const themes: { id: StoreTheme; name: string; description: string; colors: string[] }[] = [
   {
@@ -110,6 +114,7 @@ export function AdminPortal({
   initialCarousel,
   initialMarketing,
   initialAuditLogs,
+  initialAnalytics,
   siteUrl,
 }: Props) {
   const [products, setProducts] = useState(initialProducts);
@@ -225,7 +230,10 @@ export function AdminPortal({
           )}
         </div>
       </div>
-      {section === "dashboard" && <Dashboard products={products} orders={orders} cakes={initialCakes} />}
+      {section === "dashboard" && initialAnalytics && (
+        <Dashboard products={products} orders={orders} cakes={initialCakes} analytics={initialAnalytics} />
+      )}
+      {section === "analytics" && initialAnalytics && <AnalyticsWorkspace snapshot={initialAnalytics} />}
       {section === "orders" && (
         <>
           <AdminFilters
@@ -443,36 +451,49 @@ function Dashboard({
   products,
   orders,
   cakes,
+  analytics,
 }: {
   products: Product[];
   orders: AdminOrder[];
   cakes: AdminCakeRequest[];
+  analytics: AnalyticsSnapshot;
 }) {
   const money = useMoney();
-  const today = new Date().toISOString().slice(0, 10);
-  const todayOrders = orders.filter((o) => o.date.slice(0, 10) === today);
+  const summary = analytics.periods["30d"];
   const low = products.filter((p) => p.stockQuantity <= p.lowStockThreshold);
   return (
     <>
       <div className="metric-grid">
         <Metric
-          label="Today’s revenue"
-          value={money(
-            todayOrders
-              .filter((o) =>
-                ["PAID", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "DELIVERED"].includes(o.status),
-              )
-              .reduce((sum, o) => sum + o.total, 0),
-          )}
-          delta={`${todayOrders.length} orders today`}
+          label="30-day net revenue"
+          value={money(summary.netRevenue)}
+          delta={
+            summary.revenueChange === null
+              ? "First comparison period"
+              : `${summary.revenueChange >= 0 ? "+" : ""}${summary.revenueChange.toFixed(1)}% vs prior 30 days`
+          }
         />
-        <Metric label="Total orders" value={String(orders.length)} delta="Across the connected store" />
         <Metric
-          label="Custom requests"
-          value={String(cakes.length)}
-          delta={`${cakes.filter((c) => c.status === "QUOTE_REQUIRED").length} need a quote`}
+          label="Paid orders"
+          value={String(summary.paidOrders)}
+          delta={`${money(summary.averageOrderValue)} average order`}
+        />
+        <Metric
+          label="Returning customers"
+          value={`${summary.repeatCustomerRate.toFixed(1)}%`}
+          delta={`${summary.returningCustomers} returned in 30 days`}
         />
         <Metric label="Low stock" value={String(low.length)} delta="Review inventory" />
+      </div>
+      <div className="dashboard-analytics-link">
+        <div>
+          <span className="overline">Business pulse</span>
+          <b>{summary.insights[0]?.title ?? "Your analytics are ready"}</b>
+          <p>{summary.insights[0]?.meaning ?? "See performance across sales, customers and operations."}</p>
+        </div>
+        <Link className="button button-secondary" href="/admin/analytics">
+          Open analytics <Icon name="arrow" />
+        </Link>
       </div>
       <div className="dashboard-grid">
         <div className="admin-card">

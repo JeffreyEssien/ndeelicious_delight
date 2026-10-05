@@ -1,5 +1,5 @@
 "use client";
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCart, useDeliveryZones, useProducts } from "@/components/providers";
@@ -8,6 +8,7 @@ import { Icon } from "@/components/ui/icons";
 import { Input, Select, Textarea } from "@/components/ui/primitives";
 import type { Fulfilment } from "@/types";
 import type { BusinessSettings } from "@/types/content";
+import { trackCommerceEvent } from "@/lib/analytics/client";
 type Info = {
   name: string;
   email: string;
@@ -51,6 +52,9 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
     : 0;
   const total = cart.subtotal + delivery - discount + tax;
   const money = (value: number) => formatMoney(value, business.currency, business.locale);
+  useEffect(() => {
+    if (cart.count > 0) trackCommerceEvent("CHECKOUT_STARTED");
+  }, [cart.count]);
   const resolved = useMemo(
     () =>
       cart.lines.flatMap((line) => {
@@ -133,6 +137,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
       if (!response.ok) throw new Error(payload.error);
       setDiscount(payload.quote.discount);
       setApplied(true);
+      trackCommerceEvent("COUPON_APPLIED", { metadata: { discount: payload.quote.discount } });
     } catch (reason) {
       setDiscount(0);
       setApplied(false);

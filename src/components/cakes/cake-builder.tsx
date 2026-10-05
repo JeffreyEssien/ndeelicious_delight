@@ -6,6 +6,7 @@ import { useMoney } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 import { Input, Textarea } from "@/components/ui/primitives";
 import { calculateCakeConfigurationPrice } from "@/features/cakes/pricing";
+import { trackCommerceEvent } from "@/lib/analytics/client";
 const initial: CakeConfiguration = {
   occasion: "",
   size: "",
@@ -64,6 +65,9 @@ export function CakeBuilder({
     } catch {}
     setReady(true);
   }, [configuration.options, initialSelection]);
+  useEffect(() => {
+    trackCommerceEvent("CAKE_BUILDER_STARTED");
+  }, []);
   useEffect(() => {
     if (ready) localStorage.setItem("ndee-cake-v1", JSON.stringify(config));
   }, [config, ready]);
@@ -146,6 +150,7 @@ export function CakeBuilder({
       if (!response.ok) throw new Error(payload.error ?? "We couldn’t validate your cake.");
       setRequestNumber(payload.requestNumber);
       setSubmitted(true);
+      trackCommerceEvent("CAKE_BUILDER_COMPLETED", { metadata: { quoteRequired: quote } });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "We couldn’t validate your cake.");
     } finally {

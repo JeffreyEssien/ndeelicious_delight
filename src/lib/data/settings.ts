@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 import type { StoreTheme } from "@/lib/theme/tokens";
 import { createServiceClient } from "@/lib/supabase/service";
 import type {
@@ -70,7 +71,12 @@ async function setting<T>(key: string, client?: SupabaseClient): Promise<T> {
   return data.value as T;
 }
 
-export async function getStoreTheme(client?: SupabaseClient): Promise<StoreTheme> {
+const cachedSetting = unstable_cache((key: string) => setting<unknown>(key), ["storefront-setting"], {
+  tags: ["storefront"],
+  revalidate: 300,
+});
+
+async function readStoreTheme(client?: SupabaseClient): Promise<StoreTheme> {
   try {
     const { data } = await (client ?? createServiceClient())
       .from("site_settings")
@@ -84,17 +90,31 @@ export async function getStoreTheme(client?: SupabaseClient): Promise<StoreTheme
   }
 }
 
+const cachedStoreTheme = unstable_cache(() => readStoreTheme(), ["storefront-theme"], {
+  tags: ["storefront"],
+  revalidate: 300,
+});
+
+export async function getStoreTheme(client?: SupabaseClient): Promise<StoreTheme> {
+  return client ? readStoreTheme(client) : cachedStoreTheme();
+}
+
 export function getBusinessSettings(client?: SupabaseClient) {
-  return setting<BusinessSettings>("business", client).then((value) => businessSettingsSchema.parse(value));
+  return (client ? setting<BusinessSettings>("business", client) : cachedSetting("business")).then((value) =>
+    businessSettingsSchema.parse(value),
+  );
 }
 
 export function getStorefrontContent(client?: SupabaseClient) {
-  return setting<StorefrontContent>("content", client).then((value) => storefrontContentSchema.parse(value));
+  return (client ? setting<StorefrontContent>("content", client) : cachedSetting("content")).then((value) =>
+    storefrontContentSchema.parse(value),
+  );
 }
 
 export async function getStoreAppearance(client?: SupabaseClient): Promise<StoreAppearance> {
   try {
-    return storeAppearanceSchema.parse(await setting<StoreAppearance>("appearance", client));
+    const value = client ? await setting<StoreAppearance>("appearance", client) : await cachedSetting("appearance");
+    return storeAppearanceSchema.parse(value);
   } catch (error) {
     if (error instanceof Error && error.message === "Missing site setting: appearance") return defaultStoreAppearance;
     throw error;
@@ -103,7 +123,8 @@ export async function getStoreAppearance(client?: SupabaseClient): Promise<Store
 
 export async function getStoreCarousel(client?: SupabaseClient): Promise<StoreCarousel> {
   try {
-    return storeCarouselSchema.parse(await setting<StoreCarousel>("carousel", client));
+    const value = client ? await setting<StoreCarousel>("carousel", client) : await cachedSetting("carousel");
+    return storeCarouselSchema.parse(value);
   } catch (error) {
     if (error instanceof Error && error.message === "Missing site setting: carousel") return defaultStoreCarousel;
     throw error;
@@ -112,7 +133,8 @@ export async function getStoreCarousel(client?: SupabaseClient): Promise<StoreCa
 
 export async function getMarketingExport(client?: SupabaseClient): Promise<MarketingExport> {
   try {
-    return marketingExportSchema.parse(await setting<MarketingExport>("marketing", client));
+    const value = client ? await setting<MarketingExport>("marketing", client) : await cachedSetting("marketing");
+    return marketingExportSchema.parse(value);
   } catch (error) {
     if (error instanceof Error && error.message === "Missing site setting: marketing") return defaultMarketingExport;
     throw error;

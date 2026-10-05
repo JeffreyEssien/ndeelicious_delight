@@ -23,13 +23,18 @@ export default async function Layout({ children }: { children: React.ReactNode }
       business={business}
       themeTokens={resolveThemeTokens(initialTheme, appearance)}
     >
+      <a className="skip-link" href="#checkout-main-content">
+        Skip to checkout
+      </a>
       <header className="checkout-header">
         <Link className="brand" href="/" aria-label="Ndeeelicious Delight home">
           <BrandLogo compact priority />
         </Link>
         <span>Secure checkout</span>
       </header>
-      <main className="checkout-main">{children}</main>
+      <main className="checkout-main" id="checkout-main-content" tabIndex={-1}>
+        {children}
+      </main>
     </Providers>
   );
 }

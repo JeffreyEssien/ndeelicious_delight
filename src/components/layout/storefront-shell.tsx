@@ -8,8 +8,13 @@ export async function StorefrontShell({ children }: { children: React.ReactNode 
   const whatsapp = business.whatsapp.replace(/\D/g, "");
   return (
     <>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       <Header content={content.global} business={business} />
-      <main>{children}</main>
+      <main id="main-content" tabIndex={-1}>
+        {children}
+      </main>
       <Footer content={content.global} business={business} />
       <CartDrawer />
       {whatsapp && (

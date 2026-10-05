@@ -6,6 +6,7 @@ import { useCart, useProducts } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { trackCommerceEvent } from "@/lib/analytics/client";
 import type { BusinessSettings, StorefrontContent } from "@/types/content";
 
 export function Header({ content, business }: { content: StorefrontContent["global"]; business: BusinessSettings }) {
@@ -34,6 +35,14 @@ export function Header({ content, business }: { content: StorefrontContent["glob
         .filter((p) => `${p.name} ${p.shortDescription} ${p.category}`.toLowerCase().includes(query.toLowerCase()))
         .slice(0, 5)
     : [];
+  useEffect(() => {
+    if (!search || query.trim().length < 2) return;
+    const timer = window.setTimeout(
+      () => trackCommerceEvent("SEARCH_PERFORMED", { metadata: { resultCount: results.length } }),
+      700,
+    );
+    return () => window.clearTimeout(timer);
+  }, [query, results.length, search]);
   return (
     <>
       <div className="announcement">

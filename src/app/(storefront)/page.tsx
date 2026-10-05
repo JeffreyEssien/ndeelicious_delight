@@ -26,7 +26,15 @@ export default async function Home() {
   return (
     <>
       <section className="hero">
-        <Image src={home.hero.image ?? ""} alt={home.hero.imageAlt ?? ""} fill loading="eager" sizes="100vw" />
+        <Image
+          src={home.hero.image ?? ""}
+          alt={home.hero.imageAlt ?? ""}
+          fill
+          loading="eager"
+          fetchPriority="high"
+          quality={60}
+          sizes="100vw"
+        />
         <div className="hero-shade" />
         <div className="site-container hero-content">
           <span className="overline">{home.hero.eyebrow}</span>

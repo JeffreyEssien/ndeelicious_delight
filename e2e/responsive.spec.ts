@@ -1,6 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+// Responsive/axe coverage does not test event ingestion. Keep synthetic visits
+// out of business analytics; API ingestion has its own functional tests.
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/analytics/events", (route) => route.fulfill({ status: 204 }));
+});
+
 const customerRoutes = [
   "/",
   "/shop",
@@ -13,6 +19,7 @@ const customerRoutes = [
 
 const adminRoutes = [
   "/admin",
+  "/admin/analytics",
   "/admin/orders",
   "/admin/custom-cakes",
   "/admin/products",
@@ -390,6 +397,17 @@ test.describe("authenticated admin responsiveness", () => {
       expect(response?.status()).toBeLessThan(400);
       await settle(page);
       await expectNoPageOverflow(page);
+    });
+  }
+
+  for (const route of ["/admin", "/admin/analytics"]) {
+    test(`${route} has no serious axe violations`, async ({ page }) => {
+      await page.goto(route);
+      await settle(page);
+      const results = await new AxeBuilder({ page }).analyze();
+      expect(
+        results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? "")),
+      ).toEqual([]);
     });
   }
 });

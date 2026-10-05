@@ -1,15 +1,19 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Product } from "@/types";
 import { useCart, useMoney } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 import { getDefaultPurchasableVariant, isVariantPurchasable } from "@/features/catalog/availability";
+import { trackCommerceEvent } from "@/lib/analytics/client";
 export function ProductPurchase({ product }: { product: Product }) {
   const [variant, setVariant] = useState(getDefaultPurchasableVariant(product)?.id ?? product.variants[0]?.id ?? "");
   const [quantity, setQuantity] = useState(1);
   const cart = useCart();
   const formatMoney = useMoney();
   const selected = product.variants.find((v) => v.id === variant);
+  useEffect(() => {
+    trackCommerceEvent("PRODUCT_VIEWED", { productId: product.id });
+  }, [product.id]);
   if (!selected) return <p className="stock-note">This product does not have an available option.</p>;
   const unavailable = !isVariantPurchasable(product, selected);
   return (

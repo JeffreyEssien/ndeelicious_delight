@@ -302,6 +302,23 @@ h2 {
   white-space: nowrap !important;
   border: 0 !important;
 }
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 10000;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  font-size: 13px;
+  font-weight: 800;
+  transform: translateY(-160%);
+  transition: transform 150ms ease;
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
 .site-container {
   width: min(var(--max), calc(100% - (var(--page-gutter) * 2)));
   margin-inline: auto;
