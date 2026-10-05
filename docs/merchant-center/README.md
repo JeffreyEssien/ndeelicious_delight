@@ -53,3 +53,7 @@ Google normally needs accessible website information and policy URLs; the PDF is
 6. Confirm applicable Nova Scotia tax settings with the owner. Province/timezone were updated; existing tax configuration was preserved.
 
 This pack does not guarantee Merchant Center approval. The no-refund wording preserves non-excludable consumer remedies, consistent with [Canada's consumer guidance on refunds and defective goods](https://ised-isde.canada.ca/site/office-consumer-affairs/en/business-practices-and-consumer-concerns/refund-and-exchange).
+
+## Verification
+
+The project gate passed 110 regression and 58 functional tests, TypeScript, quality, CSS-token checks and production build. The final browser run passed 56 visual/accessibility checks across seven viewports and four themes. Seven public pages, checkout policy links and the printable bundle passed content/mobile smoke checks. The generated PDF contains nine pages. No Merchant submission or deployment was performed.
