@@ -45,7 +45,7 @@ Google normally needs accessible website information and policy URLs; the PDF is
 
 ## Still needed before submission
 
-1. Confirm and verify the actual live HTTPS domain in Merchant Center. The local configuration uses localhost, which is not a submission URL.
+1. Verify the owner-supplied public domain, https://www.ndeelicious.com, in Merchant Center. The local canonical URL and marketing defaults now use this domain; production hosting must use the same value.
 2. Supply the address required for Google's business verification; only Halifax/NS/Canada was provided. Confirm collection address, public opening/support hours and the requested public visibility of any home address.
 3. Confirm actual delivery areas, prices, order cutoffs, handling and transit times. There are currently **no active delivery zones** in the configured database. Do not advertise Halifax delivery merely because the bakery is based there. Configure the correct zones and match Merchant shipping settings to checkout. [Google shipping specification](https://support.google.com/merchants/answer/6324484?hl=en).
 4. List products customers can purchase at the advertised fixed price. Do not submit a quote-only wedding/custom-cake estimate as a fixed-price purchasable offer. [Google store requirements](https://support.google.com/merchants/answer/12160471?hl=en), [custom-product guidance](https://support.google.com/merchants/answer/7162856?hl=en).

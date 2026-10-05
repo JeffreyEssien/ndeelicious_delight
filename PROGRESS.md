@@ -2,12 +2,14 @@
 
 Last updated: 2026-10-05
 Active development branch: `production/closure-2026-10-05`
-Latest verified application commit: `e994cf005c9bf967f6618957d2c6650d82c9bdfa`
+Latest verified application commit: `83c467f`
 Baseline commit for the premium pass: `9818e17`
 
 This is the living checkpoint for implementation progress. Update it when a feature, migration, test, deployment prerequisite, or known limitation changes. `implementation.md` remains the full product plan and definition of done.
 
 ## Current checkpoint
+
+The owner workflow repairs are committed and verified: repeat editing of delivery areas/coupons, working marketing previews and PNG/ZIP downloads, carousel photo navigation to product details, readable quote payment layout, automatically refreshed quote-email status, single-source WhatsApp links in customer pages/emails/PDFs and full product-edit access from inventory. The public canonical/marketing URL is https://www.ndeelicious.com. See [the owner workflow verification report](docs/owner-workflow-fixes.md). Verification passed 113 regression and 58 API tests, TypeScript/build/quality/CSS checks, 28 authenticated admin checks and the real browser workflow smoke. Send quote delivered only to a local TLS mail sink; the accepted quote created a Stripe test Checkout with the correct area fee. Tagged fixtures, sessions and limiter records were removed, carousel settings restored, unrelated owner records retained, and no real payment or external email occurred. Deployment and real inbox/paid journeys remain open.
 
 The stockist update passed the full 110-regression/58-functional project gate, 56 final visual/accessibility browser checks and mobile/link smoke checks. The regenerated PDF has ten pages.
 
