@@ -13,6 +13,7 @@ export const businessSettingsSchema = z.object({
   phone: text(40),
   whatsapp: text(40),
   address: text(300),
+  city: text(120).optional(),
   country: z.literal("CA"),
   province: text(2).transform((value) => value.toUpperCase()),
   postalCode: text(7).transform((value) => value.toUpperCase()),

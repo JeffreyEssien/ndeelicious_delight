@@ -35,6 +35,15 @@ export default async function Layout({ children }: { children: React.ReactNode }
       <main className="checkout-main" id="checkout-main-content" tabIndex={-1}>
         {children}
       </main>
+      <footer className="site-container checkout-policy-links">
+        <nav aria-label="Checkout policies and support">
+          <Link href="/refund-policy">Returns & cancellations</Link>
+          <Link href="/delivery-information">Delivery & pickup</Link>
+          <Link href="/terms">Terms</Link>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/contact">Contact us</Link>
+        </nav>
+      </footer>
     </Providers>
   );
 }

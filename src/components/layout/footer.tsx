@@ -52,7 +52,7 @@ export function Footer({ content, business }: { content: StorefrontContent["glob
         <nav>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
-          <Link href="/refund-policy">Refunds</Link>
+          <Link href="/refund-policy">Returns & cancellations</Link>
         </nav>
       </div>
     </footer>

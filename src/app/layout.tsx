@@ -18,7 +18,7 @@ type StoreStyle = CSSProperties & { [key: `--${string}`]: string | number };
 export async function generateMetadata(): Promise<Metadata> {
   await connection();
   const [content, business] = await Promise.all([getStorefrontContent(), getBusinessSettings()]);
-  const title = `${business.businessName} — Cakes & Pastries`;
+  const title = `${business.businessName} — Custom Cakes & Nigerian-Style Pies`;
   const description = content.home.hero.supportingText;
   const image = content.home.hero.image;
   return {

@@ -67,6 +67,20 @@ describe("SEO structured data", () => {
     });
   });
 
+  it("publishes a city without inventing a street address", () => {
+    const organization = organizationJsonLd({
+      business: { ...business, address: "", city: "Halifax", province: "NS", postalCode: "" },
+      logoUrl: "/logo.jpg",
+      siteUrl: "https://example.ca",
+    });
+    expect(organization.address).toMatchObject({
+      addressLocality: "Halifax",
+      addressRegion: "NS",
+      addressCountry: "CA",
+    });
+    expect(organization.address).not.toHaveProperty("streetAddress");
+  });
+
   it("builds a canonical product offer and breadcrumbs", () => {
     expect(productJsonLd({ product, business, siteUrl: "https://example.ca" })).toMatchObject({
       "@type": "Product",

@@ -9,6 +9,7 @@ export default async function Page() {
   const [content, business] = await Promise.all([getStorefrontContent(), getBusinessSettings()]);
   const phoneHref = business.phone.replace(/\D/g, "");
   const whatsapp = business.whatsapp.replace(/\D/g, "");
+  const location = business.address || [business.city, business.province, "Canada"].filter(Boolean).join(", ");
   return (
     <>
       <header className="page-hero">
@@ -44,10 +45,10 @@ export default async function Page() {
               <p>{business.openingHours}</p>
             </div>
           )}
-          {business.address && (
+          {location && (
             <div>
               <span>Location</span>
-              <p>{business.address}</p>
+              <p>{location}</p>
             </div>
           )}
         </div>

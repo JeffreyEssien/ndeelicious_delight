@@ -1537,7 +1537,7 @@ function BusinessSettings({
           </div>
           <label className="field">
             <span>Delivery area</span>
-            <input readOnly value="Toronto" />
+            <input readOnly value={initial.city || "Delivery area"} />
           </label>
           <article className="store-theme-preview-product">
             <span className="badge badge-berry">Bestseller</span>
@@ -1647,6 +1647,7 @@ function BusinessSettings({
         <Input name="phone" label="Phone" defaultValue={initial.phone} />
         <Input name="whatsapp" label="WhatsApp" defaultValue={initial.whatsapp} />
         <Input name="address" label="Address" defaultValue={initial.address} />
+        <Input name="city" label="City" defaultValue={initial.city ?? ""} />
         <Input name="province" label="Province or territory code" maxLength={2} defaultValue={initial.province} />
         <Input name="postalCode" label="Business postal code" maxLength={7} defaultValue={initial.postalCode} />
         <input name="country" type="hidden" value="CA" />

@@ -40,11 +40,12 @@ export function organizationJsonLd({
     ...(logo ? { logo } : {}),
     ...(business.contactEmail ? { email: business.contactEmail } : {}),
     ...(business.phone ? { telephone: business.phone } : {}),
-    ...(business.address || business.province || business.postalCode
+    ...(business.address || business.city || business.province || business.postalCode
       ? {
           address: {
             "@type": "PostalAddress",
             ...(business.address ? { streetAddress: business.address } : {}),
+            ...(business.city ? { addressLocality: business.city } : {}),
             ...(business.province ? { addressRegion: business.province } : {}),
             ...(business.postalCode ? { postalCode: business.postalCode } : {}),
             addressCountry: business.country,
