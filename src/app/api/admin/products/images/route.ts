@@ -2,6 +2,7 @@ import { z } from "zod";
 import { recordAdminAudit } from "@/lib/audit/admin-audit";
 import { readAdminAuditState } from "@/lib/audit/admin-audit-state";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
+import { invalidateStorefrontCache } from "@/lib/cache/storefront";
 
 const metadataSchema = z.object({
   productId: z.uuid(),
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+  invalidateStorefrontCache();
   return Response.json(
     {
       image: {

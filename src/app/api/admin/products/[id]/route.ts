@@ -1,6 +1,7 @@
 import { recordAdminAudit } from "@/lib/audit/admin-audit";
 import { readAdminAuditState } from "@/lib/audit/admin-audit-state";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
+import { invalidateStorefrontCache } from "@/lib/cache/storefront";
 import { productRow } from "@/lib/data/product-write";
 import { categorySlug, productInputSchema } from "@/validations/product";
 
@@ -106,6 +107,7 @@ export async function PATCH(request: Request, context: Context) {
     );
   }
 
+  invalidateStorefrontCache();
   return Response.json({ ok: true, id });
 }
 
@@ -193,5 +195,6 @@ export async function POST(request: Request, context: Context) {
       { status: 500 },
     );
   }
+  invalidateStorefrontCache();
   return Response.json({ ok: true, id: copy.id }, { status: 201 });
 }

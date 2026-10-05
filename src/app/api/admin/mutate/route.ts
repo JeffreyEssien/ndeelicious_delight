@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { recordAdminAudit } from "@/lib/audit/admin-audit";
 import { type AdminAuditTarget, readAdminAuditState } from "@/lib/audit/admin-audit-state";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
+import { invalidateStorefrontCache } from "@/lib/cache/storefront";
 import {
   InventoryConflictError,
   saveOrderInternalNote,
@@ -428,6 +429,7 @@ export async function POST(request: Request) {
     );
   }
   if (quoteDeliveryId) after(() => deliverCakeQuoteEmail(supabase, quoteDeliveryId));
+  invalidateStorefrontCache();
   return Response.json({
     ok: true,
     ...(quoteDeliveryId ? { deliveryStatus: "PENDING", documentId: quoteDocumentId } : {}),

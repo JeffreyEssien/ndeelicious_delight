@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth/admin-session";
 import { isSameOrigin, verifyOtpSchema } from "@/lib/auth/validation";
 import { createServiceClient } from "@/lib/supabase/service";
+import { logError } from "@/lib/observability/log";
 
 const invalidCode = () =>
   NextResponse.json(
@@ -86,7 +87,8 @@ export async function POST(request: Request) {
     const response = NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
     response.cookies.set(ADMIN_SESSION_COOKIE, session.cookieValue, adminSessionCookieOptions(session.expiresAt));
     return response;
-  } catch {
+  } catch (error) {
+    logError("admin.otp_verification_failed", error);
     return NextResponse.json(
       { error: "Admin authentication is not configured yet." },
       { status: 503, headers: { "Cache-Control": "no-store" } },

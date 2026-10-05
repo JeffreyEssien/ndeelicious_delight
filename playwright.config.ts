@@ -1,5 +1,8 @@
 import fs from "node:fs";
 import { defineConfig } from "@playwright/test";
+import { validateBrowserEnvironment } from "./src/lib/security/test-environment";
+
+validateBrowserEnvironment(process.env);
 
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
 const adminStorage = process.env.PLAYWRIGHT_ADMIN_STORAGE_STATE;
@@ -8,7 +11,9 @@ const storageState = adminStorage
     ? JSON.parse(adminStorage)
     : fs.existsSync(adminStorage)
       ? adminStorage
-      : undefined
+      : (() => {
+          throw new Error("PLAYWRIGHT_ADMIN_STORAGE_STATE file does not exist.");
+        })()
   : undefined;
 
 const viewports = [

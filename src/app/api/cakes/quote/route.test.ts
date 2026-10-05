@@ -26,6 +26,7 @@ vi.mock("@/lib/supabase/service", () => ({
     },
   }),
 }));
+vi.mock("@/lib/security/rate-limit", () => ({ enforcePublicRateLimit: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/lib/email/mailer", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/email/mailer")>()),
   sendTransactionalEmail: mocks.sendEmail,

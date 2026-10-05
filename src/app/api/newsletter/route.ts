@@ -2,10 +2,13 @@ import { z } from "zod";
 import { isSameOrigin } from "@/lib/auth/validation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { emailFrame, sendTransactionalEmail } from "@/lib/email/mailer";
+import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
 const schema = z.object({ email: z.string().trim().toLowerCase().email().max(200) });
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
+  const limited = await enforcePublicRateLimit(request, { scope: "newsletter", maximum: 5, windowSeconds: 3600 });
+  if (limited) return limited;
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Enter a valid email address." }, { status: 400 });
   const { error } = await createServiceClient()

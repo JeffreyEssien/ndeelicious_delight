@@ -13,12 +13,16 @@ import {
   queueOrderNotification,
   sendPlacedOrderAdminNotification,
 } from "@/lib/orders/notifications";
+import { logError } from "@/lib/observability/log";
+import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const orderNumber = () => `ND-${Date.now().toString().slice(-7)}${Math.floor(Math.random() * 10)}`;
 
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
+  const limited = await enforcePublicRateLimit(request, { scope: "order-create", maximum: 10, windowSeconds: 3600 });
+  if (limited) return limited;
   let orderId: string | undefined;
   let checkoutSessionId: string | undefined;
   try {
@@ -187,6 +191,7 @@ export async function POST(request: Request) {
       return Response.json({ error: error.message, code: error.code }, { status: 409 });
     if (error instanceof PaymentConfigurationError)
       return Response.json({ error: error.message, code: "PAYMENT_UNAVAILABLE" }, { status: 503 });
+    logError("order.creation_failed", error, { orderId: orderId ?? null });
     return Response.json({ error: "We couldn’t create your order. Please try again." }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@ import { isSameOrigin } from "@/lib/auth/validation";
 import { hashDocumentToken } from "@/lib/documents/tokens";
 import { createStripeCheckout, PaymentConfigurationError } from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
+import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
 const postalCode = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
 const schema = z.object({
@@ -24,6 +25,8 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
+  const limited = await enforcePublicRateLimit(request, { scope: "quote-checkout", maximum: 10, windowSeconds: 3600 });
+  if (limited) return limited;
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
     return Response.json(

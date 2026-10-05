@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isSameOrigin } from "@/lib/auth/validation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { readReviewToken } from "@/lib/reviews/invitations";
+import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
 const schema = z.object({
   token: z.string().min(40).max(300),
@@ -12,6 +13,8 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
+  const limited = await enforcePublicRateLimit(request, { scope: "review-submit", maximum: 10, windowSeconds: 3600 });
+  if (limited) return limited;
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Please complete every review field." }, { status: 400 });
   const invitationId = readReviewToken(parsed.data.token);

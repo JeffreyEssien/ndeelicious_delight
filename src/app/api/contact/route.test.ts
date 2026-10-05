@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ insert: vi.fn(), sendEmail: vi.fn() }));
+const mocks = vi.hoisted(() => ({ insert: vi.fn(), sendEmail: vi.fn(), rateLimit: vi.fn() }));
 
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: () => ({ from: () => ({ insert: mocks.insert }) }),
 }));
+vi.mock("@/lib/security/rate-limit", () => ({ enforcePublicRateLimit: mocks.rateLimit }));
 vi.mock("@/lib/email/mailer", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/email/mailer")>()),
   sendTransactionalEmail: mocks.sendEmail,
@@ -20,6 +21,7 @@ describe("POST /api/contact", () => {
     vi.stubEnv("ADMIN_EMAIL", "owner@example.com");
     mocks.insert.mockResolvedValue({ error: null });
     mocks.sendEmail.mockResolvedValue({ sent: true });
+    mocks.rateLimit.mockResolvedValue(null);
   });
 
   it("persists the message and safely emails the owner", async () => {
@@ -65,6 +67,25 @@ describe("POST /api/contact", () => {
     );
 
     expect(response.status).toBe(500);
+    expect(mocks.sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("stops before persistence when the durable rate limit is exceeded", async () => {
+    mocks.rateLimit.mockResolvedValue(Response.json({ error: "Too many requests." }, { status: 429 }));
+    const response = await POST(
+      new Request("http://localhost/api/contact", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Ada Lovelace",
+          email: "ada@example.com",
+          subject: "Wedding cake",
+          message: "Please call me about a cake.",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(429);
+    expect(mocks.insert).not.toHaveBeenCalled();
     expect(mocks.sendEmail).not.toHaveBeenCalled();
   });
 });

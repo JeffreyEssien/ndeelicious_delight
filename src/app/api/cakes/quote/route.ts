@@ -6,6 +6,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
 import { sendEmailToActiveAdmins } from "@/lib/email/admin-recipients";
 import { getCakeConfiguration } from "@/lib/data/settings";
+import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
 const imageExtensions: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -29,6 +30,8 @@ async function requestPayload(request: Request) {
 export async function POST(request: Request) {
   try {
     if (!isSameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
+    const limited = await enforcePublicRateLimit(request, { scope: "cake-request", maximum: 5, windowSeconds: 3600 });
+    if (limited) return limited;
     const { body, reference } = await requestPayload(request);
     const parsed = cakeConfigurationSchema.safeParse(body);
     if (!parsed.success)

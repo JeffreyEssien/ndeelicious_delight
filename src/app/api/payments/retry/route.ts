@@ -4,6 +4,7 @@ import { isSameOrigin } from "@/lib/auth/validation";
 import { InventoryConflictError, transitionOrderStatus } from "@/lib/data/inventory";
 import { createStripeCheckout, expireStripeCheckout, PaymentConfigurationError } from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
+import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
 const schema = z.object({
   sessionId: z
@@ -15,6 +16,8 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
+  const limited = await enforcePublicRateLimit(request, { scope: "payment-retry", maximum: 10, windowSeconds: 900 });
+  if (limited) return limited;
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Invalid payment session." }, { status: 400 });
 

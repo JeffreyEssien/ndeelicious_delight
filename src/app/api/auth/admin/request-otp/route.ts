@@ -4,6 +4,7 @@ import { fingerprint, generateOtpCode, hashOtpCode, OTP_MAX_ATTEMPTS, OTP_TTL_MS
 import { isSameOrigin, requestOtpSchema } from "@/lib/auth/validation";
 import { emailFrame, escapeHtml, isMailerConfigured, sendTransactionalEmail } from "@/lib/email/mailer";
 import { createServiceClient } from "@/lib/supabase/service";
+import { logError } from "@/lib/observability/log";
 
 const genericMessage = "If this address is an active admin account, a six-digit code is on its way.";
 const rateLimitWindowMs = 15 * 60_000;
@@ -91,7 +92,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ ok: true, message: genericMessage }, { headers: { "Cache-Control": "no-store" } });
-  } catch {
+  } catch (error) {
+    logError("admin.otp_request_failed", error);
     return NextResponse.json(
       { error: "Admin email authentication is not configured yet." },
       { status: 503, headers: { "Cache-Control": "no-store" } },

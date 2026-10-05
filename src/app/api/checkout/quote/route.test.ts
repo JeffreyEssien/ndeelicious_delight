@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { products as testProducts } from "@/test/fixtures";
 
+vi.mock("@/lib/security/rate-limit", () => ({ enforcePublicRateLimit: vi.fn().mockResolvedValue(null) }));
+
 vi.mock("@/lib/data/catalog", () => ({
   getProducts: () => Promise.resolve(testProducts),
   getDeliveryZones: () =>
