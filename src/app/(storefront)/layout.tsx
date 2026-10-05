@@ -7,7 +7,6 @@ import "../store.css";
 import "../extras.css";
 import "../gallery.css";
 import "../reviews.css";
-import "../carousel.css";
 import "../budget.css";
 
 export default async function Layout({ children }: { children: React.ReactNode }) {

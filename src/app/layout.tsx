@@ -12,6 +12,7 @@ import { organizationJsonLd, serializeJsonLd } from "@/lib/seo";
 import { getSiteUrl } from "@/lib/site-url";
 import { resolveThemeTokens, themeTokenCss } from "@/lib/theme/tokens";
 import "./globals.css";
+import "./carousel.css";
 
 type StoreStyle = CSSProperties & { [key: `--${string}`]: string | number };
 

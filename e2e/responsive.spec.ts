@@ -393,10 +393,24 @@ test.describe("authenticated admin responsiveness", () => {
   );
   for (const route of adminRoutes) {
     test(`${route} has no accidental page overflow`, async ({ page }) => {
+      const imageWarnings: string[] = [];
+      page.on("console", (message) => {
+        if (message.text().includes('parent element with invalid "position"')) imageWarnings.push(message.text());
+      });
       const response = await page.goto(route);
       expect(response?.status()).toBeLessThan(400);
       await settle(page);
       await expectNoPageOverflow(page);
+      if (route === "/admin/carousel") {
+        const imageContainer = page.locator(".carousel-preview .carousel-image").first();
+        if (await imageContainer.count()) {
+          await expect(imageContainer).toHaveCSS("position", "relative");
+          await expect(imageContainer).toHaveCSS("display", "block");
+          const bounds = await imageContainer.boundingBox();
+          expect(bounds?.height).toBeGreaterThan(100);
+          expect(imageWarnings).toEqual([]);
+        }
+      }
     });
   }
 
