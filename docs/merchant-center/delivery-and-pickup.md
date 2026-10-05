@@ -30,6 +30,10 @@ Contact us promptly if your order has not arrived within the confirmed arrangeme
 
 Wedding cake cancellation requests require at least one calendar month's written notice before the scheduled delivery or collection date. Other cakes require one week (seven days). Cake payments already made are non-refundable for customer cancellation or change of mind. See /refund-policy for the complete policy.
 
+## Find our ready-to-bake products in stores
+
+Our frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls are available at selected stores across Halifax Regional Municipality: Kalisimbi Shop (Halifax) — https://www.instagram.com/kalisimbi_shop1/; Iyalode African Wholesales Market (Dartmouth) — https://www.instagram.com/iyalodeafricanwholesalemarket/; Chater Meat Market (Dartmouth) — https://www.instagram.com/chatermeatmarket/; Wazobia African Shop (Halifax) — https://www.instagram.com/wazobia__market/. Contact the store for current stock, prices and opening hours. Purchases from a stockist are handled by that retailer; contact the store with your receipt for purchase support. Store availability does not establish bakery delivery coverage.
+
 ## Contact
 
 For delivery or collection questions, email ndidiamakaoseafiana@gmail.com, call +19025803019 or use our website contact form.

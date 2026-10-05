@@ -48,6 +48,24 @@ export default async function Page() {
           ))}
         </div>
       </section>
+      {Boolean(page.stockists?.length) && (
+        <section className="site-container section">
+          <span className="overline">Available across Halifax HRM</span>
+          <h2>Find us in stores</h2>
+          <p>
+            Meat pies, chicken pies and beef sausage rolls, frozen and ready to bake. Contact each store for current
+            stock, prices and opening hours.
+          </p>
+          <ul>
+            {page.stockists?.map((store) => (
+              <li key={store.url}>
+                <a href={store.url}>{store.name}</a> — {store.city}
+              </li>
+            ))}
+          </ul>
+          <p>For purchases made in store, contact that retailer with your receipt for support.</p>
+        </section>
+      )}
     </>
   );
 }

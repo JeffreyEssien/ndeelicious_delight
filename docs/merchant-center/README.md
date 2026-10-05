@@ -26,7 +26,7 @@ The `--apply` option updates only the existing `business` and `content` settings
 | --- | --- |
 | Business name | Ndeeelicious Delight |
 | Location | Halifax, Nova Scotia, Canada |
-| Products | Custom cakes; frozen, ready-to-bake Nigerian-style pies |
+| Products | Custom cakes; frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls |
 | Food-safety statement | Food Safety & Handler Certified — supplied by owner from the business profile |
 | Email | ndidiamakaoseafiana@gmail.com |
 | Phone | +19025803019 |
@@ -56,4 +56,10 @@ This pack does not guarantee Merchant Center approval. The no-refund wording pre
 
 ## Verification
 
-The project gate passed 110 regression and 58 functional tests, TypeScript, quality, CSS-token checks and production build. The final browser run passed 56 visual/accessibility checks across seven viewports and four themes. Seven public pages, checkout policy links and the printable bundle passed content/mobile smoke checks. The generated PDF contains nine pages. No Merchant submission or deployment was performed.
+The project gate passed 110 regression and 58 functional tests, TypeScript, quality, CSS-token checks and production build. The final browser run passed 56 visual/accessibility checks across seven viewports and four themes. Seven public pages, checkout policy links and the printable bundle passed content/mobile smoke checks. The regenerated PDF contains ten pages. No Merchant submission or deployment was performed.
+
+## Owner-supplied stockists
+
+The owner supplied the product range and stockists from the business Instagram post on 5 October 2026. The ready-to-bake page links to Kalisimbi Shop (Halifax), Iyalode African Wholesales Market (Dartmouth), Chater Meat Market (Dartmouth) and Wazobia African Shop (Halifax). Contact each retailer for current stock, prices and hours. Store purchases are supported by that retailer. These locations do not establish bakery delivery zones. The cake-only cancellation rules remain unchanged.
+
+Stockist update verification: the project gate again passed 110 regression and 58 functional tests plus TypeScript, quality and production build. The final browser run passed 56 visual/accessibility checks; the mobile smoke passed all seven public pages, four stockist links, checkout links and the printable bundle.

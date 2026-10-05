@@ -13,7 +13,7 @@ for (const document of copy.documents) {
   await writeFile(new URL(`${document.slug}.md`, directory), markdown);
 }
 const html = `<!doctype html><html lang="en-CA"><head><meta charset="utf-8"><title>${escapeHtml(copy.businessName)} — Business policies</title><style>
-@page{size:A4;margin:20mm}body{font:11pt/1.55 Arial,sans-serif;color:#222;max-width:820px;margin:30px auto;padding:0 20px}h1{font-size:22pt;line-height:1.2}h2{font-size:13pt;break-after:avoid}p{orphans:3;widows:3}article+article{break-before:page}.date{color:#555}header{border-bottom:2px solid #792f49;padding-bottom:12px} @media print{body{margin:0;padding:0}}
+@page{size:A4;margin:20mm}body{font:11pt/1.55 Arial,sans-serif;color:#222;max-width:820px;margin:30px auto;padding:0 20px}h1{font-size:22pt;line-height:1.2}h2{font-size:13pt;break-after:avoid}p{orphans:3;widows:3;overflow-wrap:anywhere}article+article{break-before:page}.date{color:#555}header{border-bottom:2px solid #792f49;padding-bottom:12px} @media print{body{margin:0;padding:0}}
 </style></head><body>${copy.documents.map((document) => `<article><header><p>${escapeHtml(copy.businessName)} · ${escapeHtml(copy.location)}</p><h1>${escapeHtml(document.title)}</h1><p class="date">Updated: ${escapeHtml(copy.updated)}</p></header>${document.sections.map((section) => `<section><h2>${escapeHtml(section.heading)}</h2><p>${escapeHtml(section.body)}</p></section>`).join("")}</article>`).join("")}</body></html>`;
 await writeFile(new URL("business-policies.html", directory), html);
 if (process.argv.includes("--pdf")) {
@@ -70,21 +70,25 @@ if (process.argv.includes("--apply")) {
     content.global.footerDescription = `${copy.businessDescription} Based in ${copy.location}.`;
     content.home.hero.eyebrow = "Handmade in Halifax, Nova Scotia";
     content.home.hero.supportingText =
-      "Custom cakes and frozen, ready-to-bake Nigerian-style pies, made in Halifax, Nova Scotia, Canada.";
+      "Custom cakes and frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls, made in Halifax, Nova Scotia, Canada.";
     content.home.intro.body =
-      "Custom cakes for your celebrations and frozen Nigerian-style pies ready to bake at home. Food Safety & Handler Certified.";
-    content.about.hero.supportingText = `${copy.businessName} is based in ${copy.location}, offering custom cakes and frozen, ready-to-bake Nigerian-style pies.`;
+      "Custom cakes for your celebrations and frozen Nigerian-style meat pies, chicken pies and beef sausage rolls ready to bake at home. Food Safety & Handler Certified.";
+    content.about.hero.supportingText = `${copy.businessName} is based in ${copy.location}, offering custom cakes and frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls.`;
     content.about.story.paragraphs = [
-      "Based in Halifax, Nova Scotia, Canada, we make custom cakes for your celebrations and Nigerian-style pies for you to enjoy at home.",
+      "Based in Halifax, Nova Scotia, Canada, we make custom cakes for your celebrations and Nigerian-style meat pies, chicken pies and beef sausage rolls for you to enjoy at home.",
       "Our frozen, ready-to-bake pies let you enjoy a freshly baked favourite when it suits you. Follow the product's preparation and storage instructions.",
       "Food Safety & Handler Certified.",
     ];
-    content.contact.hero.supportingText = `Custom cakes and frozen, ready-to-bake Nigerian-style pies in ${copy.location}. Contact us for order support, cake enquiries and collection arrangements.`;
+    content.contact.hero.supportingText = `Custom cakes and frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls in ${copy.location}. Contact us for order support, cake enquiries and collection arrangements.`;
     content.customCakes.hero.eyebrow = "Custom cakes in Halifax, Nova Scotia";
-    content.readyToBake.hero.eyebrow = "Nigerian-style pies, ready to bake";
+    content.readyToBake.hero.eyebrow = "Nigerian-style favourites, ready to bake";
     content.readyToBake.hero.headline = "From your freezer.\nFresh from your oven.";
     content.readyToBake.hero.supportingText =
-      "Frozen, ready-to-bake Nigerian-style pies from Halifax, Nova Scotia. Follow the instructions supplied with each product.";
+      "Frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls, available at selected stores across Halifax HRM. Follow the instructions supplied with each product.";
+    content.readyToBake.stockists = copy.stockists;
+    content.about.story.paragraphs.push(
+      "Find our meat pies, chicken pies and beef sausage rolls at selected stores across Halifax HRM. Contact each stockist for current availability.",
+    );
     content.readyToBake.steps = [
       { title: "Store safely", body: "Follow the storage instructions supplied with your frozen pies." },
       {

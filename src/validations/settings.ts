@@ -107,6 +107,10 @@ export const storefrontContentSchema = z.object({
     hero: heroSchema,
     section: sectionHeadingSchema,
     steps: z.array(titleBodySchema).max(12),
+    stockists: z
+      .array(z.object({ name: text(120), city: text(120), url: href }))
+      .max(20)
+      .optional(),
   }),
   delivery: z.object({
     hero: heroSchema,

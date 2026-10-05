@@ -4,7 +4,7 @@
   "contactEmail": "ndidiamakaoseafiana@gmail.com",
   "phone": "+19025803019",
   "location": "Halifax, Nova Scotia, Canada",
-  "businessDescription": "Custom cakes and frozen, ready-to-bake Nigerian-style pies. Food Safety & Handler Certified.",
+  "businessDescription": "Custom cakes and frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls. Food Safety & Handler Certified.",
   "documents": [
     {
       "slug": "returns-refunds-cancellations",
@@ -126,6 +126,10 @@
           "body": "Wedding cake cancellation requests require at least one calendar month's written notice before the scheduled delivery or collection date. Other cakes require one week (seven days). Cake payments already made are non-refundable for customer cancellation or change of mind. See /refund-policy for the complete policy."
         },
         {
+          "heading": "Find our ready-to-bake products in stores",
+          "body": "Our frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls are available at selected stores across Halifax Regional Municipality: Kalisimbi Shop (Halifax) — https://www.instagram.com/kalisimbi_shop1/; Iyalode African Wholesales Market (Dartmouth) — https://www.instagram.com/iyalodeafricanwholesalemarket/; Chater Meat Market (Dartmouth) — https://www.instagram.com/chatermeatmarket/; Wazobia African Shop (Halifax) — https://www.instagram.com/wazobia__market/. Contact the store for current stock, prices and opening hours. Purchases from a stockist are handled by that retailer; contact the store with your receipt for purchase support. Store availability does not establish bakery delivery coverage."
+        },
+        {
           "heading": "Contact",
           "body": "For delivery or collection questions, email ndidiamakaoseafiana@gmail.com, call +19025803019 or use our website contact form."
         }
@@ -171,21 +175,65 @@
       "websitePath": "/contact",
       "title": "Business and customer support information",
       "sections": [
-        { "heading": "Business name", "body": "Ndeeelicious Delight" },
-        { "heading": "Location", "body": "Halifax, Nova Scotia, Canada" },
-        { "heading": "What we offer", "body": "Custom cakes and frozen, ready-to-bake Nigerian-style pies." },
-        { "heading": "Food safety", "body": "Food Safety & Handler Certified." },
-        { "heading": "Customer support email", "body": "ndidiamakaoseafiana@gmail.com" },
-        { "heading": "Customer support phone", "body": "+19025803019" },
+        {
+          "heading": "Business name",
+          "body": "Ndeeelicious Delight"
+        },
+        {
+          "heading": "Location",
+          "body": "Halifax, Nova Scotia, Canada"
+        },
+        {
+          "heading": "What we offer",
+          "body": "Custom cakes and frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls."
+        },
+        {
+          "heading": "Food safety",
+          "body": "Food Safety & Handler Certified."
+        },
+        {
+          "heading": "Customer support email",
+          "body": "ndidiamakaoseafiana@gmail.com"
+        },
+        {
+          "heading": "Customer support phone",
+          "body": "+19025803019"
+        },
         {
           "heading": "What to include",
           "body": "For order questions, include your order number, customer name, scheduled delivery or collection date and a description of the issue. For cancellation requests, contact us in writing by email or through our website contact form."
+        },
+        {
+          "heading": "Find our ready-to-bake products in stores",
+          "body": "Our frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls are available at selected stores across Halifax Regional Municipality: Kalisimbi Shop (Halifax) — https://www.instagram.com/kalisimbi_shop1/; Iyalode African Wholesales Market (Dartmouth) — https://www.instagram.com/iyalodeafricanwholesalemarket/; Chater Meat Market (Dartmouth) — https://www.instagram.com/chatermeatmarket/; Wazobia African Shop (Halifax) — https://www.instagram.com/wazobia__market/. Contact the store for current stock, prices and opening hours. Purchases from a stockist are handled by that retailer; contact the store with your receipt for purchase support. Store availability does not establish bakery delivery coverage."
         },
         {
           "heading": "Cake cancellation notice",
           "body": "Wedding cakes require at least one calendar month's written notice. Other cakes require at least one week (seven days). Cake payments already made are non-refundable for customer cancellation or change of mind, subject to mandatory consumer rights. Read /refund-policy for the full policy."
         }
       ]
+    }
+  ],
+  "stockists": [
+    {
+      "name": "Kalisimbi Shop",
+      "city": "Halifax",
+      "url": "https://www.instagram.com/kalisimbi_shop1/"
+    },
+    {
+      "name": "Iyalode African Wholesales Market",
+      "city": "Dartmouth",
+      "url": "https://www.instagram.com/iyalodeafricanwholesalemarket/"
+    },
+    {
+      "name": "Chater Meat Market",
+      "city": "Dartmouth",
+      "url": "https://www.instagram.com/chatermeatmarket/"
+    },
+    {
+      "name": "Wazobia African Shop",
+      "city": "Halifax",
+      "url": "https://www.instagram.com/wazobia__market/"
     }
   ]
 }
