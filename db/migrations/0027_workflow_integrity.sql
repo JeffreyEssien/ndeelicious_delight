@@ -53,7 +53,19 @@ begin
     select 1 from public.order_items
     where order_id = p_order_id
       and product_id is null
-      and coalesce(product_snapshot->>'type', '') <> 'CUSTOM_CAKE'
+      and (
+        coalesce(product_snapshot->>'type', '') <> 'CUSTOM_CAKE'
+        or variant_id is not null
+        or not exists (
+          select 1
+          from public.custom_cake_orders cake
+          join public.business_documents document on document.cake_order_id = cake.id
+          where cake.order_id = p_order_id
+            and cake.id::text = order_items.product_snapshot->>'cakeOrderId'
+            and document.id::text = order_items.product_snapshot->>'quoteDocumentId'
+            and document.kind = 'QUOTE' and document.state = 'ACCEPTED'
+        )
+      )
   ) then
     raise exception using errcode = 'P0001', message = 'PRODUCT_UNAVAILABLE';
   end if;
@@ -131,7 +143,10 @@ declare
   v_order_status public.order_status;
   v_expected public.cake_status;
 begin
-  if new.order_id is null or new.status = old.status then return new; end if;
+  if tg_op = 'UPDATE' and old.order_id is not null and new.order_id is distinct from old.order_id then
+    raise exception using errcode = 'P0001', message = 'LINKED_ORDER_STATUS_AUTHORITATIVE';
+  end if;
+  if new.order_id is null then return new; end if;
   select status into v_order_status from public.orders where id = new.order_id;
   v_expected := case v_order_status
     when 'PENDING_PAYMENT' then 'PENDING_PAYMENT'::public.cake_status
@@ -154,7 +169,7 @@ $$;
 
 drop trigger if exists protect_linked_cake_status on public.custom_cake_orders;
 create trigger protect_linked_cake_status
-before update of status, order_id on public.custom_cake_orders
+before insert or update of status, order_id on public.custom_cake_orders
 for each row execute function public.protect_linked_cake_status();
 
 alter table public.document_events drop constraint if exists document_events_action_check;

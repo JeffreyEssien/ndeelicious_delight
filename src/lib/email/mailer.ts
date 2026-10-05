@@ -66,6 +66,9 @@ export async function sendTransactionalEmail(input: EmailInput) {
       subject: input.subject,
       html: input.html,
     });
+    if (!result.accepted?.length || result.rejected?.length) {
+      return { sent: false, reason: "provider-error" as const };
+    }
     return { sent: true, id: result.messageId };
   } catch (error) {
     const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "unknown";
