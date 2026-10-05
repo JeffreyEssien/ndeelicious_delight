@@ -199,7 +199,9 @@ export function AdminPortal({
     const response = await mutate({ action: "delivery-zones", zones });
     setZoneBusy(false);
     if (response.ok) {
-      notify("Delivery zones saved.");
+      const payload = await response.json();
+      setZones((current) => current.map((zone) => ({ ...zone, id: payload.savedIds?.[zone.id] ?? zone.id })));
+      notify("Delivery areas saved.");
       router.refresh();
     } else notify("Delivery zones could not be saved.");
   }
@@ -279,7 +281,7 @@ export function AdminPortal({
           onDuplicate={duplicateProduct}
         />
       )}
-      {section === "inventory" && <Inventory products={products} onChange={inventory} />}
+      {section === "inventory" && <Inventory products={products} onChange={inventory} onEdit={setEditor} />}
       {section === "customers" && <Customers orders={orders} />}
       {section === "coupons" && <Coupons initial={initialCoupons} products={products} categories={initialCategories} />}
       {section === "reviews" && <Reviews initial={initialReviews} />}
@@ -1055,9 +1057,11 @@ function Products({
 function Inventory({
   products,
   onChange,
+  onEdit,
 }: {
   products: Product[];
   onChange: (productId: string, variantId: string, quantity: number) => void;
+  onEdit: (product: Product) => void;
 }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"ALL" | "LOW" | "OUT">("ALL");
@@ -1147,6 +1151,9 @@ function Inventory({
                 <b>{product.name}</b>
                 <small>{variant.name}</small>
                 <code>{variant.sku ?? "SKU pending"}</code>
+                <button className="text-button" type="button" onClick={() => onEdit(product)}>
+                  Edit product, options & stock settings
+                </button>
               </div>
               <div className="inventory-quantity">
                 <span>On hand</span>
@@ -1309,7 +1316,8 @@ function DeliveryZones({
         <div>
           <b>Delivery areas</b>
           <p>
-            Customers choose one of the active areas below. The fee, minimum order, and estimate appear at checkout.
+            Set each Canadian area’s name, delivery fee (CAD), minimum order and delivery estimate. Activate it and save
+            to make it available at checkout.
           </p>
         </div>
         <Button variant="secondary" onClick={add}>
@@ -1339,6 +1347,7 @@ function DeliveryZones({
             <div className="zone-fields">
               <Input
                 label="Area name"
+                placeholder="For example: Halifax or Dartmouth"
                 value={zone.name}
                 onChange={(event) => update(zone.id, { name: event.target.value })}
               />
@@ -1645,7 +1654,12 @@ function BusinessSettings({
         <Input name="businessName" label="Business name" defaultValue={initial.businessName} />
         <Input name="contactEmail" label="Contact email" type="email" defaultValue={initial.contactEmail} />
         <Input name="phone" label="Phone" defaultValue={initial.phone} />
-        <Input name="whatsapp" label="WhatsApp" defaultValue={initial.whatsapp} />
+        <Input
+          name="whatsapp"
+          label="WhatsApp link or international number"
+          placeholder="https://wa.me/19025551234"
+          defaultValue={initial.whatsapp}
+        />
         <Input name="address" label="Address" defaultValue={initial.address} />
         <Input name="city" label="City" defaultValue={initial.city ?? ""} />
         <Input name="province" label="Province or territory code" maxLength={2} defaultValue={initial.province} />

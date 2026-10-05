@@ -107,7 +107,7 @@ async function renderPost(
   await document.fonts.ready;
   const exportImage = product.image.startsWith("data:")
     ? product.image
-    : `/_next/image?url=${encodeURIComponent(product.image)}&w=1920&q=90`;
+    : `/_next/image?url=${encodeURIComponent(product.image)}&w=1920&q=75`;
   const [{ width, height }, productImage, logo] = await Promise.all([
     Promise.resolve(marketingFormats[social.format]),
     loadImage(exportImage),
@@ -203,8 +203,10 @@ function downloadBlob(blob: Blob, filename: string) {
   const anchor = document.createElement("a");
   anchor.href = href;
   anchor.download = filename;
+  document.body.append(anchor);
   anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(href), 1_000);
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(href), 30_000);
 }
 
 function bytesBlob(bytes: Uint8Array, type: string) {
@@ -220,7 +222,7 @@ export function SocialPostGenerator({
   initial: MarketingExport;
   siteUrl: string;
 }) {
-  const [social, setSocial] = useState({ ...initial, websiteUrl: initial.websiteUrl || siteUrl });
+  const [social, setSocial] = useState({ ...initial, websiteUrl: siteUrl });
   const [saved, setSaved] = useState(initial);
   const [query, setQuery] = useState("");
   const selected = useMemo(() => selectedMarketingProducts(products, social.productIds), [products, social.productIds]);
@@ -239,9 +241,14 @@ export function SocialPostGenerator({
   useEffect(() => {
     if (product)
       setCaption(
-        marketingCaption(product, money(product.discountPrice ?? product.price), siteUrl, social.callToAction),
+        marketingCaption(
+          product,
+          money(product.discountPrice ?? product.price),
+          social.websiteUrl,
+          social.callToAction,
+        ),
       );
-  }, [money, product, siteUrl, social.callToAction]);
+  }, [money, product, social.websiteUrl, social.callToAction]);
 
   useEffect(() => {
     if (!product || !canvas.current) return;

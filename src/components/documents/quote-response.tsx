@@ -27,6 +27,7 @@ export function QuoteResponse({
   const [state, setState] = useState(initialState);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const canDeliver = deliveryEnabled && zones.length > 0;
   const defaultFulfilment = pickupEnabled ? "pickup" : "delivery";
   const [fulfilment, setFulfilment] = useState<"pickup" | "delivery">(defaultFulfilment);
   const [payment, setPayment] = useState<{ checkoutUrl: string; total: number } | null>(null);
@@ -133,9 +134,12 @@ export function QuoteResponse({
             onChange={(event) => setFulfilment(event.target.value as "pickup" | "delivery")}
           >
             {pickupEnabled && <option value="pickup">Bakery pickup</option>}
-            {deliveryEnabled && <option value="delivery">Delivery</option>}
+            {canDeliver && <option value="delivery">Delivery</option>}
           </Select>
-          {fulfilment === "delivery" && (
+          {deliveryEnabled && !zones.length && (
+            <p>Delivery is currently unavailable. Choose pickup or contact us to arrange fulfilment.</p>
+          )}
+          {fulfilment === "delivery" && canDeliver && (
             <>
               <Select name="zoneId" label="Delivery area" required defaultValue="">
                 <option value="" disabled>
@@ -143,7 +147,8 @@ export function QuoteResponse({
                 </option>
                 {zones.map((zone) => (
                   <option value={zone.id} key={zone.id}>
-                    {zone.name}
+                    {zone.name} —{" "}
+                    {new Intl.NumberFormat(locale, { style: "currency", currency }).format(zone.fee / 100)} delivery
                   </option>
                 ))}
               </Select>
@@ -157,7 +162,10 @@ export function QuoteResponse({
               <Textarea name="notes" label="Delivery instructions (optional)" rows={3} />
             </>
           )}
-          <Button type="submit" disabled={busy}>
+          <Button
+            type="submit"
+            disabled={busy || (fulfilment === "delivery" && !canDeliver) || (!pickupEnabled && !canDeliver)}
+          >
             {busy ? "Preparing secure payment…" : "Review total & pay securely"}
           </Button>
           {error && <p className="field-error">{error}</p>}

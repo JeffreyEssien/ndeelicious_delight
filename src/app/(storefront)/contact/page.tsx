@@ -1,3 +1,4 @@
+import { whatsappUrl } from "@/lib/contact";
 import type { Metadata } from "next";
 import { ContactForm } from "@/components/forms/contact-form";
 import { ContentLines } from "@/components/ui/content-lines";
@@ -8,7 +9,7 @@ export const metadata: Metadata = { title: "Contact", alternates: { canonical: "
 export default async function Page() {
   const [content, business] = await Promise.all([getStorefrontContent(), getBusinessSettings()]);
   const phoneHref = business.phone.replace(/\D/g, "");
-  const whatsapp = business.whatsapp.replace(/\D/g, "");
+  const whatsapp = whatsappUrl(business.whatsapp);
   const location = business.address || [business.city, business.province, "Canada"].filter(Boolean).join(", ");
   return (
     <>
@@ -36,7 +37,7 @@ export default async function Page() {
           {whatsapp && (
             <div>
               <span>WhatsApp</span>
-              <a href={`https://wa.me/${whatsapp}`}>{business.whatsapp}</a>
+              <a href={whatsapp}>Chat with us on WhatsApp</a>
             </div>
           )}
           {business.openingHours && (

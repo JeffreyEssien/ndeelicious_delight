@@ -1,3 +1,4 @@
+import { getBusinessSettings } from "@/lib/data/settings";
 import { persistedDocumentToDTO } from "@/lib/documents/dto";
 import { renderDocumentPdf } from "@/lib/documents/pdf";
 import { resolveAccessToken } from "@/lib/documents/service";
@@ -12,7 +13,9 @@ export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token") ?? "";
   const document = await resolveAccessToken(createServiceClient(), token);
   if (!document) return Response.json({ error: "Document not found." }, { status: 404 });
-  const pdf = renderDocumentPdf(persistedDocumentToDTO(document));
+  const business = await getBusinessSettings();
+  const dto = persistedDocumentToDTO(document);
+  const pdf = renderDocumentPdf({ ...dto, business: { ...dto.business, whatsapp: business.whatsapp } });
   return new Response(pdf, {
     headers: {
       "content-type": "application/pdf",

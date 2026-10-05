@@ -246,6 +246,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "The current value could not be verified for auditing." }, { status: 500 });
   }
   let error: { message: string } | null | undefined;
+  let savedIds: Record<string, string> | undefined;
   let quoteDeliveryId: string | undefined;
   let quoteDocumentId: string | undefined;
   if (input.action === "product-status")
@@ -370,6 +371,7 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     }));
     if (values.length) ({ error } = await supabase.from("coupons").upsert(values));
+    savedIds = Object.fromEntries(input.coupons.map((item, index) => [item.id, values[index].id]));
   }
   if (input.action === "delivery-zones") {
     const values = input.zones.map((zone, index) => ({
@@ -383,6 +385,7 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     }));
     if (values.length) ({ error } = await supabase.from("delivery_zones").upsert(values));
+    savedIds = Object.fromEntries(input.zones.map((item, index) => [item.id, values[index].id]));
   }
   if (input.action === "settings")
     if (input.key === "business") {
@@ -432,6 +435,7 @@ export async function POST(request: Request) {
   invalidateStorefrontCache();
   return Response.json({
     ok: true,
+    ...(savedIds ? { savedIds } : {}),
     ...(quoteDeliveryId ? { deliveryStatus: "PENDING", documentId: quoteDocumentId } : {}),
   });
 }

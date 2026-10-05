@@ -1,10 +1,11 @@
+import { whatsappUrl } from "@/lib/contact";
 import { readFileSync } from "node:fs";
 import { resolve, sep } from "node:path";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { DocumentDTO } from "./dto";
 
 type Logo = { bytes: Buffer; width: number; height: number };
-type Page = { commands: string[]; y: number };
+type Page = { commands: string[]; y: number; link?: string };
 
 const PAGE_WIDTH = 612;
 const PAGE_HEIGHT = 792;
@@ -297,6 +298,11 @@ export function renderPaginatedDocumentPdf(document: DocumentDTO) {
   pages.forEach((current, index) => {
     line(current, MARGIN, 40, PAGE_WIDTH - MARGIN, 40);
     text(current, document.business.businessName, MARGIN, 24, 8, false, [0.45, 0.42, 0.4]);
+    const whatsapp = whatsappUrl(document.business.whatsapp);
+    if (whatsapp) {
+      text(current, "Chat with us on WhatsApp", 250, 24, 8, true, accent);
+      current.link = whatsapp;
+    }
     text(current, `Page ${index + 1} of ${pages.length}`, PAGE_WIDTH - 94, 24, 8, false, [0.45, 0.42, 0.4]);
   });
   return buildPdf(pages, logo);
@@ -333,7 +339,7 @@ function buildPdf(pages: Page[], logo: Logo | undefined) {
     const resources = `/Font << /F1 3 0 R /F2 4 0 R >>${logo ? " /XObject << /Im1 5 0 R >>" : ""}`;
     objects.push(
       Buffer.from(
-        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << ${resources} >> /Contents ${contentNumber} 0 R >>`,
+        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << ${resources} >> /Contents ${contentNumber} 0 R ${page.link ? `/Annots [<< /Type /Annot /Subtype /Link /Rect [248 20 370 34] /Border [0 0 0] /A << /S /URI /URI (${pdfText(page.link)}) >> >>]` : ""} >>`,
       ),
       streamObject(Buffer.from(page.commands.join("\n"))),
     );

@@ -1,3 +1,4 @@
+import { whatsappUrl } from "@/lib/contact";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAccessToken } from "@/lib/documents/service";
 import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
@@ -75,12 +76,13 @@ export async function deliverCakeQuoteEmail(db: SupabaseClient, deliveryId: stri
   }
   const token = await createAccessToken(db, document.id, document.valid_until);
   const url = `${getSiteUrl()}/documents/cakes/${encodeURIComponent(cake.request_number)}/quote?token=${token}`;
+  const whatsapp = whatsappUrl(business.whatsapp);
   const result = await sendTransactionalEmail({
     to: delivery.recipient,
     subject: `Your cake quote ${cake.request_number}`,
     html: emailFrame(
       "Your custom cake quote is ready",
-      `<p>Hi ${escapeHtml(customer.name ?? "there")}, your quote is <b>${escapeHtml(formatMoney(totals.total, business.currency, business.locale))}</b>.</p><p><a href="${url}">View and respond to your quote</a></p><p>This quote is valid until ${escapeHtml(new Date(document.valid_until).toLocaleDateString(business.locale, { timeZone: business.timezone }))}.</p>`,
+      `<p>Hi ${escapeHtml(customer.name ?? "there")}, your quote is <b>${escapeHtml(formatMoney(totals.total, business.currency, business.locale))}</b>.</p><p><a href="${url}">View and respond to your quote</a></p><p>This quote is valid until ${escapeHtml(new Date(document.valid_until).toLocaleDateString(business.locale, { timeZone: business.timezone }))}.</p>${whatsapp ? `<p><a href="${escapeHtml(whatsapp)}">Chat with us on WhatsApp</a></p>` : ""}`,
     ),
   });
   if (!result.sent) {

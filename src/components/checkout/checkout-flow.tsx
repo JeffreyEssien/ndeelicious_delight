@@ -25,6 +25,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
   const cart = useCart();
   const products = useProducts();
   const deliveryZones = useDeliveryZones();
+  const canDeliver = business.deliveryEnabled && deliveryZones.length > 0;
   const [step, setStep] = useState(0);
   const [info, setInfo] = useState<Info>({
     name: "",
@@ -37,7 +38,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
     postalCode: "",
     notes: "",
   });
-  const [fulfilment, setFulfilment] = useState<Fulfilment>(business.deliveryEnabled ? "delivery" : "pickup");
+  const [fulfilment, setFulfilment] = useState<Fulfilment>(canDeliver ? "delivery" : "pickup");
   const [zone, setZone] = useState("");
   const [coupon, setCoupon] = useState("");
   const [applied, setApplied] = useState(false);
@@ -209,7 +210,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
         </Link>
       </div>
     );
-  if (!business.deliveryEnabled && !business.pickupEnabled)
+  if (!canDeliver && !business.pickupEnabled)
     return (
       <div className="empty-state checkout-empty">
         <Icon name="clock" />
@@ -270,8 +271,11 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
           <div className="checkout-panel">
             <span className="overline">Fulfilment</span>
             <h1>How should we get it to you?</h1>
+            {business.deliveryEnabled && !deliveryZones.length && (
+              <p>Delivery is currently unavailable. You can collect your order from the bakery.</p>
+            )}
             <div className="fulfilment-toggle">
-              {business.deliveryEnabled && (
+              {canDeliver && (
                 <button
                   type="button"
                   className={fulfilment === "delivery" ? "selected" : ""}

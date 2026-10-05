@@ -111,7 +111,11 @@ export function ProductCarousel({
         <p>{settings.body}</p>
       </div>
       <div className="site-container carousel-stage">
-        <div className="carousel-image">
+        <Link
+          className="carousel-image"
+          href={`/product/${encodeURIComponent(product.slug)}`}
+          aria-label={`View ${product.name}`}
+        >
           {product.image ? (
             <Image
               src={product.image}
@@ -128,7 +132,7 @@ export function ProductCarousel({
           <span className="carousel-count">
             {String(index + 1).padStart(2, "0")} / {String(count).padStart(2, "0")}
           </span>
-        </div>
+        </Link>
         <article className="carousel-copy">
           <span>{product.category.replaceAll("_", " ")}</span>
           <h3>{product.name}</h3>

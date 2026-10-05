@@ -41,6 +41,15 @@ const document = {
 };
 
 describe("document PDF", () => {
+  it("prints a labelled clickable WhatsApp link rather than a raw number", () => {
+    const pdf = renderDocumentPdf({
+      ...document,
+      business: { ...document.business, whatsapp: "+19025551234" },
+    }).toString("latin1");
+    expect(pdf).toContain("Chat with us on WhatsApp");
+    expect(pdf).toContain("/Subtype /Link");
+    expect(pdf).toContain("/URI (https://wa.me/19025551234)");
+  });
   it("uses the normalized DTO and Canadian configured tax label", () => {
     expect(documentTextLines(document)).toContain("HST (13%): $1.30");
     expect(renderDocumentPdf(document).subarray(0, 8).toString()).toBe("%PDF-1.4");

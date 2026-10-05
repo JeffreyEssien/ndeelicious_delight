@@ -1,3 +1,4 @@
+import { whatsappUrl } from "@/lib/contact";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { BusinessSettings } from "@/types/content";
@@ -197,6 +198,11 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
           </dl>
         </div>
         <footer>
+          {whatsappUrl(props.business.whatsapp) && (
+            <p>
+              <a href={whatsappUrl(props.business.whatsapp)}>Chat with us on WhatsApp</a>
+            </p>
+          )}
           <p>{props.footerMessage || `Thank you for choosing ${props.business.businessName}.`}</p>
           <small>
             {props.customized

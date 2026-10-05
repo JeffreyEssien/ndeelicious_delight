@@ -3687,3 +3687,93 @@ html[data-theme] .admin-sidebar {
     grid-template-columns: minmax(88px, 0.7fr) 1fr 28px;
   }
 }
+
+/* Coupon fields remain usable without a twelve-column horizontal table. */
+.coupons-table {
+  padding: 20px;
+}
+.coupons-table table,
+.coupons-table tbody {
+  display: block;
+  width: 100%;
+}
+.coupons-table thead {
+  display: none;
+}
+.coupons-table tbody {
+  display: grid;
+  gap: 20px;
+}
+.coupons-table tbody tr {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+.coupons-table tbody td {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.coupons-table tbody td::before {
+  content: attr(data-label);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+.coupons-table input:not([type="checkbox"]),
+.coupons-table select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+.coupon-restrictions fieldset {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  max-height: 220px;
+  overflow: auto;
+}
+.coupon-restrictions label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.social-canvas-wrap {
+  align-self: start;
+  min-height: 0;
+  position: sticky;
+  top: 24px;
+}
+.social-canvas-wrap canvas {
+  width: 100%;
+  height: auto;
+  max-height: none;
+}
+@media (max-width: 900px) {
+  .coupons-table tbody tr {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .social-canvas-wrap {
+    position: static;
+  }
+}
+@media (max-width: 600px) {
+  .coupons-table tbody tr {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+  .coupons-table {
+    padding: 12px;
+  }
+}
