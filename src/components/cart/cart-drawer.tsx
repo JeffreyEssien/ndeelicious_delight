@@ -1,10 +1,13 @@
 "use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 import Image from "next/image";
 import Link from "next/link";
 import { useCart, useMoney, useProducts } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
 export function CartDrawer() {
+  const t = useCustomerText("cart drawer");
+
   const cart = useCart();
   const products = useProducts();
   const formatMoney = useMoney();
@@ -18,17 +21,23 @@ export function CartDrawer() {
       open={cart.open}
       onClose={() => cart.setOpen(false)}
       className="cart-drawer is-open"
-      scrimClassName="cart-scrim"
-      labelledBy="cart-drawer-title"
+      scrimClassName={"cart-scrim"}
+      labelledBy={"cart-drawer-title"}
     >
       <div className="panel-head">
         <div>
-          <span className="overline">Your order</span>
+          <span className="overline">{t("Your order")}</span>
           <h2 id="cart-drawer-title">
-            Basket <small>{cart.count}</small>
+            {t("Basket")}
+            <small>{cart.count}</small>
           </h2>
         </div>
-        <button type="button" className="icon-button" onClick={() => cart.setOpen(false)} aria-label="Close basket">
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => cart.setOpen(false)}
+          aria-label={t("Close basket")}
+        >
           <Icon name="close" />
         </button>
       </div>
@@ -36,10 +45,10 @@ export function CartDrawer() {
         {!lines.length ? (
           <div className="empty-state">
             <Icon name="bag" />
-            <h3>Your basket is waiting</h3>
-            <p>Something lovely is only a few taps away.</p>
+            <h3>{t("Your basket is waiting")}</h3>
+            <p>{t("Something lovely is only a few taps away.")}</p>
             <Link href="/shop" className="button button-primary" onClick={() => cart.setOpen(false)}>
-              Browse the bakery
+              {t("Browse the bakery")}
             </Link>
           </div>
         ) : (
@@ -49,7 +58,7 @@ export function CartDrawer() {
                 {p.image ? (
                   <Image src={p.image} alt="" width={88} height={104} style={{ objectPosition: p.imagePosition }} />
                 ) : (
-                  <span className="cart-image-empty missing-image">No image</span>
+                  <span className="cart-image-empty missing-image">{t("No image")}</span>
                 )}
                 <div>
                   <Link href={`/product/${p.slug}`} onClick={() => cart.setOpen(false)}>
@@ -61,7 +70,7 @@ export function CartDrawer() {
                     <button
                       type="button"
                       onClick={() => cart.update(p.id, v.id, line.quantity - 1)}
-                      aria-label="Decrease quantity"
+                      aria-label={t("Decrease quantity")}
                     >
                       <Icon name="minus" />
                     </button>
@@ -69,14 +78,14 @@ export function CartDrawer() {
                     <button
                       type="button"
                       onClick={() => cart.update(p.id, v.id, line.quantity + 1)}
-                      aria-label="Increase quantity"
+                      aria-label={t("Increase quantity")}
                     >
                       <Icon name="plus" />
                     </button>
                   </div>
                 </div>
                 <button type="button" className="text-button" onClick={() => cart.remove(p.id, v.id)}>
-                  Remove
+                  {t("Remove")}
                 </button>
               </div>
             );
@@ -86,15 +95,16 @@ export function CartDrawer() {
       {!!lines.length && (
         <div className="cart-summary">
           <div>
-            <span>Subtotal</span>
+            <span>{t("Subtotal")}</span>
             <strong>{formatMoney(cart.subtotal)}</strong>
           </div>
-          <p>Delivery is calculated at checkout.</p>
+          <p>{t("Delivery is calculated at checkout.")}</p>
           <Link href="/cart" className="button button-secondary" onClick={() => cart.setOpen(false)}>
-            View basket
+            {t("View basket")}
           </Link>
           <Link href="/checkout" className="button button-primary" onClick={() => cart.setOpen(false)}>
-            Checkout <Icon name="arrow" />
+            {t("Checkout")}
+            <Icon name="arrow" />
           </Link>
         </div>
       )}

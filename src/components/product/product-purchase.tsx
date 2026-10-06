@@ -1,4 +1,5 @@
 "use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 import { useEffect, useState } from "react";
 import type { Product } from "@/types";
 import { useCart, useMoney } from "@/components/providers";
@@ -6,6 +7,8 @@ import { Icon } from "@/components/ui/icons";
 import { getDefaultPurchasableVariant, isVariantPurchasable } from "@/features/catalog/availability";
 import { trackCommerceEvent } from "@/lib/analytics/client";
 export function ProductPurchase({ product }: { product: Product }) {
+  const t = useCustomerText("product purchase");
+
   const [variant, setVariant] = useState(getDefaultPurchasableVariant(product)?.id ?? product.variants[0]?.id ?? "");
   const [quantity, setQuantity] = useState(1);
   const cart = useCart();
@@ -14,12 +17,12 @@ export function ProductPurchase({ product }: { product: Product }) {
   useEffect(() => {
     trackCommerceEvent("PRODUCT_VIEWED", { productId: product.id });
   }, [product.id]);
-  if (!selected) return <p className="stock-note">This product does not have an available option.</p>;
+  if (!selected) return <p className="stock-note">{t("This product does not have an available option.")}</p>;
   const unavailable = !isVariantPurchasable(product, selected);
   return (
     <div className="purchase-box">
       <fieldset className="variant-options">
-        <legend>Choose an option</legend>
+        <legend>{t("Choose an option")}</legend>
         {product.variants
           .filter((item) => item.active)
           .map((v) => (
@@ -33,20 +36,24 @@ export function ProductPurchase({ product }: { product: Product }) {
                 onChange={() => setVariant(v.id)}
               />
               <span>{v.name}</span>
-              <b>{v.priceAdjustment ? `+${formatMoney(v.priceAdjustment)}` : "Included"}</b>
+              <b>{v.priceAdjustment ? `+${formatMoney(v.priceAdjustment)}` : t("Included")}</b>
             </label>
           ))}
       </fieldset>
       <div className="purchase-row">
         <div className="quantity large">
-          <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} aria-label="Decrease quantity">
+          <button
+            type="button"
+            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+            aria-label={t("Decrease quantity")}
+          >
             <Icon name="minus" />
           </button>
           <span>{quantity}</span>
           <button
             type="button"
             onClick={() => setQuantity(Math.min(selected.stockQuantity, quantity + 1))}
-            aria-label="Increase quantity"
+            aria-label={t("Increase quantity")}
           >
             <Icon name="plus" />
           </button>
@@ -58,16 +65,18 @@ export function ProductPurchase({ product }: { product: Product }) {
           onClick={() => cart.add(product, variant, quantity)}
         >
           {unavailable
-            ? "Unavailable"
-            : `Add to basket · ${formatMoney((product.price + selected.priceAdjustment) * quantity)}`}
+            ? t("Unavailable")
+            : t("Add to basket · {value1}", {
+                value1: formatMoney((product.price + selected.priceAdjustment) * quantity),
+              })}
         </button>
       </div>
       <p className="stock-note">
         {unavailable
-          ? "This option is currently unavailable."
+          ? t("This option is currently unavailable.")
           : selected.stockQuantity <= product.lowStockThreshold
-            ? `Only ${selected.stockQuantity} left for this bake.`
-            : "Available to add to your basket."}
+            ? t("Only {value1} left for this bake.", { value1: selected.stockQuantity })
+            : t("Available to add to your basket.")}
       </p>
     </div>
   );

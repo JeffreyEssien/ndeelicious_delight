@@ -1,4 +1,5 @@
 "use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 import { type FormEvent, useState } from "react";
 import { Input } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
@@ -17,6 +18,8 @@ const statusStep: Record<string, number> = {
 type TrackedOrder = { order_number: string; status: string; fulfilment: string; updated_at: string };
 
 export function TrackOrder({ initial = "" }: { initial?: string }) {
+  const t = useCustomerText("track order");
+
   const business = useBusinessSettings();
   const [id, setId] = useState(initial);
   const [email, setEmail] = useState("");
@@ -45,15 +48,20 @@ export function TrackOrder({ initial = "" }: { initial?: string }) {
   if (!order)
     return (
       <form className="track-form" onSubmit={submit}>
-        <Input label="Order number" value={id} onChange={(e) => setId(e.target.value)} placeholder="ND-12345678" />
-        <Input label="Email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input
+          label={t("Order number")}
+          value={id}
+          onChange={(e) => setId(e.target.value)}
+          placeholder={t("ND-12345678")}
+        />
+        <Input label={t("Email address")} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         {error && (
           <p className="form-error" role="alert">
-            {error}
+            {t(error)}
           </p>
         )}
         <button type="submit" className="button button-primary" disabled={busy}>
-          {busy ? "Looking…" : "Find my order"} <Icon name="arrow" />
+          {busy ? t("Looking…") : t("Find my order")} <Icon name="arrow" />
         </button>
       </form>
     );
@@ -65,13 +73,19 @@ export function TrackOrder({ initial = "" }: { initial?: string }) {
           <Icon name="check" />
         </span>
         <div>
-          <span className="overline">Order {order.order_number}</span>
+          <span className="overline">
+            {t("Order ")}
+            {order.order_number}
+          </span>
           <h2>
             {order.status === "PENDING_PAYMENT"
-              ? "Your order is awaiting payment."
-              : `Your order is ${order.status.toLowerCase().replaceAll("_", " ")}.`}
+              ? t("Your order is awaiting payment.")
+              : t("Your order is {value1}.", { value1: t(order.status.toLowerCase().replaceAll("_", " ")) })}
           </h2>
-          <p>{order.fulfilment === "pickup" ? "Pickup" : "Delivery"} details will be confirmed by the bakery.</p>
+          <p>
+            {order.fulfilment === "pickup" ? t("Pickup") : t("Delivery")}{" "}
+            {t("details will be confirmed by the bakery.")}
+          </p>
         </div>
       </div>
       <div className="tracking-steps">
@@ -79,10 +93,11 @@ export function TrackOrder({ initial = "" }: { initial?: string }) {
           <div className={index < current ? "done" : index === current ? "current" : ""} key={stage}>
             <span>{index < current ? <Icon name="check" /> : index + 1}</span>
             <div>
-              <b>{stage}</b>
+              <b>{t(stage)}</b>
               {index === current && (
                 <small>
-                  Updated {new Date(order.updated_at).toLocaleString(business.locale, { timeZone: business.timezone })}
+                  {t("Updated")}
+                  {new Date(order.updated_at).toLocaleString(business.locale, { timeZone: business.timezone })}
                 </small>
               )}
             </div>
@@ -90,7 +105,7 @@ export function TrackOrder({ initial = "" }: { initial?: string }) {
         ))}
       </div>
       <button type="button" className="text-button" onClick={() => setOrder(null)}>
-        Track a different order
+        {t("Track a different order")}
       </button>
     </div>
   );

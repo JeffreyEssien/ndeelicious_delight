@@ -1,12 +1,18 @@
+import { getCustomerText } from "@/lib/customer-text";
 import { whatsappUrl } from "@/lib/contact";
 import type { Metadata } from "next";
 import { ContactForm } from "@/components/forms/contact-form";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getBusinessSettings, getStorefrontContent } from "@/lib/data/settings";
 
-export const metadata: Metadata = { title: "Contact", alternates: { canonical: "/contact" } };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getCustomerText("page titles");
+  return { title: t("Contact"), alternates: { canonical: "/contact" } };
+}
 
 export default async function Page() {
+  const t = await getCustomerText("Page: contact");
+
   const [content, business] = await Promise.all([getStorefrontContent(), getBusinessSettings()]);
   const phoneHref = business.phone.replace(/\D/g, "");
   const whatsapp = whatsappUrl(business.whatsapp);
@@ -24,31 +30,31 @@ export default async function Page() {
         <div className="contact-details">
           {business.contactEmail && (
             <div>
-              <span>Email</span>
+              <span>{t("Email")}</span>
               <a href={`mailto:${business.contactEmail}`}>{business.contactEmail}</a>
             </div>
           )}
           {business.phone && (
             <div>
-              <span>Phone</span>
+              <span>{t("Phone")}</span>
               <a href={`tel:+${phoneHref}`}>{business.phone}</a>
             </div>
           )}
           {whatsapp && (
             <div>
-              <span>WhatsApp</span>
-              <a href={whatsapp}>Chat with us on WhatsApp</a>
+              <span>{t("WhatsApp")}</span>
+              <a href={whatsapp}>{t("Chat with us on WhatsApp")}</a>
             </div>
           )}
           {business.openingHours && (
             <div>
-              <span>Bakery hours</span>
+              <span>{t("Bakery hours")}</span>
               <p>{business.openingHours}</p>
             </div>
           )}
           {location && (
             <div>
-              <span>Location</span>
+              <span>{t("Location")}</span>
               <p>{location}</p>
             </div>
           )}

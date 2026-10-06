@@ -1,3 +1,4 @@
+import { getCustomerText } from "@/lib/customer-text";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { ProductGrid } from "@/components/product/product-grid";
@@ -5,8 +6,13 @@ import { ContentLines } from "@/components/ui/content-lines";
 import { getProducts } from "@/lib/data/catalog";
 import { getStorefrontContent } from "@/lib/data/settings";
 
-export const metadata: Metadata = { title: "Ready to bake", alternates: { canonical: "/ready-to-bake" } };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getCustomerText("page titles");
+  return { title: t("Ready to bake"), alternates: { canonical: "/ready-to-bake" } };
+}
 export default async function Page() {
+  const t = await getCustomerText("Page: ready-to-bake");
+
   const [products, content] = await Promise.all([getProducts(), getStorefrontContent()]);
   const page = content.readyToBake;
   const items = products.filter((product) => product.category === "READY_TO_BAKE");
@@ -26,7 +32,7 @@ export default async function Page() {
             alt={page.hero.imageAlt ?? ""}
             fill
             priority
-            sizes="(max-width:800px) 100vw, 50vw"
+            sizes={"(max-width:800px) 100vw, 50vw"}
           />
         </div>
       </section>
@@ -37,7 +43,11 @@ export default async function Page() {
             <h2>{page.section.headline}</h2>
           </div>
         </div>
-        {items.length ? <ProductGrid items={items} /> : <p>No ready-to-bake products are currently published.</p>}
+        {items.length ? (
+          <ProductGrid items={items} />
+        ) : (
+          <p>{t("No ready-to-bake products are currently published.")}</p>
+        )}
         <div className="instruction-grid">
           {page.steps.map((step, index) => (
             <div key={step.title}>
@@ -50,11 +60,12 @@ export default async function Page() {
       </section>
       {Boolean(page.stockists?.length) && (
         <section className="site-container section">
-          <span className="overline">Available across Halifax HRM</span>
-          <h2>Find us in stores</h2>
+          <span className="overline">{t("Available across Halifax HRM")}</span>
+          <h2>{t("Find us in stores")}</h2>
           <p>
-            Meat pies, chicken pies and beef sausage rolls, frozen and ready to bake. Contact each store for current
-            stock, prices and opening hours.
+            {t(
+              "Meat pies, chicken pies and beef sausage rolls, frozen and ready to bake. Contact each store for current stock, prices and opening hours.",
+            )}
           </p>
           <ul>
             {page.stockists?.map((store) => (
@@ -63,7 +74,7 @@ export default async function Page() {
               </li>
             ))}
           </ul>
-          <p>For purchases made in store, contact that retailer with your receipt for support.</p>
+          <p>{t("For purchases made in store, contact that retailer with your receipt for support.")}</p>
         </section>
       )}
     </>

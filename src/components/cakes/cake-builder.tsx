@@ -1,4 +1,5 @@
 "use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import type { CakeConfiguration } from "@/types";
 import type { CakeConfigurationData, CakeOptionType } from "@/types/content";
@@ -43,6 +44,8 @@ export function CakeBuilder({
   initialSelection?: Partial<Pick<CakeConfiguration, "occasion" | "size" | "flavour" | "filling" | "design">>;
   budgetPreset?: { title: string; body: string };
 }) {
+  const t = useCustomerText("cake builder");
+
   const formatMoney = useMoney();
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState(initial);
@@ -111,7 +114,7 @@ export function CakeBuilder({
     ];
     if (step === 7) return true;
     if (step === 8 && config.deliveryDate < minDate) {
-      setError(`Please choose a date at least ${configuration.leadTimeHours} hours from now.`);
+      setError(t("Please choose a date at least {value1} hours from now.", { value1: configuration.leadTimeHours }));
       return false;
     }
     const key = keys[step];
@@ -163,11 +166,12 @@ export function CakeBuilder({
         <span className="success-mark">
           <Icon name="check" />
         </span>
-        <span className="overline">Request received</span>
-        <h2>Your cake story starts here.</h2>
+        <span className="overline">{t("Request received")}</span>
+        <h2>{t("Your cake story starts here.")}</h2>
         <p>
-          We’ve saved your configuration as <b>{requestNumber}</b>. A baker will review the details and reply with the
-          next step.
+          {t("We’ve saved your configuration as")}
+          <b>{requestNumber}</b>
+          {t(". A baker will review the details and reply with the next step.")}
         </p>
         <button
           type="button"
@@ -180,7 +184,7 @@ export function CakeBuilder({
             localStorage.removeItem("ndee-cake-v1");
           }}
         >
-          Build another cake
+          {t("Build another cake")}
         </button>
       </div>
     );
@@ -195,9 +199,11 @@ export function CakeBuilder({
       <div className="builder-progress">
         <div>
           <span>
-            Step {step + 1} of {steps.length}
+            {t("Step")}
+            {step + 1} {t("of ")}
+            {steps.length}
           </span>
-          <b>{steps[step]}</b>
+          <b>{t(steps[step])}</b>
         </div>
         <div className="progress-track">
           <span style={{ width: `${(step + 1) * 10}%` }} />
@@ -209,7 +215,7 @@ export function CakeBuilder({
               key={s}
               className={i === step ? "active" : i < step ? "done" : ""}
               onClick={() => i < step && setStep(i)}
-              aria-label={`${s}${i < step ? ", completed" : ""}`}
+              aria-label={i < step ? t("{stage}, completed", { stage: t(s) }) : t(s)}
             >
               {i < step ? <Icon name="check" /> : i + 1}
             </button>
@@ -218,11 +224,11 @@ export function CakeBuilder({
       </div>
       <div className="builder-layout">
         <div className="builder-stage">
-          <span className="overline">{steps[step]}</span>
+          <span className="overline">{t(steps[step])}</span>
           {step === 0 && (
             <Choice
-              title="What are we celebrating?"
-              subtitle="Choose the occasion that feels closest."
+              title={t("What are we celebrating?")}
+              subtitle={"Choose the occasion that feels closest."}
               values={options("occasion").map((option) => option.name)}
               selected={config.occasion}
               onChoose={(v) => choose("occasion", v)}
@@ -230,8 +236,8 @@ export function CakeBuilder({
           )}
           {step === 1 && (
             <Choice
-              title="How many are we serving?"
-              subtitle="Serving sizes are a guide—extra slices are never a bad idea."
+              title={t("How many are we serving?")}
+              subtitle={"Serving sizes are a guide—extra slices are never a bad idea."}
               values={options("size").map((option) => option.name)}
               details={options("size").map((option) => option.description)}
               prices={options("size").map((option) => option.priceAdjustment)}
@@ -241,8 +247,8 @@ export function CakeBuilder({
           )}
           {step === 2 && (
             <Choice
-              title="Choose your cake flavour"
-              subtitle="Every sponge is baked fresh for your date."
+              title={t("Choose your cake flavour")}
+              subtitle={"Every sponge is baked fresh for your date."}
               values={options("flavour").map((option) => option.name)}
               prices={options("flavour").map((option) => option.priceAdjustment)}
               selected={config.flavour}
@@ -251,8 +257,8 @@ export function CakeBuilder({
           )}
           {step === 3 && (
             <Choice
-              title="Choose a filling"
-              subtitle="The lovely layer between every sponge."
+              title={t("Choose a filling")}
+              subtitle={"The lovely layer between every sponge."}
               values={options("filling").map((option) => option.name)}
               prices={options("filling").map((option) => option.priceAdjustment)}
               selected={config.filling}
@@ -261,8 +267,8 @@ export function CakeBuilder({
           )}
           {step === 4 && (
             <Choice
-              title="Set the design direction"
-              subtitle="We’ll interpret this in our signature considered style."
+              title={t("Set the design direction")}
+              subtitle={"We’ll interpret this in our signature considered style."}
               values={options("design").map((option) => option.name)}
               prices={options("design").map((option) => option.priceAdjustment)}
               selected={config.design}
@@ -271,50 +277,53 @@ export function CakeBuilder({
           )}
           {step === 5 && (
             <div>
-              <h2>What colours are speaking to you?</h2>
-              <p className="stage-intro">Name two or three colours. We’ll balance them beautifully.</p>
+              <h2>{t("What colours are speaking to you?")}</h2>
+              <p className="stage-intro">{t("Name two or three colours. We’ll balance them beautifully.")}</p>
               <Input
-                label="Colour palette"
+                label={t("Colour palette")}
                 value={config.colours}
                 onChange={(e) => choose("colours", e.target.value)}
-                placeholder="e.g. soft pink, ivory and deep berry"
+                placeholder={t("e.g. soft pink, ivory and deep berry")}
               />
             </div>
           )}
           {step === 6 && (
             <div>
-              <h2>Add a cake inscription</h2>
-              <p className="stage-intro">Optional. Short messages fit most beautifully.</p>
+              <h2>{t("Add a cake inscription")}</h2>
+              <p className="stage-intro">{t("Optional. Short messages fit most beautifully.")}</p>
               <Input
-                label="Inscription"
+                label={t("Inscription")}
                 maxLength={45}
                 value={config.inscription}
                 onChange={(e) => choose("inscription", e.target.value)}
-                placeholder="Happy birthday, Amara"
+                placeholder={t("Happy birthday, Amara")}
               />
               <small className="character-count">{config.inscription.length}/45</small>
             </div>
           )}
           {step === 7 && (
             <div>
-              <h2>Show us what inspired you</h2>
-              <p className="stage-intro">Optional. We’ll use your image as a direction, not make an exact copy.</p>
+              <h2>{t("Show us what inspired you")}</h2>
+              <p className="stage-intro">
+                {t("Optional. We’ll use your image as a direction, not make an exact copy.")}
+              </p>
               <label className="upload-zone">
                 <Icon name="upload" />
-                <b>{config.referenceName || "Upload an inspiration image"}</b>
-                <span>JPG, PNG or WebP · up to 5 MB</span>
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={upload} />
+                <b>{config.referenceName || t("Upload an inspiration image")}</b>
+                <span>{t("JPG, PNG or WebP · up to 5 MB")}</span>
+                <input type="file" accept={"image/jpeg,image/png,image/webp"} onChange={upload} />
               </label>
             </div>
           )}
           {step === 8 && (
             <div>
-              <h2>When do you need your cake?</h2>
+              <h2>{t("When do you need your cake?")}</h2>
               <p className="stage-intro">
-                We need at least {configuration.leadTimeHours} hours to make something wonderful.
+                {t("We need at least")}
+                {configuration.leadTimeHours} {t("hours to make something wonderful.")}
               </p>
               <Input
-                label="Collection or delivery date"
+                label={t("Collection or delivery date")}
                 type="date"
                 min={minDate}
                 value={config.deliveryDate}
@@ -322,14 +331,14 @@ export function CakeBuilder({
               />
               <p className="info-note">
                 <Icon name="clock" />
-                Dates remain subject to bakery capacity until confirmed.
+                {t("Dates remain subject to bakery capacity until confirmed.")}
               </p>
             </div>
           )}
           {step === 9 && (
             <div>
-              <h2>Everything look delicious?</h2>
-              <p className="stage-intro">Review your choices before sending them to the bakery.</p>
+              <h2>{t("Everything look delicious?")}</h2>
+              <p className="stage-intro">{t("Review your choices before sending them to the bakery.")}</p>
               <dl className="review-list">
                 {Object.entries(config)
                   .filter(([k, v]) => v && k !== "referenceName")
@@ -341,37 +350,37 @@ export function CakeBuilder({
                   ))}
                 {config.referenceName && (
                   <div>
-                    <dt>Inspiration</dt>
+                    <dt>{t("Inspiration")}</dt>
                     <dd>{config.referenceName}</dd>
                   </div>
                 )}
               </dl>
               <div className="form-stack">
                 <Input
-                  label="Your name"
+                  label={t("Your name")}
                   value={config.customerName}
                   onChange={(e) => choose("customerName", e.target.value)}
                   required
                 />
                 <Input
-                  label="Email address"
+                  label={t("Email address")}
                   type="email"
                   value={config.email}
                   onChange={(e) => choose("email", e.target.value)}
                   required
                 />
                 <Input
-                  label="Phone number"
+                  label={t("Phone number")}
                   type="tel"
                   value={config.phone}
                   onChange={(e) => choose("phone", e.target.value)}
                   required
                 />
                 <Textarea
-                  label="Anything else we should know?"
+                  label={t("Anything else we should know?")}
                   value={config.customerNote}
                   onChange={(e) => choose("customerNote", e.target.value)}
-                  placeholder="Optional notes for our bakers"
+                  placeholder={t("Optional notes for our bakers")}
                   rows={3}
                 />
               </div>
@@ -379,7 +388,7 @@ export function CakeBuilder({
           )}
           {error && (
             <p className="form-error" role="alert">
-              {error}
+              {t(error)}
             </p>
           )}
           <div className="builder-nav">
@@ -392,7 +401,7 @@ export function CakeBuilder({
                   setError("");
                 }}
               >
-                Back
+                {t("Back")}
               </button>
             )}
             <button
@@ -402,11 +411,11 @@ export function CakeBuilder({
               onClick={() => (step === 9 ? submit() : next())}
             >
               {submitting
-                ? "Validating…"
+                ? t("Validating…")
                 : step === 9
                   ? quote
-                    ? "Request your quote"
-                    : "Send cake request"
+                    ? t("Request your quote")
+                    : t("Send cake request")
                   : "Continue"}
               <Icon name="arrow" />
             </button>
@@ -415,61 +424,63 @@ export function CakeBuilder({
         <details className="cake-summary-mobile">
           <summary>
             <span>
-              <small>{quote ? "Starting estimate" : "Estimated total"}</small>
-              <b>{pricing ? formatMoney(pricing) : "—"}</b>
+              <small>{quote ? t("Starting estimate") : t("Estimated total")}</small>
+              <b>{pricing ? formatMoney(pricing) : t("—")}</b>
             </span>
-            <span>{selectionCount} selections · View</span>
+            <span>
+              {selectionCount} {t("selections · View")}
+            </span>
           </summary>
           <dl>
             {config.size && (
               <div>
-                <dt>Size</dt>
+                <dt>{t("Size")}</dt>
                 <dd>{config.size}</dd>
               </div>
             )}
             {config.flavour && (
               <div>
-                <dt>Flavour</dt>
+                <dt>{t("Flavour")}</dt>
                 <dd>{config.flavour}</dd>
               </div>
             )}
             {config.design && (
               <div>
-                <dt>Style</dt>
+                <dt>{t("Style")}</dt>
                 <dd>{config.design}</dd>
               </div>
             )}
           </dl>
         </details>
         <aside className="cake-summary">
-          <span className="overline">Your cake</span>
+          <span className="overline">{t("Your cake")}</span>
           <div className="summary-cake">
             <span>✦</span>
           </div>
           <dl>
             {config.size && (
               <div>
-                <dt>Size</dt>
+                <dt>{t("Size")}</dt>
                 <dd>{config.size}</dd>
               </div>
             )}
             {config.flavour && (
               <div>
-                <dt>Flavour</dt>
+                <dt>{t("Flavour")}</dt>
                 <dd>{config.flavour}</dd>
               </div>
             )}
             {config.design && (
               <div>
-                <dt>Style</dt>
+                <dt>{t("Style")}</dt>
                 <dd>{config.design}</dd>
               </div>
             )}
           </dl>
           <div className="estimate">
-            <span>{quote ? "Starting estimate" : "Estimated total"}</span>
-            <b>{pricing ? formatMoney(pricing) : "—"}</b>
-            <small>{quote ? "Final price follows baker review." : "Final price confirmed after review."}</small>
+            <span>{quote ? t("Starting estimate") : t("Estimated total")}</span>
+            <b>{pricing ? formatMoney(pricing) : t("—")}</b>
+            <small>{quote ? t("Final price follows baker review.") : t("Final price confirmed after review.")}</small>
           </div>
         </aside>
       </div>
@@ -493,6 +504,8 @@ function Choice({
   selected: string;
   onChoose: (v: string) => void;
 }) {
+  const t = useCustomerText("cake builder");
+
   const formatMoney = useMoney();
   return (
     <div>
@@ -509,7 +522,7 @@ function Choice({
             <span className="choice-check">{selected === value && <Icon name="check" />}</span>
             <b>{value}</b>
             {details?.[i] && <small>{details[i]}</small>}
-            {prices && <em>{prices[i] ? `+${formatMoney(prices[i])}` : "Included"}</em>}
+            {prices && <em>{prices[i] ? `+${formatMoney(prices[i])}` : t("Included")}</em>}
           </button>
         ))}
       </div>

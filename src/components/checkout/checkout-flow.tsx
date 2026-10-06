@@ -1,4 +1,5 @@
 "use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -22,6 +23,8 @@ type Info = {
 };
 const provinces = ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"];
 export function CheckoutFlow({ business }: { business: BusinessSettings }) {
+  const t = useCustomerText("checkout flow");
+
   const cart = useCart();
   const products = useProducts();
   const deliveryZones = useDeliveryZones();
@@ -98,7 +101,8 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
       }
       const selectedZone = fulfilment === "delivery" ? deliveryZones.find((item) => item.id === zone) : undefined;
       const minimum = Math.max(business.orderMinimum, selectedZone?.minimumOrder ?? 0);
-      if (cart.subtotal < minimum) found.fulfilment = `Add ${money(minimum - cart.subtotal)} more before continuing.`;
+      if (cart.subtotal < minimum)
+        found.fulfilment = t("Add {value1} more before continuing.", { value1: money(minimum - cart.subtotal) });
       if (Object.keys(found).length) {
         setErrors(found);
         return;
@@ -203,10 +207,10 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
     return (
       <div className="empty-state checkout-empty">
         <Icon name="bag" />
-        <h2>Your basket is empty</h2>
-        <p>Add a treat before starting checkout.</p>
+        <h2>{t("Your basket is empty")}</h2>
+        <p>{t("Add a treat before starting checkout.")}</p>
         <Link href="/shop" className="button button-primary">
-          Browse the bakery
+          {t("Browse the bakery")}
         </Link>
       </div>
     );
@@ -214,10 +218,10 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
     return (
       <div className="empty-state checkout-empty">
         <Icon name="clock" />
-        <h2>Online ordering is paused</h2>
-        <p>Please check back later or contact the bakery for help with an order.</p>
+        <h2>{t("Online ordering is paused")}</h2>
+        <p>{t("Please check back later or contact the bakery for help with an order.")}</p>
         <Link href="/contact" className="button button-primary">
-          Contact the bakery
+          {t("Contact the bakery")}
         </Link>
       </div>
     );
@@ -228,51 +232,52 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
           {["Information", "Fulfilment", "Review"].map((x, i) => (
             <div key={x} className={i === step ? "active" : i < step ? "done" : ""}>
               <span>{i < step ? <Icon name="check" /> : i + 1}</span>
-              <b>{x}</b>
+              <b>{t(x)}</b>
             </div>
           ))}
         </div>
         {step === 0 && (
           <form className="checkout-panel" onSubmit={next}>
-            <span className="overline">Your details</span>
-            <h1>Who is this order for?</h1>
+            <span className="overline">{t("Your details")}</span>
+            <h1>{t("Who is this order for?")}</h1>
             <div className="form-stack">
               <Input
-                label="Full name"
+                label={t("Full name")}
                 autoComplete="name"
                 value={info.name}
-                error={errors.name}
+                error={t(errors.name)}
                 onChange={(e) => set("name", e.target.value)}
               />
               <Input
-                label="Email address"
+                label={t("Email address")}
                 type="email"
                 autoComplete="email"
                 value={info.email}
-                error={errors.email}
+                error={t(errors.email)}
                 onChange={(e) => set("email", e.target.value)}
               />
               <Input
-                label="Phone number"
+                label={t("Phone number")}
                 type="tel"
                 autoComplete="tel"
                 value={info.phone}
-                error={errors.phone}
+                error={t(errors.phone)}
                 onChange={(e) => set("phone", e.target.value)}
                 placeholder="0800 000 0000"
               />
             </div>
             <button className="button button-primary" type="submit">
-              Continue to fulfilment <Icon name="arrow" />
+              {t("Continue to fulfilment")}
+              <Icon name="arrow" />
             </button>
           </form>
         )}
         {step === 1 && (
           <div className="checkout-panel">
-            <span className="overline">Fulfilment</span>
-            <h1>How should we get it to you?</h1>
+            <span className="overline">{t("Fulfilment")}</span>
+            <h1>{t("How should we get it to you?")}</h1>
             {business.deliveryEnabled && !deliveryZones.length && (
-              <p>Delivery is currently unavailable. You can collect your order from the bakery.</p>
+              <p>{t("Delivery is currently unavailable. You can collect your order from the bakery.")}</p>
             )}
             <div className="fulfilment-toggle">
               {canDeliver && (
@@ -285,8 +290,8 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                   }}
                 >
                   <Icon name="truck" />
-                  <b>Delivery</b>
-                  <small>To your Canadian delivery address</small>
+                  <b>{t("Delivery")}</b>
+                  <small>{t("To your Canadian delivery address")}</small>
                 </button>
               )}
               {business.pickupEnabled && (
@@ -299,83 +304,83 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                   }}
                 >
                   <Icon name="bag" />
-                  <b>Pickup</b>
-                  <small>Collect from our bakery</small>
+                  <b>{t("Pickup")}</b>
+                  <small>{t("Collect from our bakery")}</small>
                 </button>
               )}
             </div>
             {errors.fulfilment && (
               <p className="form-error" role="alert">
-                {errors.fulfilment}
+                {t(errors.fulfilment)}
               </p>
             )}
             {fulfilment === "delivery" ? (
               <div className="form-stack">
                 <Select
-                  label="Delivery area"
+                  label={t("Delivery area")}
                   value={zone}
-                  error={errors.zone}
+                  error={t(errors.zone)}
                   onChange={(e) => {
                     setZone(e.target.value);
                     resetCoupon();
                     setErrors((v) => ({ ...v, zone: undefined }));
                   }}
                 >
-                  <option value="">Choose your area</option>
+                  <option value="">{t("Choose your area")}</option>
                   {deliveryZones.map((z) => (
                     <option value={z.id} key={z.id}>
                       {z.name} · {money(z.fee)}
-                      {z.minimumOrder > 0 ? ` · ${money(z.minimumOrder)} minimum` : ""}
+                      {z.minimumOrder > 0 ? t(" · {value1} minimum", { value1: money(z.minimumOrder) }) : ""}
                     </option>
                   ))}
                 </Select>
                 <Input
-                  label="Street address"
+                  label={t("Street address")}
                   autoComplete="street-address"
                   value={info.street}
-                  error={errors.street}
+                  error={t(errors.street)}
                   onChange={(e) => set("street", e.target.value)}
                 />
                 <Input
-                  label="Apartment, suite or unit (optional)"
+                  label={t("Apartment, suite or unit (optional)")}
                   autoComplete="address-line2"
                   value={info.addressLine2}
                   onChange={(e) => set("addressLine2", e.target.value)}
                 />
                 <div className="field-row">
                   <Input
-                    label="City"
+                    label={t("City")}
                     value={info.city}
-                    error={errors.city}
+                    error={t(errors.city)}
                     onChange={(e) => set("city", e.target.value)}
                   />
                   <Select
-                    label="Province or territory"
+                    label={t("Province or territory")}
                     value={info.province}
-                    error={errors.province}
+                    error={t(errors.province)}
                     onChange={(e) => set("province", e.target.value)}
                   >
-                    <option value="">Choose one</option>
+                    <option value="">{t("Choose one")}</option>
                     {provinces.map((province) => (
                       <option key={province}>{province}</option>
                     ))}
                   </Select>
                 </div>
                 <Input
-                  label="Postal code"
+                  label={t("Postal code")}
                   autoComplete="postal-code"
                   value={info.postalCode}
-                  error={errors.postalCode}
+                  error={t(errors.postalCode)}
                   onChange={(e) => set("postalCode", e.target.value.toUpperCase())}
-                  placeholder="A1A 1A1"
+                  placeholder={t("A1A 1A1")}
                 />
                 <Textarea
-                  label="Delivery notes (optional)"
+                  label={t("Delivery notes (optional)")}
                   rows={3}
                   maxLength={500}
                   value={info.notes}
                   onChange={(e) => set("notes", e.target.value)}
-                  placeholder="Gate code, landmark or a helpful note"
+                  placeholder={t("Gate code, landmark or a helpful note")}
                 />
               </div>
             ) : (
@@ -383,27 +388,31 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                 <Icon name="bag" />
                 <div>
                   <h3>{business.businessName}</h3>
-                  <p>{business.address || "Pickup details"} and a collection time will be confirmed with your order.</p>
+                  <p>
+                    {business.address || t("Pickup details")}{" "}
+                    {t("and a collection time will be confirmed with your order.")}
+                  </p>
                 </div>
               </div>
             )}
             <div className="checkout-nav">
               <button type="button" className="button button-ghost" onClick={() => setStep(0)}>
-                Back
+                {t("Back")}
               </button>
               <button type="button" className="button button-primary" onClick={() => next()}>
-                Review order <Icon name="arrow" />
+                {t("Review order")}
+                <Icon name="arrow" />
               </button>
             </div>
           </div>
         )}
         {step === 2 && (
           <div className="checkout-panel">
-            <span className="overline">Final check</span>
-            <h1>Review your order</h1>
+            <span className="overline">{t("Final check")}</span>
+            <h1>{t("Review your order")}</h1>
             <div className="review-contact">
               <div>
-                <span>Contact</span>
+                <span>{t("Contact")}</span>
                 <p>
                   {info.name}
                   <br />
@@ -412,30 +421,30 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                   {info.phone}
                 </p>
                 <button type="button" onClick={() => setStep(0)}>
-                  Edit
+                  {t("Edit")}
                 </button>
               </div>
               <div>
-                <span>{fulfilment === "delivery" ? "Deliver to" : "Collection"}</span>
+                <span>{fulfilment === "delivery" ? t("Deliver to") : t("Collection")}</span>
                 <p>
                   {fulfilment === "delivery"
                     ? `${info.street}${info.addressLine2 ? `, ${info.addressLine2}` : ""}, ${info.city}, ${info.province} ${info.postalCode}`
                     : business.address || business.businessName}
                 </p>
                 <button type="button" onClick={() => setStep(1)}>
-                  Edit
+                  {t("Edit")}
                 </button>
               </div>
             </div>
             <div className="coupon-box">
-              <label htmlFor="coupon">Have a coupon?</label>
+              <label htmlFor={"coupon"}>{t("Have a coupon?")}</label>
               <div>
                 <input
                   id="coupon"
                   value={coupon}
                   disabled={applied}
                   onChange={(e) => setCoupon(e.target.value)}
-                  placeholder="Enter code"
+                  placeholder={t("Enter code")}
                 />
                 <button
                   type="button"
@@ -443,37 +452,39 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                   disabled={couponBusy || applied || !coupon.trim()}
                   onClick={applyCoupon}
                 >
-                  {couponBusy ? "Applying…" : applied ? "Applied ✓" : "Apply"}
+                  {couponBusy ? t("Applying…") : applied ? t("Applied ✓") : "Apply"}
                 </button>
               </div>
-              {couponError && <small role="alert">{couponError}</small>}
+              {couponError && <small role="alert">{t(couponError)}</small>}
               {applied && (
                 <small className="success-text">
-                  {coupon.trim().toUpperCase()} saved you {money(discount)}.
+                  {coupon.trim().toUpperCase()} {t("saved you ")}
+                  {money(discount)}.
                 </small>
               )}
             </div>
             <div className="payment-preview">
               <Icon name="check" />
               <div>
-                <b>Secure payment with Stripe</b>
+                <b>{t("Secure payment with Stripe")}</b>
                 <p>
-                  You’ll continue to Stripe to pay. Your order is confirmed only after Stripe securely verifies the
-                  payment.
+                  {t(
+                    "You’ll continue to Stripe to pay. Your order is confirmed only after Stripe securely verifies the payment.",
+                  )}
                 </p>
               </div>
             </div>
             {errors.submit && (
               <p className="form-error" role="alert">
-                {errors.submit}
+                {t(errors.submit)}
               </p>
             )}
             <div className="checkout-nav">
               <button type="button" className="button button-ghost" onClick={() => setStep(1)}>
-                Back
+                {t("Back")}
               </button>
               <button type="button" className="button button-primary" disabled={busy} onClick={finish}>
-                {busy ? "Opening secure payment…" : "Continue to payment"}
+                {busy ? t("Opening secure payment…") : t("Continue to payment")}
                 <Icon name="arrow" />
               </button>
             </div>
@@ -482,12 +493,12 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
       </section>
       <details className="checkout-summary">
         <summary>
-          <span>Order summary</span>
+          <span>{t("Order summary")}</span>
           <b>{money(total)}</b>
-          <small>Show</small>
+          <small>{t("Show")}</small>
         </summary>
         <div className="checkout-summary-content">
-          <h2>Order summary</h2>
+          <h2>{t("Order summary")}</h2>
           {resolved.map(({ p, v, quantity }) => (
             <div className="checkout-item" key={`${p.id}-${v.id}`}>
               {p.image ? (
@@ -499,12 +510,13 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                   style={{ width: 64, height: 72, objectPosition: p.imagePosition }}
                 />
               ) : (
-                <span className="checkout-image-empty missing-image">No image</span>
+                <span className="checkout-image-empty missing-image">{t("No image")}</span>
               )}
               <span>
                 <b>{p.name}</b>
                 <small>
-                  {v.name} · Qty {quantity}
+                  {v.name} {t("· Qty ")}
+                  {quantity}
                 </small>
               </span>
               <strong>{money((p.price + v.priceAdjustment) * quantity)}</strong>
@@ -512,16 +524,16 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
           ))}
           <dl>
             <div>
-              <dt>Subtotal</dt>
+              <dt>{t("Subtotal")}</dt>
               <dd>{money(cart.subtotal)}</dd>
             </div>
             <div>
-              <dt>{fulfilment === "pickup" ? "Pickup" : "Delivery"}</dt>
-              <dd>{fulfilment === "pickup" ? "Free" : delivery ? money(delivery) : "—"}</dd>
+              <dt>{fulfilment === "pickup" ? t("Pickup") : t("Delivery")}</dt>
+              <dd>{fulfilment === "pickup" ? t("Free") : delivery ? money(delivery) : "—"}</dd>
             </div>
             {applied && (
               <div className="discount-row">
-                <dt>Discount</dt>
+                <dt>{t("Discount")}</dt>
                 <dd>−{money(discount)}</dd>
               </div>
             )}
@@ -532,7 +544,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
               </div>
             )}
             <div className="total-row">
-              <dt>Total</dt>
+              <dt>{t("Total")}</dt>
               <dd>{money(total)}</dd>
             </div>
           </dl>

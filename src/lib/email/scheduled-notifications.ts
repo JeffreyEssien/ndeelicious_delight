@@ -1,3 +1,4 @@
+import { getCustomerEmailText } from "@/lib/customer-text";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { emailFrame, escapeHtml, sendTransactionalEmail } from "./mailer";
 import { getActiveAdminEmails } from "./admin-recipients";
@@ -94,6 +95,7 @@ export async function sendDailyLowStockDigest(db: SupabaseClient) {
 }
 
 export async function sendDueReviewInvitations(db: SupabaseClient) {
+  const { t, frame } = await getCustomerEmailText(db);
   const cutoff = new Date(Date.now() - 12 * 60 * 60_000).toISOString();
   const { data: orders, error } = await db
     .from("orders")
@@ -136,17 +138,18 @@ export async function sendDueReviewInvitations(db: SupabaseClient) {
     const links = invitations
       .map((invitation) => {
         const item = Array.isArray(invitation.order_items) ? invitation.order_items[0] : invitation.order_items;
-        const name = item?.product_name ?? "your purchase";
+        const name = item?.product_name ?? t("your purchase");
         const href = `${getSiteUrl()}/review/${createReviewToken(invitation.id)}`;
-        return `<li style="margin:12px 0"><a href="${href}">Review ${escapeHtml(name)}</a></li>`;
+        return `<li style="margin:12px 0"><a href="${href}">${escapeHtml(t("Review {product}", { product: name }))}</a></li>`;
       })
       .join("");
     const result = await sendTransactionalEmail({
       to: order.email,
-      subject: `How was your order ${order.order_number}?`,
+      subject: t("How was your order {number}?", { number: order.order_number }),
       html: emailFrame(
-        "We’d love your feedback",
-        `<p>Hi ${escapeHtml(order.customer_name)}, thank you for choosing us. These private links verify your purchase and can each be used once:</p><ul>${links}</ul><p>Your review will be checked before it appears publicly.</p>`,
+        t("We’d love your feedback"),
+        `<p>${escapeHtml(t("Hi {name}, thank you for choosing us. These private links verify your purchase and can each be used once:", { name: order.customer_name }))}</p><ul>${links}</ul><p>${escapeHtml(t("Your review will be checked before it appears publicly."))}</p>`,
+        frame,
       ),
     });
     const ids = invitations.map((invitation) => invitation.id);

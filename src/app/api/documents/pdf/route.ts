@@ -1,3 +1,4 @@
+import { getStorefrontContent } from "@/lib/data/settings";
 import { getBusinessSettings } from "@/lib/data/settings";
 import { persistedDocumentToDTO } from "@/lib/documents/dto";
 import { renderDocumentPdf } from "@/lib/documents/pdf";
@@ -15,7 +16,12 @@ export async function GET(request: Request) {
   if (!document) return Response.json({ error: "Document not found." }, { status: 404 });
   const business = await getBusinessSettings();
   const dto = persistedDocumentToDTO(document);
-  const pdf = renderDocumentPdf({ ...dto, business: { ...dto.business, whatsapp: business.whatsapp } });
+  const content = await getStorefrontContent();
+  const pdf = renderDocumentPdf({
+    ...dto,
+    customerText: content.customerText,
+    business: { ...dto.business, whatsapp: business.whatsapp },
+  });
   return new Response(pdf, {
     headers: {
       "content-type": "application/pdf",

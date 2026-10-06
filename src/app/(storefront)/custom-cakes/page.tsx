@@ -1,19 +1,25 @@
+import { getCustomerText } from "@/lib/customer-text";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { CakeBuilder } from "@/components/cakes/cake-builder";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getCakeConfiguration, getStorefrontContent } from "@/lib/data/settings";
 
-export const metadata: Metadata = {
-  title: "Build your custom cake",
-  description: "Create a cake made especially for your celebration.",
-  alternates: { canonical: "/custom-cakes" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getCustomerText("page titles");
+  return {
+    title: t("Build your custom cake"),
+    description: t("Create a cake made especially for your celebration."),
+    alternates: { canonical: "/custom-cakes" },
+  };
+}
 export default async function Page({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const t = await getCustomerText("Page: custom-cakes");
+
   const [content, configuration, params] = await Promise.all([
     getStorefrontContent(),
     getCakeConfiguration(),
@@ -38,10 +44,11 @@ export default async function Page({
             <ContentLines text={hero.headline} />
           </h1>
           <p>
-            {hero.supportingText} Most cakes need at least {configuration.leadTimeHours} hours.
+            {hero.supportingText} {t("Most cakes need at least ")}
+            {configuration.leadTimeHours} {t("hours.")}
           </p>
         </div>
-        <Image src={hero.image ?? ""} alt={hero.imageAlt ?? ""} fill priority sizes="100vw" />
+        <Image src={hero.image ?? ""} alt={hero.imageAlt ?? ""} fill priority sizes={"100vw"} />
       </section>
       <section className="site-container builder-wrap">
         <CakeBuilder

@@ -1,3 +1,5 @@
+import { customerText } from "@/content/customer-text";
+import { CustomerTextProvider } from "@/components/customer-text-provider";
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
@@ -19,7 +21,8 @@ type StoreStyle = CSSProperties & { [key: `--${string}`]: string | number };
 export async function generateMetadata(): Promise<Metadata> {
   await connection();
   const [content, business] = await Promise.all([getStorefrontContent(), getBusinessSettings()]);
-  const title = `${business.businessName} — Custom Cakes & Nigerian-Style Pies`;
+  const t = customerText(content.customerText, "page titles");
+  const title = t("{business} — Custom Cakes & Nigerian-Style Pies", { business: business.businessName });
   const description = content.home.hero.supportingText;
   const image = content.home.hero.image;
   return {
@@ -48,11 +51,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   await connection();
-  const [initialTheme, business, appearance, marketing] = await Promise.all([
+  const [initialTheme, business, appearance, marketing, content] = await Promise.all([
     getStoreTheme(),
     getBusinessSettings(),
     getStoreAppearance(),
     getMarketingExport(),
+    getStorefrontContent(),
   ]);
   const organization = organizationJsonLd({ business, logoUrl: marketing.logoUrl, siteUrl: getSiteUrl() });
   const themeTokens = resolveThemeTokens(initialTheme, appearance);
@@ -73,7 +77,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: serializeJsonLd escapes HTML-significant characters. */}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(organization) }} />
-        {children}
+        <CustomerTextProvider copy={content.customerText}>{children}</CustomerTextProvider>
       </body>
     </html>
   );

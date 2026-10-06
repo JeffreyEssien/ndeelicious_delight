@@ -1,3 +1,4 @@
+import { getCustomerEmailText } from "@/lib/customer-text";
 import { calculateCakeQuote } from "@/features/cakes/pricing";
 import { CommerceError } from "@/features/checkout/pricing";
 import { cakeConfigurationSchema } from "@/validations/cake";
@@ -86,13 +87,15 @@ export async function POST(request: Request) {
       if (referencePath) await service.storage.from("cake-reference-images").remove([referencePath]);
       throw error;
     }
+    const { t, frame } = await getCustomerEmailText(service);
     await Promise.all([
       sendTransactionalEmail({
         to: customerEmail,
-        subject: `Cake request ${requestNumber} received`,
+        subject: t("Cake request {number} received", { number: requestNumber }),
         html: emailFrame(
-          "Your cake request is with us",
-          `<p>Thank you, ${escapeHtml(parsed.data.customerName)}. We’ll review request <b>${requestNumber}</b> and reply with the next step.</p>`,
+          t("Your cake request is with us"),
+          `<p>${escapeHtml(t("Thank you, {name}. We’ll review request {number} and reply with the next step.", { name: parsed.data.customerName, number: requestNumber }))}</p>`,
+          frame,
         ),
       }),
       sendEmailToActiveAdmins(service, {

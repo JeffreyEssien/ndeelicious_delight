@@ -1,9 +1,12 @@
 "use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 import { type FormEvent, useState } from "react";
 import { Input, Select, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 
 export function ContactForm() {
+  const t = useCustomerText("contact form");
+
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -33,34 +36,34 @@ export function ContactForm() {
         <span className="success-mark">
           <Icon name="check" />
         </span>
-        <h2>Your note is with us.</h2>
-        <p>We’ll reply within one bakery day.</p>
+        <h2>{t("Your note is with us.")}</h2>
+        <p>{t("We’ll reply within one bakery day.")}</p>
         <button type="button" className="button button-secondary" onClick={() => setDone(false)}>
-          Send another message
+          {t("Send another message")}
         </button>
       </div>
     );
   return (
     <form className="form-stack contact-form" onSubmit={submit}>
       <div className="field-row">
-        <Input label="Your name" name="name" required />
-        <Input label="Email address" name="email" type="email" required />
+        <Input label={t("Your name")} name="name" required />
+        <Input label={t("Email address")} name="email" type="email" required />
       </div>
-      <Input label="Phone number (optional)" name="phone" type="tel" />
-      <Select label="What can we help with?" name="subject">
-        <option>General question</option>
-        <option>Existing order</option>
-        <option>Custom cake</option>
-        <option>Corporate order</option>
+      <Input label={t("Phone number (optional)")} name="phone" type="tel" />
+      <Select label={t("What can we help with?")} name="subject">
+        <option>{t("General question")}</option>
+        <option>{t("Existing order")}</option>
+        <option>{t("Custom cake")}</option>
+        <option>{t("Corporate order")}</option>
       </Select>
-      <Textarea label="Your message" name="message" rows={6} minLength={10} required />
+      <Textarea label={t("Your message")} name="message" rows={6} minLength={10} required />
       {error && (
         <p className="form-error" role="alert">
-          {error}
+          {t(error)}
         </p>
       )}
       <button type="submit" className="button button-primary" disabled={busy}>
-        {busy ? "Sending…" : "Send message"}
+        {busy ? t("Sending…") : t("Send message")}
         <Icon name="arrow" />
       </button>
     </form>

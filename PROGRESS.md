@@ -1,13 +1,15 @@
 # Project Progress and TODOs
 
-Last updated: 2026-10-05
-Active development branch: `production/closure-2026-10-05`
-Latest verified application commit: `83c467f`
+Last updated: 2026-10-06
+Active development branch: `develop`
+Latest prior application commit: `b8b126b`
 Baseline commit for the premium pass: `9818e17`
 
 This is the living checkpoint for implementation progress. Update it when a feature, migration, test, deployment prerequisite, or known limitation changes. `implementation.md` remains the full product plan and definition of done.
 
 ## Current checkpoint
+
+Customer wording controls now cover the previously fixed labels and customer emails, with searchable screen groups in Admin → Content. Real admin save/reload/public rendering, local SMTP capture and phone/desktop checks passed; test edits were restored and temporary sessions revoked. See [the wording report](docs/customer-wording.md). Immutable test audit records were retained after automatic approval review rejected deletion. This does not change production launch readiness.
 
 The owner workflow repairs are committed and verified: repeat editing of delivery areas/coupons, working marketing previews and PNG/ZIP downloads, carousel photo navigation to product details, readable quote payment layout, automatically refreshed quote-email status, single-source WhatsApp links in customer pages/emails/PDFs and full product-edit access from inventory. The public canonical/marketing URL is https://www.ndeelicious.com. See [the owner workflow verification report](docs/owner-workflow-fixes.md). Verification passed 113 regression and 58 API tests, TypeScript/build/quality/CSS checks, 28 authenticated admin checks and the real browser workflow smoke. Send quote delivered only to a local TLS mail sink; the accepted quote created a Stripe test Checkout with the correct area fee. Tagged fixtures, sessions and limiter records were removed, carousel settings restored, unrelated owner records retained, and no real payment or external email occurred. Deployment and real inbox/paid journeys remain open.
 

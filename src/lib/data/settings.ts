@@ -1,3 +1,4 @@
+import { mergeCustomerText } from "@/content/customer-text";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import type { StoreTheme } from "@/lib/theme/tokens";
@@ -107,7 +108,10 @@ export function getBusinessSettings(client?: SupabaseClient) {
 
 export function getStorefrontContent(client?: SupabaseClient) {
   return (client ? setting<StorefrontContent>("content", client) : cachedSetting("content")).then((value) =>
-    storefrontContentSchema.parse(value),
+    (() => {
+      const content = storefrontContentSchema.parse(value);
+      return { ...content, customerText: mergeCustomerText(content.customerText) };
+    })(),
   );
 }
 

@@ -1,4 +1,5 @@
 "use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -19,6 +20,8 @@ export function ProductCarousel({
   settings: StoreCarousel;
   preview?: boolean;
 }) {
+  const t = useCustomerText("product carousel");
+
   const chosen = useMemo(
     () =>
       settings.productIds.flatMap((id) => {
@@ -45,10 +48,16 @@ export function ProductCarousel({
       setIndex(resolved);
       if (manual) {
         setUserPaused(true);
-        setAnnouncement(`Product ${resolved + 1} of ${count}: ${chosen[resolved].name}`);
+        setAnnouncement(
+          t("Product {value1} of {value2}: {value3}", {
+            value1: resolved + 1,
+            value2: count,
+            value3: chosen[resolved].name,
+          }),
+        );
       }
     },
-    [chosen, count, settings.loop],
+    [chosen, count, settings.loop, t],
   );
 
   useEffect(() => setIndex((current) => Math.min(current, Math.max(0, count - 1))), [count]);
@@ -77,7 +86,7 @@ export function ProductCarousel({
   return (
     <section
       className={`product-carousel carousel-${settings.style}`}
-      aria-roledescription="carousel"
+      aria-roledescription={"carousel"}
       aria-label={settings.headline}
       ref={region}
       onMouseEnter={() => setHovered(true)}
@@ -114,7 +123,7 @@ export function ProductCarousel({
         <Link
           className="carousel-image"
           href={`/product/${encodeURIComponent(product.slug)}`}
-          aria-label={`View ${product.name}`}
+          aria-label={t("View {value1}", { value1: product.name })}
         >
           {product.image ? (
             <Image
@@ -122,11 +131,11 @@ export function ProductCarousel({
               alt={product.name}
               fill
               priority={preview}
-              sizes="(max-width: 800px) 100vw, 55vw"
+              sizes={"(max-width: 800px) 100vw, 55vw"}
               style={{ objectPosition: product.imagePosition }}
             />
           ) : (
-            <span className="missing-image">No product image uploaded</span>
+            <span className="missing-image">{t("No product image uploaded")}</span>
           )}
           {product.badge && <b className="carousel-badge">{product.badge}</b>}
           <span className="carousel-count">
@@ -134,7 +143,7 @@ export function ProductCarousel({
           </span>
         </Link>
         <article className="carousel-copy">
-          <span>{product.category.replaceAll("_", " ")}</span>
+          <span>{t(product.category.replaceAll("_", " "))}</span>
           <h3>{product.name}</h3>
           <p>{product.shortDescription || product.description}</p>
           {settings.showPrices && (
@@ -145,7 +154,8 @@ export function ProductCarousel({
           )}
           <div className="carousel-actions">
             <Link className="button button-secondary" href={`/product/${product.slug}`}>
-              View details <Icon name="arrow" />
+              {t("View details")}
+              <Icon name="arrow" />
             </Link>
             {settings.showAddToCart && defaultVariant && purchasableVariants.length === 1 && (
               <button
@@ -153,17 +163,17 @@ export function ProductCarousel({
                 type="button"
                 onClick={() => cart.add(product, defaultVariant.id)}
               >
-                Add to basket
+                {t("Add to basket")}
               </button>
             )}
             {settings.showAddToCart && purchasableVariants.length > 1 && (
               <Link className="button button-primary" href={`/product/${product.slug}`}>
-                Choose options
+                {t("Choose options")}
               </Link>
             )}
             {settings.showAddToCart && !purchasableVariants.length && (
               <button className="button button-primary" type="button" disabled>
-                Currently unavailable
+                {t("Currently unavailable")}
               </button>
             )}
           </div>
@@ -174,32 +184,33 @@ export function ProductCarousel({
               type="button"
               onClick={() => go(index - 1)}
               disabled={!settings.loop && index === 0}
-              aria-label="Previous product"
+              aria-label={t("Previous product")}
             >
               ←
             </button>
-            <fieldset className={count > 5 ? "many-slides" : ""} aria-label="Choose a product slide">
+            <fieldset className={count > 5 ? "many-slides" : ""} aria-label={t("Choose a product slide")}>
               {chosen.map((item, itemIndex) => (
                 <button
                   type="button"
                   key={item.id}
                   className={itemIndex === index ? "active" : ""}
                   onClick={() => go(itemIndex)}
-                  aria-label={`Show ${item.name}`}
+                  aria-label={t("Show {value1}", { value1: item.name })}
                   aria-current={itemIndex === index ? "true" : undefined}
                 >
                   <span />
                 </button>
               ))}
             </fieldset>
-            <span className="carousel-mobile-position" aria-hidden="true">
-              {index + 1} of {count}
+            <span className="carousel-mobile-position" aria-hidden={"true"}>
+              {index + 1} {t("of ")}
+              {count}
             </span>
             <button
               type="button"
               onClick={() => go(index + 1)}
               disabled={!settings.loop && index === count - 1}
-              aria-label="Next product"
+              aria-label={t("Next product")}
             >
               →
             </button>
@@ -207,16 +218,16 @@ export function ProductCarousel({
               <button
                 type="button"
                 className="carousel-pause"
-                aria-label={userPaused ? "Play automatic product slides" : "Pause automatic product slides"}
+                aria-label={userPaused ? t("Play automatic product slides") : t("Pause automatic product slides")}
                 onClick={() => setUserPaused((value) => !value)}
               >
-                {userPaused ? "Play" : "Pause"}
+                {userPaused ? t("Play") : t("Pause")}
               </button>
             )}
           </div>
         )}
       </div>
-      <p className="sr-only" aria-live="polite" aria-atomic="true">
+      <p className="sr-only" aria-live={"polite"} aria-atomic={"true"}>
         {announcement}
       </p>
     </section>

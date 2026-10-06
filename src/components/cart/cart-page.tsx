@@ -1,9 +1,12 @@
 "use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 import Image from "next/image";
 import Link from "next/link";
 import { useCart, useMoney, useProducts } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 export function CartPage() {
+  const t = useCustomerText("cart page");
+
   const cart = useCart();
   const products = useProducts();
   const formatMoney = useMoney();
@@ -16,10 +19,10 @@ export function CartPage() {
     return (
       <div className="empty-state cart-empty">
         <Icon name="bag" />
-        <h2>Your basket is empty</h2>
-        <p>There’s plenty still warm on the counter.</p>
+        <h2>{t("Your basket is empty")}</h2>
+        <p>{t("There’s plenty still warm on the counter.")}</p>
         <Link className="button button-primary" href="/shop">
-          Browse the bakery
+          {t("Browse the bakery")}
         </Link>
       </div>
     );
@@ -27,9 +30,9 @@ export function CartPage() {
     <div className="cart-page-grid">
       <div>
         <div className="cart-page-head">
-          <h2>Your treats</h2>
+          <h2>{t("Your treats")}</h2>
           <button type="button" className="text-button" onClick={cart.clear}>
-            Clear basket
+            {t("Clear basket")}
           </button>
         </div>
         {lines.map(({ line, product: p, variant: v }) => {
@@ -44,7 +47,7 @@ export function CartPage() {
                   style={{ objectPosition: p.imagePosition }}
                 />
               ) : (
-                <span className="cart-image-empty missing-image">No image</span>
+                <span className="cart-image-empty missing-image">{t("No image")}</span>
               )}
               <div>
                 <h3>{p.name}</h3>
@@ -61,30 +64,31 @@ export function CartPage() {
                 </div>
               </div>
               <button type="button" className="text-button" onClick={() => cart.remove(p.id, v.id)}>
-                Remove
+                {t("Remove")}
               </button>
             </article>
           );
         })}
       </div>
       <aside className="order-summary">
-        <span className="overline">Order summary</span>
+        <span className="overline">{t("Order summary")}</span>
         <div>
-          <span>Subtotal</span>
+          <span>{t("Subtotal")}</span>
           <b>{formatMoney(cart.subtotal)}</b>
         </div>
         <div>
-          <span>Delivery</span>
-          <span>Calculated next</span>
+          <span>{t("Delivery")}</span>
+          <span>{t("Calculated next")}</span>
         </div>
         <div className="summary-total">
-          <span>Estimated total</span>
+          <span>{t("Estimated total")}</span>
           <b>{formatMoney(cart.subtotal)}</b>
         </div>
         <Link href="/checkout" className="button button-primary">
-          Continue to checkout <Icon name="arrow" />
+          {t("Continue to checkout")}
+          <Icon name="arrow" />
         </Link>
-        <p>Secure checkout · Carefully prepared · Clear delivery updates</p>
+        <p>{t("Secure checkout · Carefully prepared · Clear delivery updates")}</p>
       </aside>
     </div>
   );

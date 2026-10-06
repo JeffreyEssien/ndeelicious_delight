@@ -1,3 +1,5 @@
+"use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 import { whatsappUrl } from "@/lib/contact";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -45,17 +47,19 @@ export type BusinessDocumentData = {
 };
 
 export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocumentData & { showToolbar?: boolean }) {
+  const t = useCustomerText("business document");
+
   const money = (value: number) => formatMoney(value, props.business.currency, props.business.locale);
   const style = { "--document-accent": props.accentColor ?? "var(--berry)" } as CSSProperties;
   return (
     <main className="business-document-wrap">
       {showToolbar && (
         <div className="document-toolbar no-print">
-          <p>This document is generated from the saved database record.</p>
+          <p>{t("This document is generated from the saved database record.")}</p>
           <div className="document-toolbar-actions">
             {props.downloadHref && (
               <a className="button button-secondary" href={props.downloadHref}>
-                Download PDF
+                {t("Download PDF")}
               </a>
             )}
             <PrintDocumentButton />
@@ -66,25 +70,26 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
         <header>
           <BrandLogo />
           <div>
-            <span>{props.kind}</span>
+            <span>{t(props.kind)}</span>
             <h1>{props.number}</h1>
-            <b>{props.status.replaceAll("_", " ")}</b>
+            <b>{t(props.status.replaceAll("_", " "))}</b>
           </div>
         </header>
         <section className="document-parties">
           <div>
-            <span>From</span>
+            <span>{t("From")}</span>
             <b>{props.business.businessName}</b>
             <p>{props.business.address}</p>
             <p>{[props.business.contactEmail, props.business.phone].filter(Boolean).join(" · ")}</p>
             {(props.showBusinessTaxNumber ?? true) && props.business.taxRegistrationNumber && (
               <p>
-                {props.business.taxLabel} no. {props.business.taxRegistrationNumber}
+                {props.business.taxLabel} {t("no. ")}
+                {props.business.taxRegistrationNumber}
               </p>
             )}
           </div>
           <div>
-            <span>{props.kind === "Quote" ? "Prepared for" : "Bill to"}</span>
+            <span>{props.kind === "Quote" ? t("Prepared for") : t("Bill to")}</span>
             <b>{props.customer.name}</b>
             <p>{props.customer.email}</p>
             {props.customer.phone && <p>{props.customer.phone}</p>}
@@ -92,23 +97,23 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
           </div>
           <dl>
             <div>
-              <dt>Issued</dt>
+              <dt>{t("Issued")}</dt>
               <dd>{formatDate(props.issuedAt, props.business.locale, props.business.timezone)}</dd>
             </div>
             {props.validUntil && (
               <div>
-                <dt>Valid until</dt>
+                <dt>{t("Valid until")}</dt>
                 <dd>{formatDate(props.validUntil, props.business.locale, props.business.timezone)}</dd>
               </div>
             )}
             {props.dueAt && (
               <div>
-                <dt>Due</dt>
+                <dt>{t("Due")}</dt>
                 <dd>{formatDate(props.dueAt, props.business.locale, props.business.timezone)}</dd>
               </div>
             )}
             <div>
-              <dt>Currency</dt>
+              <dt>{t("Currency")}</dt>
               <dd>{props.business.currency}</dd>
             </div>
           </dl>
@@ -116,10 +121,10 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
         <table>
           <thead>
             <tr>
-              <th>Description</th>
-              <th>Qty</th>
-              <th>Unit price</th>
-              <th>Amount</th>
+              <th>{t("Description")}</th>
+              <th>{t("Qty")}</th>
+              <th>{t("Unit price")}</th>
+              <th>{t("Amount")}</th>
             </tr>
           </thead>
           <tbody>
@@ -129,7 +134,7 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
                   <b>{line.name}</b>
                   <small>
                     {line.detail}
-                    {(props.showSku ?? true) && line.sku ? ` · SKU ${line.sku}` : ""}
+                    {(props.showSku ?? true) && line.sku ? t(" · SKU {value1}", { value1: line.sku }) : ""}
                   </small>
                 </td>
                 <td>{line.quantity}</td>
@@ -147,18 +152,18 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
           </div>
           <dl>
             <div>
-              <dt>Subtotal</dt>
+              <dt>{t("Subtotal")}</dt>
               <dd>{money(props.subtotal)}</dd>
             </div>
             {!!props.discount && (
               <div>
-                <dt>Discount</dt>
+                <dt>{t("Discount")}</dt>
                 <dd>−{money(props.discount)}</dd>
               </div>
             )}
             {!!props.delivery && (
               <div>
-                <dt>Delivery</dt>
+                <dt>{t("Delivery")}</dt>
                 <dd>{money(props.delivery)}</dd>
               </div>
             )}
@@ -174,24 +179,24 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
               </div>
             )}
             <div className="document-total">
-              <dt>Total</dt>
+              <dt>{t("Total")}</dt>
               <dd>{money(props.total)}</dd>
             </div>
             {(props.showPaymentDetails ?? true) && props.paid !== undefined && (
               <div>
-                <dt>Paid</dt>
+                <dt>{t("Paid")}</dt>
                 <dd>{money(props.paid)}</dd>
               </div>
             )}
             {(props.showPaymentDetails ?? true) && !!props.refunded && (
               <div>
-                <dt>Refunded</dt>
+                <dt>{t("Refunded")}</dt>
                 <dd>−{money(props.refunded)}</dd>
               </div>
             )}
             {props.amountDue !== undefined && props.amountDue > 0 && (
               <div className="document-total">
-                <dt>Amount due</dt>
+                <dt>{t("Amount due")}</dt>
                 <dd>{money(props.amountDue)}</dd>
               </div>
             )}
@@ -200,19 +205,19 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
         <footer>
           {whatsappUrl(props.business.whatsapp) && (
             <p>
-              <a href={whatsappUrl(props.business.whatsapp)}>Chat with us on WhatsApp</a>
+              <a href={whatsappUrl(props.business.whatsapp)}>{t("Chat with us on WhatsApp")}</a>
             </p>
           )}
-          <p>{props.footerMessage || `Thank you for choosing ${props.business.businessName}.`}</p>
+          <p>{props.footerMessage || t("Thank you for choosing {value1}.", { value1: props.business.businessName })}</p>
           <small>
             {props.customized
-              ? "Customized printable copy. The permanent order and payment records are unchanged."
-              : "Generated from the permanent order record. Keep this document for your records."}
+              ? t("Customized printable copy. The permanent order and payment records are unchanged.")
+              : t("Generated from the permanent order record. Keep this document for your records.")}
           </small>
           {props.kind === "Invoice" && props.amountDue && props.payNowUrl && (
             <p className="no-print">
               <a className="button button-primary" href={props.payNowUrl}>
-                Pay now
+                {t("Pay now")}
               </a>
             </p>
           )}

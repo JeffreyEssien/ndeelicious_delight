@@ -11,6 +11,7 @@ type JsonValue = string | JsonObject | JsonValue[];
 type Path = Array<string | number>;
 
 const sectionNames: Record<string, string> = {
+  customerText: "Customer interface and email wording",
   global: "Header, navigation and footer",
   home: "Homepage",
   about: "About page",
@@ -185,6 +186,8 @@ function ContentField({
 
 export function ContentSettings({ initial }: { initial: StorefrontContent }) {
   const [content, setContent] = useState(initial);
+  const [wordingGroup, setWordingGroup] = useState(Object.keys(initial.customerText)[0]);
+  const [wordingSearch, setWordingSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [saveState, setSaveState] = useState<"saved" | "unsaved" | "saving" | "failed">("saved");
   const [section, setSection] = useState(Object.keys(initial)[0]);
@@ -238,12 +241,47 @@ export function ContentSettings({ initial }: { initial: StorefrontContent }) {
             <h2>{sectionNames[section] ?? humanize(section)}</h2>
             <p>These words and links are shown directly to customers.</p>
           </div>
-          <ContentField
-            name={section}
-            value={content[section as keyof StorefrontContent] as JsonValue}
-            path={[section]}
-            onChange={update}
-          />
+          {section === "customerText" ? (
+            <>
+              <label className="field">
+                Screen or email group
+                <select value={wordingGroup} onChange={(event) => setWordingGroup(event.target.value)}>
+                  {Object.keys(content.customerText).map((group) => (
+                    <option key={group} value={group}>
+                      {humanize(group)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Input
+                label="Find wording in this group"
+                value={wordingSearch}
+                onChange={(event) => setWordingSearch(event.target.value)}
+              />
+              <p>
+                Keep placeholders such as {"{value1}"} in the text. They insert customer and order details
+                automatically.
+              </p>
+              {Object.entries(content.customerText[wordingGroup] ?? {})
+                .filter(([key, value]) => `${key} ${value}`.toLowerCase().includes(wordingSearch.toLowerCase()))
+                .map(([key, value]) => (
+                  <ContentField
+                    key={key}
+                    name={key}
+                    value={value}
+                    path={["customerText", wordingGroup, key]}
+                    onChange={update}
+                  />
+                ))}
+            </>
+          ) : (
+            <ContentField
+              name={section}
+              value={content[section as keyof StorefrontContent] as JsonValue}
+              path={[section]}
+              onChange={update}
+            />
+          )}
         </section>
       </div>
       <div className="admin-save-bar content-save-bar">

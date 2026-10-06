@@ -1,15 +1,21 @@
+import { getCustomerText } from "@/lib/customer-text";
 import type { Metadata } from "next";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getDeliveryZones } from "@/lib/data/catalog";
 import { getBusinessSettings, getStorefrontContent } from "@/lib/data/settings";
 import { formatMoney } from "@/lib/format";
 
-export const metadata: Metadata = {
-  title: "Delivery information",
-  alternates: { canonical: "/delivery-information" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getCustomerText("page titles");
+  return {
+    title: t("Delivery information"),
+    alternates: { canonical: "/delivery-information" },
+  };
+}
 
 export default async function Page() {
+  const t = await getCustomerText("Page: delivery-information");
+
   const [deliveryZones, content, business] = await Promise.all([
     getDeliveryZones(),
     getStorefrontContent(),
@@ -41,7 +47,9 @@ export default async function Page() {
                     <small>
                       {zone.estimate}
                       {zone.minimumOrder > 0
-                        ? ` · ${formatMoney(zone.minimumOrder, business.currency, business.locale)} minimum`
+                        ? t(" · {value1} minimum", {
+                            value1: formatMoney(zone.minimumOrder, business.currency, business.locale),
+                          })
                         : ""}
                     </small>
                   </span>
@@ -51,9 +59,9 @@ export default async function Page() {
             ) : (
               <p>
                 {business.deliveryEnabled
-                  ? "No delivery zones are currently active."
-                  : "Delivery ordering is currently paused."}
-                {business.pickupEnabled ? " Pickup remains available." : ""}
+                  ? t("No delivery zones are currently active.")
+                  : t("Delivery ordering is currently paused.")}
+                {business.pickupEnabled ? t(" Pickup remains available.") : ""}
               </p>
             )}
           </div>
@@ -63,7 +71,12 @@ export default async function Page() {
             <article key={step.title}>
               <span>{String(index + 1).padStart(2, "0")}</span>
               <h3>{step.title}</h3>
-              <p>{step.body.replace("current bakery setting", `${business.cakeLeadHours}-hour minimum`)}</p>
+              <p>
+                {step.body.replace(
+                  t("current bakery setting"),
+                  t("{value1}-hour minimum", { value1: business.cakeLeadHours }),
+                )}
+              </p>
             </article>
           ))}
         </div>

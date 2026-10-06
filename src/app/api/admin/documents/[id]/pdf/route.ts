@@ -1,3 +1,4 @@
+import { getStorefrontContent } from "@/lib/data/settings";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 import type { PersistedDocument } from "@/lib/documents/dto";
 import { persistedDocumentToDTO } from "@/lib/documents/dto";
@@ -18,7 +19,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .maybeSingle();
   if (error || !data) return Response.json({ error: "Document not found." }, { status: 404 });
   const document = data as PersistedDocument;
-  return new Response(renderDocumentPdf(persistedDocumentToDTO(document)), {
+  const content = await getStorefrontContent(auth.db);
+  return new Response(renderDocumentPdf({ ...persistedDocumentToDTO(document), customerText: content.customerText }), {
     headers: {
       "content-type": "application/pdf",
       "content-disposition": `attachment; filename="${document.number}.pdf"`,

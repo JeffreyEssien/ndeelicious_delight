@@ -1864,3 +1864,8 @@ For every feature, ask:
 > Can a real customer use this today without developer intervention?
 
 If the answer is no, the feature is incomplete.
+
+
+## Owner wording controls — 6 October 2026
+
+Customer interface and email wording is now managed in Admin → Content, with screen selection, search and placeholder support. Existing page, business, product and cake-option editors remain the sources for their content. Footer labels, checkout/quote copy, tracking/review states, public document/PDF labels, page titles and customer notifications use saved settings with fallback defaults. See [verification and usage](docs/customer-wording.md). Production launch checks remain separate.

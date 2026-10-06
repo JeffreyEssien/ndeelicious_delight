@@ -1,4 +1,5 @@
 "use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 
 import Link from "next/link";
 import { type FormEvent, useMemo, useState } from "react";
@@ -31,6 +32,8 @@ export function Catalogue({
   cakeConfiguration: CakeConfigurationData;
   budgetContent: StorefrontContent["shopBudget"];
 }) {
+  const t = useCustomerText("catalogue");
+
   const products = useProducts();
   const money = useMoney();
   const business = useBusinessSettings();
@@ -99,20 +102,20 @@ export function Catalogue({
         <div className="catalogue-search">
           <Icon name="search" />
           <input
-            aria-label="Search catalogue"
+            aria-label={t("Search catalogue")}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
               reset();
             }}
-            placeholder="Search the bakery"
+            placeholder={t("Search the bakery")}
           />
         </div>
         <button type="button" className="button button-secondary mobile-only" onClick={() => setFilters(true)}>
-          Filters & budget
+          {t("Filters & budget")}
         </button>
         <label className="sort-control">
-          <span>Sort by</span>
+          <span>{t("Sort by")}</span>
           <select
             value={sort}
             onChange={(event) => {
@@ -120,22 +123,27 @@ export function Catalogue({
               reset();
             }}
           >
-            <option value="featured">Featured</option>
-            <option value="newest">Newest</option>
-            <option value="low">Price: low to high</option>
-            <option value="high">Price: high to low</option>
+            <option value="featured">{t("Featured")}</option>
+            <option value="newest">{t("Newest")}</option>
+            <option value="low">{t("Price: low to high")}</option>
+            <option value="high">{t("Price: high to low")}</option>
           </select>
         </label>
       </div>
       <div className="catalogue-layout">
         <aside className={`filters shop-filter-sidebar ${filters ? "is-open" : ""}`}>
           <div className="mobile-only panel-head">
-            <h3>Filters & budget</h3>
-            <button type="button" className="icon-button" onClick={() => setFilters(false)} aria-label="Close filters">
+            <h3>{t("Filters & budget")}</h3>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => setFilters(false)}
+              aria-label={t("Close filters")}
+            >
               <Icon name="close" />
             </button>
           </div>
-          <section className="sidebar-budget" aria-labelledby="sidebar-budget-title">
+          <section className="sidebar-budget" aria-labelledby={"sidebar-budget-title"}>
             <span className="overline">{budgetContent.eyebrow}</span>
             <h3 id="sidebar-budget-title">{budgetContent.headline}</h3>
             <p>{budgetContent.body}</p>
@@ -147,7 +155,7 @@ export function Catalogue({
                 step="0.01"
                 value={budgetInput}
                 placeholder={budgetContent.inputPlaceholder}
-                error={budgetError}
+                error={t(budgetError)}
                 onChange={(event) => setBudgetInput(event.target.value)}
               />
               <Button type="submit">{budgetContent.buttonLabel}</Button>
@@ -185,12 +193,12 @@ export function Catalogue({
             )}
           </section>
           <fieldset>
-            <legend>Category</legend>
+            <legend>{t("Category")}</legend>
             {[
-              ["ALL", "All treats"],
-              ["PASTRIES", "Fresh pastries"],
-              ["READY_TO_BAKE", "Ready to bake"],
-              ["CUSTOM_CAKES", "Celebration cakes"],
+              ["ALL", t("All treats")],
+              ["PASTRIES", t("Fresh pastries")],
+              ["READY_TO_BAKE", t("Ready to bake")],
+              ["CUSTOM_CAKES", t("Celebration cakes")],
             ].map(([value, label]) => (
               <label key={value}>
                 <input
@@ -207,7 +215,7 @@ export function Catalogue({
             ))}
           </fieldset>
           <fieldset>
-            <legend>Availability</legend>
+            <legend>{t("Availability")}</legend>
             <label>
               <input
                 type="checkbox"
@@ -217,17 +225,18 @@ export function Catalogue({
                   reset();
                 }}
               />
-              <span>Available now</span>
+              <span>{t("Available now")}</span>
             </label>
           </fieldset>
           <button type="button" className="button button-primary mobile-only" onClick={() => setFilters(false)}>
-            Show {items.length} products
+            {t("Show")}
+            {items.length} {t("products")}
           </button>
         </aside>
         <div className="catalogue-results">
           <p className="result-count">
-            {items.length} {items.length === 1 ? "treat" : "treats"}
-            {budget !== undefined ? ` within ${money(budget)}` : ""}
+            {items.length} {items.length === 1 ? t("treat") : t("treats")}
+            {budget !== undefined ? t(" within {value1}", { value1: money(budget) }) : ""}
           </p>
           {items.length ? (
             <>
@@ -236,7 +245,7 @@ export function Catalogue({
             </>
           ) : (
             <EmptyState
-              title="Nothing matched that search"
+              title={t("Nothing matched that search")}
               body={
                 closest.length
                   ? `${budgetContent.closestPrefix} ${money(availableProductPrice(closest[0]))}.`
@@ -267,27 +276,32 @@ export function Catalogue({
             />
           )}
           {budget && (
-            <section className="catalogue-cake-budget" aria-labelledby="cake-budget-results-title">
+            <section className="catalogue-cake-budget" aria-labelledby={"cake-budget-results-title"}>
               <div className="section-title-row">
                 <div>
                   <span className="overline">{budgetContent.cakesEyebrow}</span>
-                  <h2 id="cake-budget-results-title">Cake ideas across your budget</h2>
-                  <p>Explore simpler and more detailed builds without spending your whole budget.</p>
+                  <h2 id="cake-budget-results-title">{t("Cake ideas across your budget")}</h2>
+                  <p>{t("Explore simpler and more detailed builds without spending your whole budget.")}</p>
                 </div>
               </div>
               {cakeBands.length ? (
                 cakeBands.map((band) => (
                   <section className="cake-budget-band" key={band.maximum}>
                     <header>
-                      <h3>Ideas up to {money(band.maximum)}</h3>
-                      <span>{band.recommendations.length} combinations</span>
+                      <h3>
+                        {t("Ideas up to ")}
+                        {money(band.maximum)}
+                      </h3>
+                      <span>
+                        {band.recommendations.length} {t("combinations")}
+                      </span>
                     </header>
                     <div className="cake-budget-scroll">
                       {band.recommendations.map((cake) => (
                         <article key={`${band.maximum}-${cake.id}`}>
                           <strong>{money(cake.total)}</strong>
                           <h4>
-                            {cake.selections.size.name} {cake.selections.flavour.name} cake
+                            {cake.selections.size.name} {cake.selections.flavour.name} {t("cake")}
                           </h4>
                           <p>
                             {cake.selections.filling.name} · {cake.selections.design.name}
@@ -313,7 +327,7 @@ export function Catalogue({
           type="button"
           className="scrim mobile-only"
           onClick={() => setFilters(false)}
-          aria-label="Close filters"
+          aria-label={t("Close filters")}
         />
       )}
     </>

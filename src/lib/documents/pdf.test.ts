@@ -41,6 +41,22 @@ const document = {
 };
 
 describe("document PDF", () => {
+  it("uses owner wording in downloadable PDFs without changing amounts", () => {
+    const pdf = renderDocumentPdf({
+      ...document,
+      customerText: {
+        "business document": {
+          Total: "Payable total",
+          Receipt: "Payment receipt",
+          "Page {page} of {pages}": "Sheet {page}/{pages}",
+        },
+      },
+    }).toString("latin1");
+    expect(pdf).toContain("Payable total");
+    expect(pdf).toContain("PAYMENT RECEIPT RCT-100");
+    expect(pdf).toContain("Sheet 1/1");
+    expect(pdf).toContain("$11.30");
+  });
   it("prints a labelled clickable WhatsApp link rather than a raw number", () => {
     const pdf = renderDocumentPdf({
       ...document,

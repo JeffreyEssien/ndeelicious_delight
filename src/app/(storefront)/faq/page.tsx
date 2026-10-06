@@ -1,8 +1,12 @@
+import { getCustomerText } from "@/lib/customer-text";
 import type { Metadata } from "next";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getStorefrontContent } from "@/lib/data/settings";
 
-export const metadata: Metadata = { title: "Frequently asked questions", alternates: { canonical: "/faq" } };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getCustomerText("page titles");
+  return { title: t("Frequently asked questions"), alternates: { canonical: "/faq" } };
+}
 
 export default async function Page() {
   const { faq } = await getStorefrontContent();

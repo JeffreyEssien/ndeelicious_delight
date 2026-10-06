@@ -1,8 +1,12 @@
+import { getCustomerText } from "@/lib/customer-text";
 import type { Metadata } from "next";
 import { Catalogue } from "@/components/product/catalogue";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getCakeConfiguration, getStorefrontContent } from "@/lib/data/settings";
-export const metadata: Metadata = { title: "Pastries", alternates: { canonical: "/shop/pastries" } };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getCustomerText("page titles");
+  return { title: t("Pastries"), alternates: { canonical: "/shop/pastries" } };
+}
 export default async function Page() {
   const [content, cakeConfiguration] = await Promise.all([getStorefrontContent(), getCakeConfiguration()]);
   const header = content.headers.pastries;
@@ -17,7 +21,7 @@ export default async function Page() {
       </header>
       <section className="site-container catalogue-section">
         <Catalogue
-          initialCategory="PASTRIES"
+          initialCategory={"PASTRIES"}
           cakeConfiguration={cakeConfiguration}
           budgetContent={content.shopBudget}
         />

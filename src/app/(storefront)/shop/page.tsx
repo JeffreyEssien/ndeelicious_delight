@@ -1,12 +1,16 @@
+import { getCustomerText } from "@/lib/customer-text";
 import type { Metadata } from "next";
 import { Catalogue } from "@/components/product/catalogue";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getCakeConfiguration, getStorefrontContent } from "@/lib/data/settings";
-export const metadata: Metadata = {
-  title: "Shop the bakery",
-  description: "Browse the live bakery catalogue.",
-  alternates: { canonical: "/shop" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getCustomerText("page titles");
+  return {
+    title: t("Shop the bakery"),
+    description: t("Browse the live bakery catalogue."),
+    alternates: { canonical: "/shop" },
+  };
+}
 export default async function ShopPage({
   searchParams,
 }: {

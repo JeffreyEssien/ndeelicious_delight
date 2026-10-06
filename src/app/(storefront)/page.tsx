@@ -1,3 +1,4 @@
+import { getCustomerText } from "@/lib/customer-text";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -12,6 +13,8 @@ import { getBusinessSettings, getStoreCarousel, getStorefrontContent } from "@/l
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function Home() {
+  const t = await getCustomerText("Page: (storefront)");
+
   const [products, content, business, reviews, carousel] = await Promise.all([
     getProducts(),
     getStorefrontContent(),
@@ -30,10 +33,10 @@ export default async function Home() {
           src={home.hero.image ?? ""}
           alt={home.hero.imageAlt ?? ""}
           fill
-          loading="eager"
-          fetchPriority="high"
+          loading={"eager"}
+          fetchPriority={"high"}
           quality={60}
-          sizes="100vw"
+          sizes={"100vw"}
         />
         <div className="hero-shade" />
         <div className="site-container hero-content">
@@ -65,7 +68,7 @@ export default async function Home() {
         <div className="category-showcase">
           {home.categories.map((category, index) => (
             <Link href={category.href} key={category.href}>
-              <Image src={category.image} alt={category.imageAlt} fill sizes="(max-width:700px) 100vw, 33vw" />
+              <Image src={category.image} alt={category.imageAlt} fill sizes={"(max-width:700px) 100vw, 33vw"} />
               <span>
                 {String(index + 1).padStart(2, "0")} · {category.eyebrow}
               </span>
@@ -92,7 +95,11 @@ export default async function Home() {
               {home.featured.linkLabel} <Icon name="arrow" />
             </Link>
           </div>
-          {featured.length ? <ProductGrid items={featured} /> : <p>No featured products are currently published.</p>}
+          {featured.length ? (
+            <ProductGrid items={featured} />
+          ) : (
+            <p>{t("No featured products are currently published.")}</p>
+          )}
         </div>
       </section>
       <section className="editorial">
@@ -101,7 +108,7 @@ export default async function Home() {
             src={home.cakeFeature.image}
             alt={home.cakeFeature.imageAlt}
             fill
-            sizes="(max-width:800px) 100vw, 50vw"
+            sizes={"(max-width:800px) 100vw, 50vw"}
           />
         </div>
         <div className="editorial-copy">
@@ -138,7 +145,7 @@ export default async function Home() {
               src={home.readyFeature.image}
               alt={home.readyFeature.imageAlt}
               fill
-              sizes="(max-width:800px) 100vw, 50vw"
+              sizes={"(max-width:800px) 100vw, 50vw"}
             />
           </div>
         </div>
@@ -163,15 +170,15 @@ export default async function Home() {
                 <h2>{home.gallery.headline}</h2>
               </div>
               {business.instagramUrl && (
-                <a className="inline-link" href={business.instagramUrl} target="_blank" rel="noreferrer">
-                  Follow along ↗
+                <a className="inline-link" href={business.instagramUrl} target={"_blank"} rel={"noreferrer"}>
+                  {t("Follow along ↗")}
                 </a>
               )}
             </div>
             <div className="social-gallery">
               {gallery.map((image) => (
                 <div key={image.id}>
-                  <Image src={image.url} alt={image.altText} fill sizes="33vw" />
+                  <Image src={image.url} alt={image.altText} fill sizes={"33vw"} />
                 </div>
               ))}
             </div>

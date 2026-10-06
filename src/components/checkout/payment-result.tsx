@@ -1,4 +1,5 @@
 "use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -22,6 +23,8 @@ export function PaymentResult({
   cancelled: boolean;
   content: StorefrontContent["orderSuccess"];
 }) {
+  const t = useCustomerText("payment result");
+
   const cart = useCart();
   const cleared = useRef(false);
   const [payment, setPayment] = useState<PaymentState | null>(null);
@@ -34,13 +37,13 @@ export function PaymentResult({
         cache: "no-store",
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Payment status is unavailable.");
+      if (!response.ok) throw new Error(payload.error ?? t("Payment status is unavailable."));
       setPayment(payload.payment);
       setError("");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Payment status is unavailable.");
+      setError(reason instanceof Error ? reason.message : t("Payment status is unavailable."));
     }
-  }, [sessionId]);
+  }, [sessionId, t]);
 
   useEffect(() => {
     void refresh();
@@ -79,36 +82,42 @@ export function PaymentResult({
   const headline = succeeded
     ? content.headline
     : failed
-      ? "Your payment wasn’t completed."
+      ? t("Your payment wasn’t completed.")
       : cancelled
-        ? "Your order is still awaiting payment."
-        : "We’re confirming your payment.";
+        ? t("Your order is still awaiting payment.")
+        : t("We’re confirming your payment.");
   const body = succeeded
     ? content.body
     : failed
-      ? "No payment was confirmed. You can safely try again; stock and coupon availability will be checked first."
+      ? t("No payment was confirmed. You can safely try again; stock and coupon availability will be checked first.")
       : cancelled
-        ? "Nothing has been charged. Resume the secure checkout whenever you’re ready."
-        : "This usually takes only a few seconds. You can leave this page; Stripe’s signed confirmation will update your order.";
+        ? t("Nothing has been charged. Resume the secure checkout whenever you’re ready.")
+        : t(
+            "This usually takes only a few seconds. You can leave this page; Stripe’s signed confirmation will update your order.",
+          );
 
   return (
     <section className="success-page">
       <span className={`success-mark ${failed || cancelled ? "payment-attention" : ""}`}>
         <Icon name={succeeded ? "check" : "clock"} />
       </span>
-      <span className="overline">{succeeded ? content.eyebrow : "Payment status"}</span>
+      <span className="overline">{succeeded ? content.eyebrow : t("Payment status")}</span>
       <h1>{headline}</h1>
       <p>
         {payment?.orderNumber && (
           <>
-            <b>Order #{payment.orderNumber}</b>:{" "}
+            <b>
+              {t("Order #")}
+              {payment.orderNumber}
+            </b>
+            :{t(" ")}
           </>
         )}
         {body}
       </p>
       {succeeded && (
         <div className="next-steps">
-          <h2>What happens next?</h2>
+          <h2>{t("What happens next?")}</h2>
           {content.steps.map((step, index) => (
             <div key={step.title}>
               <span>{String(index + 1).padStart(2, "0")}</span>
@@ -121,13 +130,13 @@ export function PaymentResult({
         </div>
       )}
       {pending && !cancelled && (
-        <p className="payment-polling" aria-live="polite">
-          Checking for Stripe confirmation…
+        <p className="payment-polling" aria-live={"polite"}>
+          {t("Checking for Stripe confirmation…")}
         </p>
       )}
       {error && (
         <p className="form-error" role="alert">
-          {error}
+          {t(error)}
         </p>
       )}
       <div className="success-actions">
@@ -136,16 +145,16 @@ export function PaymentResult({
             href={`/track-order?order=${encodeURIComponent(payment.orderNumber)}`}
             className="button button-primary"
           >
-            Track this order
+            {t("Track this order")}
           </Link>
         )}
         {(failed || cancelled) && (
           <button type="button" className="button button-primary" disabled={retrying} onClick={retry}>
-            {retrying ? "Preparing payment…" : failed ? "Try payment again" : "Resume secure payment"}
+            {retrying ? t("Preparing payment…") : failed ? t("Try payment again") : t("Resume secure payment")}
           </button>
         )}
         <Link href={succeeded ? "/shop" : "/checkout"} className="button button-secondary">
-          {succeeded ? "Continue shopping" : "Return to checkout"}
+          {succeeded ? t("Continue shopping") : t("Return to checkout")}
         </Link>
       </div>
     </section>

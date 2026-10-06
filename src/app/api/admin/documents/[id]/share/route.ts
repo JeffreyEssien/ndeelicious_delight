@@ -1,3 +1,4 @@
+import { getCustomerEmailText } from "@/lib/customer-text";
 import { z } from "zod";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 import { createAccessToken } from "@/lib/documents/service";
@@ -41,12 +42,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (parsed.data.action === "email") {
     const customer = document.customer_snapshot as { name?: string; email?: string };
     if (!customer.email) return Response.json({ error: "Customer email is unavailable." }, { status: 409 });
+    const { t, frame } = await getCustomerEmailText(auth.db);
+    const kind = t(document.kind === "RECEIPT" ? "Receipt" : document.kind === "INVOICE" ? "Invoice" : "Quote");
     const result = await sendTransactionalEmail({
       to: customer.email,
-      subject: `${document.kind === "RECEIPT" ? "Receipt" : document.kind === "INVOICE" ? "Invoice" : "Quote"} ${document.number}`,
+      subject: t("{kind} {number}", { kind, number: document.number }),
       html: emailFrame(
-        `Your ${document.kind.toLowerCase()} is ready`,
-        `<p>Hi ${escapeHtml(customer.name ?? "there")},</p><p><a href="${url}">View or download ${escapeHtml(document.number)}</a></p>`,
+        t("Your {kind} is ready", { kind: kind.toLowerCase() }),
+        `<p>${escapeHtml(t("Hi {name},", { name: customer.name ?? t("there") }))}</p><p><a href="${url}">${escapeHtml(t("View or download {number}", { number: document.number }))}</a></p>`,
+        frame,
       ),
     });
     if (!result.sent) return Response.json({ error: "The email could not be sent." }, { status: 502 });

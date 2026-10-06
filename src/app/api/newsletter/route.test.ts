@@ -1,3 +1,10 @@
+import { customerText } from "@/content/customer-text";
+vi.mock("@/lib/customer-text", () => ({
+  getCustomerEmailText: async () => ({
+    t: customerText({}, "emails"),
+    frame: { businessName: "Ndeeelicious Delight", footer: "Made with care." },
+  }),
+}));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ upsert: vi.fn(), sendEmail: vi.fn() }));
