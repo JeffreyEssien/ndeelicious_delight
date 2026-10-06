@@ -1,3 +1,6 @@
+import { getCustomerEmailText } from "@/lib/customer-text";
+import { whatsappUrl } from "@/lib/contact";
+import { getBusinessSettings } from "@/lib/data/settings";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
 import { sendEmailToActiveAdmins } from "@/lib/email/admin-recipients";
@@ -88,15 +91,16 @@ async function deliver(db: SupabaseClient, notificationId: string) {
       .eq("id", notification.id);
     return false;
   }
+  const { t, frame } = await getCustomerEmailText(db);
   const summary = (order.order_items ?? [])
     .map(
       (item) =>
-        `<li>${escapeHtml(item.product_name)} · ${escapeHtml(item.variant_name ?? "Standard")} × ${item.quantity}</li>`,
+        `<li>${escapeHtml(item.product_name)} · ${escapeHtml(item.variant_name ?? t("Standard"))} × ${item.quantity}</li>`,
     )
     .join("");
   const fulfilment =
     order.fulfilment === "pickup"
-      ? "Bakery pickup"
+      ? escapeHtml(t("Bakery pickup"))
       : escapeHtml(
           [
             order.delivery_address_snapshot?.street,
@@ -120,12 +124,15 @@ async function deliver(db: SupabaseClient, notificationId: string) {
     receiptUrl = `${getSiteUrl()}/documents/orders/${encodeURIComponent(order.order_number)}/receipt?token=${receipt.token}`;
     receiptDocumentId = receipt.document.id;
   }
+  const business = await getBusinessSettings(db);
+  const whatsapp = whatsappUrl(business.whatsapp);
   const result = await sendTransactionalEmail({
     to: notification.recipient,
-    subject: `${message.subject} · ${order.order_number}`,
+    subject: `${t(message.subject)} · ${order.order_number}`,
     html: emailFrame(
-      message.title,
-      `<p>Hello ${escapeHtml(order.customer_name)},</p><p>${escapeHtml(message.body)}</p><p><b>Order ${escapeHtml(order.order_number)}</b></p><ul>${summary}</ul><p>${fulfilment}</p>${receiptUrl ? `<p><a href="${receiptUrl}">View or download your receipt</a></p>` : ""}`,
+      t(message.title),
+      `<p>${escapeHtml(t("Hello {name},", { name: order.customer_name }))}</p><p>${escapeHtml(t(message.body))}</p><p><b>${escapeHtml(t("Order {number}", { number: order.order_number }))}</b></p><ul>${summary}</ul><p>${fulfilment}</p>${receiptUrl ? `<p><a href="${receiptUrl}">${escapeHtml(t("View or download your receipt"))}</a></p>` : ""}${whatsapp ? `<p><a href="${escapeHtml(whatsapp)}">${escapeHtml(t("Chat with us on WhatsApp"))}</a></p>` : ""}`,
+      frame,
     ),
   });
   const now = new Date().toISOString();

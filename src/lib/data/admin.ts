@@ -1,6 +1,7 @@
 import type { Order } from "@/types";
 import { getDeliveryZones, getProducts } from "./catalog";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getAnalyticsSnapshot } from "./analytics";
 import {
   getBusinessSettings,
   getCakeConfiguration,
@@ -103,7 +104,7 @@ export type AdminOrder = Order & {
   }>;
 };
 
-export async function getAdminData(supabase: SupabaseClient) {
+export async function getAdminData(supabase: SupabaseClient, options: { includeAnalytics?: boolean } = {}) {
   const [
     products,
     zones,
@@ -308,6 +309,7 @@ export async function getAdminData(supabase: SupabaseClient) {
       actorEmail: actor?.email ?? "",
     };
   });
+  const analytics = options.includeAnalytics ? await getAnalyticsSnapshot(supabase, products, zones) : null;
   return {
     products,
     zones,
@@ -323,5 +325,6 @@ export async function getAdminData(supabase: SupabaseClient) {
     carousel,
     marketing,
     auditLogs,
+    analytics,
   };
 }

@@ -3,7 +3,9 @@ import { after } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { constructStripeEvent } from "@/lib/payments/stripe";
 import { processStripeCheckoutEvent } from "@/lib/data/payments";
+import { invalidateStorefrontCache } from "@/lib/cache/storefront";
 import { deliverPendingOrderNotifications, sendPaidOrderAdminNotification } from "@/lib/orders/notifications";
+import { logError, logInfo } from "@/lib/observability/log";
 
 const handledEvents = new Set([
   "checkout.session.completed",
@@ -45,11 +47,12 @@ export async function POST(request: Request) {
         p_failure_reason: refund.failure_reason ?? null,
       });
       if (error) throw error;
+      invalidateStorefrontCache();
       if (refund.status === "succeeded" && data?.orderNumber)
         after(() => deliverPendingOrderNotifications(service, data.orderNumber));
       return Response.json({ received: true });
     } catch (error) {
-      console.error("Stripe refund webhook processing failed", error instanceof Error ? error.message : "unknown");
+      logError("stripe.refund_webhook_failed", error, { eventType: event.type });
       return Response.json({ error: "Webhook processing failed." }, { status: 500 });
     }
   }
@@ -69,7 +72,9 @@ export async function POST(request: Request) {
       amountTotal: session.amount_total,
       currency: session.currency,
     });
+    if (result.processed) invalidateStorefrontCache();
     if (result.becamePaid && result.orderNumber) {
+      logInfo("stripe.payment_completed", { orderNumber: result.orderNumber, eventType: event.type });
       after(async () => {
         const service = createServiceClient();
         await deliverPendingOrderNotifications(service, result.orderNumber as string);
@@ -78,7 +83,7 @@ export async function POST(request: Request) {
     }
     return Response.json({ received: true });
   } catch (error) {
-    console.error("Stripe webhook processing failed", error instanceof Error ? error.message : "unknown");
+    logError("stripe.checkout_webhook_failed", error, { eventType: event.type });
     return Response.json({ error: "Webhook processing failed." }, { status: 500 });
   }
 }

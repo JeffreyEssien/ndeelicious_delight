@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock("@/lib/supabase/service", () => ({ createServiceClient: () => ({ rpc: mocks.rpc }) }));
+vi.mock("@/lib/security/rate-limit", () => ({ enforcePublicRateLimit: vi.fn().mockResolvedValue(null) }));
 
 import { POST } from "./route";
 

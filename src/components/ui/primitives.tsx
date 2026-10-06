@@ -1,3 +1,5 @@
+"use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { Icon } from "./icons";
 import { ModalOverlay } from "./modal-overlay";
@@ -16,11 +18,12 @@ export function Input({
   className = "",
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string }) {
+  const t = useCustomerText("errors");
   return (
     <label className={`field ${className}`}>
       <span>{label}</span>
       <input aria-invalid={!!error} {...props} />
-      {error && <small role="alert">{error}</small>}
+      {error && <small role="alert">{t(error)}</small>}
     </label>
   );
 }
@@ -30,11 +33,12 @@ export function Textarea({
   className = "",
   ...props
 }: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; error?: string }) {
+  const t = useCustomerText("errors");
   return (
     <label className={`field ${className}`}>
       <span>{label}</span>
       <textarea aria-invalid={!!error} {...props} />
-      {error && <small role="alert">{error}</small>}
+      {error && <small role="alert">{t(error)}</small>}
     </label>
   );
 }
@@ -45,13 +49,14 @@ export function Select({
   children,
   ...props
 }: SelectHTMLAttributes<HTMLSelectElement> & { label: string; error?: string }) {
+  const t = useCustomerText("errors");
   return (
     <label className={`field ${className}`}>
       <span>{label}</span>
       <select aria-invalid={!!error} {...props}>
         {children}
       </select>
-      {error && <small role="alert">{error}</small>}
+      {error && <small role="alert">{t(error)}</small>}
     </label>
   );
 }
@@ -65,7 +70,7 @@ export function Badge({
   return <span className={`badge badge-${tone}`}>{children}</span>;
 }
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <span className={`skeleton ${className}`} aria-hidden="true" />;
+  return <span className={`skeleton ${className}`} aria-hidden={"true"} />;
 }
 export function EmptyState({ title, body, action }: { title: string; body: string; action?: React.ReactNode }) {
   return (
@@ -78,12 +83,14 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
   );
 }
 export function ErrorState({ retry }: { retry?: () => void }) {
+  const t = useCustomerText("primitives");
+
   return (
     <div className="empty-state error-state">
       <span>!</span>
-      <h3>Something went wrong</h3>
-      <p>We couldn’t load this just now. Please try again.</p>
-      {retry && <Button onClick={retry}>Try again</Button>}
+      <h3>{t("Something went wrong")}</h3>
+      <p>{t("We couldn’t load this just now. Please try again.")}</p>
+      {retry && <Button onClick={retry}>{t("Try again")}</Button>}
     </div>
   );
 }
@@ -138,10 +145,12 @@ export function Pagination({
   pages: number;
   onChange: (page: number) => void;
 }) {
+  const t = useCustomerText("primitives");
+
   if (pages <= 1) return null;
   return (
-    <nav className="pagination" aria-label="Pagination">
-      <button type="button" disabled={page === 1} onClick={() => onChange(page - 1)} aria-label="Previous page">
+    <nav className="pagination" aria-label={t("Pagination")}>
+      <button type="button" disabled={page === 1} onClick={() => onChange(page - 1)} aria-label={t("Previous page")}>
         ←
       </button>
       {Array.from({ length: pages }, (_, i) => i + 1).map((n) => (
@@ -155,7 +164,7 @@ export function Pagination({
           {n}
         </button>
       ))}
-      <button type="button" disabled={page === pages} onClick={() => onChange(page + 1)} aria-label="Next page">
+      <button type="button" disabled={page === pages} onClick={() => onChange(page + 1)} aria-label={t("Next page")}>
         →
       </button>
     </nav>
@@ -172,12 +181,14 @@ export function Dialog({
   children: React.ReactNode;
   onClose: () => void;
 }) {
+  const t = useCustomerText("primitives");
+
   if (!open) return null;
   return (
-    <ModalOverlay open={open} onClose={onClose} className="dialog" labelledBy="dialog-title">
+    <ModalOverlay open={open} onClose={onClose} className="dialog" labelledBy={"dialog-title"}>
       <div className="panel-head">
         <h2 id="dialog-title">{title}</h2>
-        <button type="button" className="icon-button" onClick={onClose} aria-label="Close dialog">
+        <button type="button" className="icon-button" onClick={onClose} aria-label={t("Close dialog")}>
           <Icon name="close" />
         </button>
       </div>

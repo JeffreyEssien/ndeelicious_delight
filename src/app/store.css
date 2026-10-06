@@ -686,6 +686,22 @@
 .newsletter-success {
   color: #b6d9c9 !important;
 }
+.checkout-policy-links {
+  padding-block: 24px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+.checkout-policy-links nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+.checkout-policy-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
 .footer-base {
   display: flex;
   justify-content: space-between;

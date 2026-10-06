@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
+import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
 const schema = z.object({
   order: z
@@ -9,6 +10,8 @@ const schema = z.object({
   email: z.string().trim().email(),
 });
 export async function GET(request: Request) {
+  const limited = await enforcePublicRateLimit(request, { scope: "order-track", maximum: 30, windowSeconds: 900 });
+  if (limited) return limited;
   const url = new URL(request.url);
   const parsed = schema.safeParse({ order: url.searchParams.get("order"), email: url.searchParams.get("email") });
   if (!parsed.success) return Response.json({ error: "Check your order number and email." }, { status: 400 });

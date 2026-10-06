@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/server", () => ({ after: (callback: () => unknown) => callback() }));
+vi.mock("@/lib/security/rate-limit", () => ({ enforcePublicRateLimit: vi.fn().mockResolvedValue(null) }));
 
 vi.mock("@/lib/data/catalog", () => ({
   getProducts: () => Promise.resolve([product]),

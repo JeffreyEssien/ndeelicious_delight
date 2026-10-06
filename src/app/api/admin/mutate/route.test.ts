@@ -149,8 +149,8 @@ describe("POST /api/admin/mutate inventory operations", () => {
         action: "delivery-zones",
         zones: [
           {
-            id: "11111111-1111-4111-8111-111111111111",
-            name: "Downtown Toronto",
+            id: "new-area",
+            name: "Halifax",
             fee: 1_500,
             minimumOrder: 5_000,
             estimate: "Next day",
@@ -162,6 +162,8 @@ describe("POST /api/admin/mutate inventory operations", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.upsert).toHaveBeenCalledWith([expect.objectContaining({ minimum_order: 5_000, sort_order: 0 })]);
+    const payload = await response.json();
+    expect(payload.savedIds["new-area"]).toBe(mocks.upsert.mock.calls[0][0][0].id);
   });
 
   it("saves coupon eligibility and limits in one database write", async () => {
@@ -170,7 +172,7 @@ describe("POST /api/admin/mutate inventory operations", () => {
         action: "coupons",
         coupons: [
           {
-            id: "11111111-1111-4111-8111-111111111111",
+            id: "new-coupon",
             code: "pastry10",
             type: "PERCENTAGE",
             value: 10,
@@ -192,6 +194,8 @@ describe("POST /api/admin/mutate inventory operations", () => {
     expect(mocks.upsert).toHaveBeenCalledWith([
       expect.objectContaining({ code: "PASTRY10", per_customer_limit: 1, category_ids: expect.any(Array) }),
     ]);
+    const payload = await response.json();
+    expect(payload.savedIds["new-coupon"]).toBe(mocks.upsert.mock.calls[0][0][0].id);
   });
 
   it("rejects malformed storefront content before it reaches the database", async () => {

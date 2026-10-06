@@ -1,6 +1,7 @@
 import { recordAdminAudit } from "@/lib/audit/admin-audit";
 import { readAdminAuditState } from "@/lib/audit/admin-audit-state";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
+import { invalidateStorefrontCache } from "@/lib/cache/storefront";
 import { productRow } from "@/lib/data/product-write";
 import { categorySlug, productInputSchema } from "@/validations/product";
 
@@ -61,5 +62,6 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+  invalidateStorefrontCache();
   return Response.json({ ok: true, id: product.id }, { status: 201 });
 }

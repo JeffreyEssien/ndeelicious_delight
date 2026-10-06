@@ -1,3 +1,10 @@
+import { customerText } from "@/content/customer-text";
+vi.mock("@/lib/customer-text", () => ({
+  getCustomerEmailText: async () => ({
+    t: customerText({}, "emails"),
+    frame: { businessName: "Ndeeelicious Delight", footer: "Made with care." },
+  }),
+}));
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -26,6 +33,7 @@ vi.mock("@/lib/supabase/service", () => ({
     },
   }),
 }));
+vi.mock("@/lib/security/rate-limit", () => ({ enforcePublicRateLimit: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/lib/email/mailer", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/email/mailer")>()),
   sendTransactionalEmail: mocks.sendEmail,

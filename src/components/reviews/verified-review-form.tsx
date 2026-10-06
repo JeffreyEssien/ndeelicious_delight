@@ -1,9 +1,12 @@
 "use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 
 import { type FormEvent, useState } from "react";
 import { Input, Textarea } from "@/components/ui/primitives";
 
 export function VerifiedReviewForm({ token, productName }: { token: string; productName: string }) {
+  const t = useCustomerText("verified review form");
+
   const [rating, setRating] = useState(5);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -27,17 +30,20 @@ export function VerifiedReviewForm({ token, productName }: { token: string; prod
     return (
       <div className="review-invite-card review-invite-success">
         <span className="success-mark">✓</span>
-        <h1>Thank you for your review.</h1>
-        <p>It has been verified against your purchase and will appear after moderation.</p>
+        <h1>{t("Thank you for your review.")}</h1>
+        <p>{t("It has been verified against your purchase and will appear after moderation.")}</p>
       </div>
     );
   return (
     <form className="review-invite-card review-form" onSubmit={submit}>
-      <span className="overline">Verified purchase</span>
-      <h1>How was your {productName}?</h1>
-      <p>Your private invitation confirms that this review comes from a completed order.</p>
+      <span className="overline">{t("Verified purchase")}</span>
+      <h1>
+        {t("How was your ")}
+        {productName}?
+      </h1>
+      <p>{t("Your private invitation confirms that this review comes from a completed order.")}</p>
       <fieldset>
-        <legend>Your rating</legend>
+        <legend>{t("Your rating")}</legend>
         {[1, 2, 3, 4, 5].map((value) => (
           <button
             type="button"
@@ -49,15 +55,15 @@ export function VerifiedReviewForm({ token, productName }: { token: string; prod
           </button>
         ))}
       </fieldset>
-      <Input name="title" label="Review title" required />
-      <Textarea name="body" label="Your review" rows={5} required />
+      <Input name="title" label={t("Review title")} required />
+      <Textarea name="body" label={t("Your review")} rows={5} required />
       {error && (
         <p className="form-error" role="alert">
-          {error}
+          {t(error)}
         </p>
       )}
       <button type="submit" className="button button-primary" disabled={busy}>
-        {busy ? "Submitting…" : "Submit verified review"}
+        {busy ? t("Submitting…") : t("Submit verified review")}
       </button>
     </form>
   );

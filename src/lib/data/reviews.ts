@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { PublicReview } from "@/types/content";
 
-export async function getApprovedReviews(productId?: string, client?: SupabaseClient): Promise<PublicReview[]> {
+async function loadApprovedReviews(productId?: string, client?: SupabaseClient): Promise<PublicReview[]> {
   const db = client ?? createServiceClient();
   let query = db
     .from("reviews")
@@ -23,4 +24,14 @@ export async function getApprovedReviews(productId?: string, client?: SupabaseCl
     createdAt: row.created_at,
     verifiedPurchase: row.verified_purchase,
   }));
+}
+
+const getCachedApprovedReviews = unstable_cache(
+  (productId?: string) => loadApprovedReviews(productId),
+  ["storefront-approved-reviews"],
+  { tags: ["storefront"], revalidate: 300 },
+);
+
+export function getApprovedReviews(productId?: string, client?: SupabaseClient): Promise<PublicReview[]> {
+  return client ? loadApprovedReviews(productId, client) : getCachedApprovedReviews(productId);
 }

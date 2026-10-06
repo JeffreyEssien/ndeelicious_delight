@@ -1,12 +1,18 @@
+import { getCustomerText } from "@/lib/customer-text";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { VerifiedReviewForm } from "@/components/reviews/verified-review-form";
 import { readReviewToken } from "@/lib/reviews/invitations";
 import { createServiceClient } from "@/lib/supabase/service";
 
-export const metadata: Metadata = { title: "Leave a review", robots: { index: false, follow: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getCustomerText("page titles");
+  return { title: t("Leave a review"), robots: { index: false, follow: false } };
+}
 
 export default async function Page({ params }: { params: Promise<{ token: string }> }) {
+  const t = await getCustomerText("Page: Review");
+
   const { token } = await params;
   const invitationId = readReviewToken(token);
   if (!invitationId) notFound();
@@ -29,10 +35,12 @@ export default async function Page({ params }: { params: Promise<{ token: string
         <VerifiedReviewForm token={token} productName={product?.name ?? "purchase"} />
       ) : (
         <div className="review-invite-card">
-          <span className="overline">Review invitation</span>
-          <h1>This link is no longer available.</h1>
+          <span className="overline">{t("Review invitation")}</span>
+          <h1>{t("This link is no longer available.")}</h1>
           <p>
-            Review links are single-use and expire after 90 days. Contact the bakery if you believe this is a mistake.
+            {t(
+              "Review links are single-use and expire after 90 days. Contact the bakery if you believe this is a mistake.",
+            )}
           </p>
         </div>
       )}

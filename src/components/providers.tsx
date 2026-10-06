@@ -5,6 +5,7 @@ import type { BusinessSettings } from "@/types/content";
 import { formatMoney } from "@/lib/format";
 import type { StoreTheme, ThemeTokens } from "@/lib/theme/tokens";
 import { getDefaultPurchasableVariant, getPurchasableVariants } from "@/features/catalog/availability";
+import { trackCommerceEvent } from "@/lib/analytics/client";
 
 type Toast = { id: number; message: string };
 export type { StoreTheme } from "@/lib/theme/tokens";
@@ -102,6 +103,10 @@ export function Providers({
                 },
               ];
         });
+        trackCommerceEvent("ADD_TO_CART", {
+          productId: product.id,
+          metadata: { variantId: selectedVariantId, quantity: Math.min(limit, Math.max(1, quantity)) },
+        });
         notify("Added to your basket.");
       },
       update(productId, variantId, quantity) {
@@ -120,6 +125,7 @@ export function Providers({
       },
       remove(productId, variantId) {
         setLines((v) => v.filter((l) => !(l.productId === productId && l.variantId === variantId)));
+        trackCommerceEvent("REMOVE_FROM_CART", { productId, metadata: { variantId } });
         notify("Removed from your basket.");
       },
       clear() {

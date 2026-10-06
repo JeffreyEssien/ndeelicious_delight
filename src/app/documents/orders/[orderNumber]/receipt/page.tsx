@@ -1,3 +1,4 @@
+import { getBusinessSettings } from "@/lib/data/settings";
 import { notFound } from "next/navigation";
 import { BusinessDocument } from "@/components/documents/business-document";
 import { persistedDocumentToDTO } from "@/lib/documents/dto";
@@ -11,9 +12,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   const { token = "" } = await searchParams;
   const document = await resolveAccessToken(createServiceClient(), token);
   if (document?.kind !== "RECEIPT") notFound();
+  const business = await getBusinessSettings();
+  const dto = persistedDocumentToDTO(document);
   return (
     <BusinessDocument
-      {...persistedDocumentToDTO(document)}
+      {...dto}
+      business={{ ...dto.business, whatsapp: business.whatsapp }}
       downloadHref={`/api/documents/pdf?token=${encodeURIComponent(token)}`}
     />
   );

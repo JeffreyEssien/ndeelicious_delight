@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminCakeRequest, AdminCategory, AdminCoupon, AdminReview } from "@/lib/data/admin";
 import type { Product } from "@/types";
@@ -16,6 +16,7 @@ async function mutate(body: unknown) {
 }
 
 export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
+  const router = useRouter();
   const { currency } = useBusinessSettings();
   const [items, setItems] = useState(initial);
   const [selected, setSelected] = useState(initial[0]);
@@ -24,6 +25,15 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
   const [busy, setBusy] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "changed" | "saving" | "queued" | "error">("idle");
   const notify = useToast();
+  useEffect(() => {
+    setItems(initial);
+    setSelected((current) => initial.find((item) => item.id === current?.id) ?? initial[0]);
+  }, [initial]);
+  useEffect(() => {
+    if (!["PENDING", "SENDING"].includes(selected?.quoteDelivery?.status ?? "")) return;
+    const timer = window.setInterval(() => router.refresh(), 4000);
+    return () => window.clearInterval(timer);
+  }, [router, selected?.quoteDelivery?.status]);
   if (!selected) return <EmptyState title="No cake requests" body="New customer requests will appear here." />;
   async function save() {
     if (busy) return;
@@ -262,7 +272,12 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
           <p className="admin-inline-state" role="status">
             {saveState === "changed" && "Unsaved quote amount"}
             {saveState === "saving" && "Issuing and emailing quote…"}
-            {saveState === "queued" && "Quote saved. Email queued for delivery."}
+            {saveState === "queued" &&
+              (selected.quoteDelivery?.status === "SENT"
+                ? "Quote email sent."
+                : selected.quoteDelivery?.status === "FAILED"
+                  ? "Quote saved. Email delivery failed; use Retry quote email."
+                  : "Quote saved. Email queued for delivery.")}
             {saveState === "error" && "Quote was not sent. Try again."}
           </p>
         </div>
@@ -483,6 +498,8 @@ export function Coupons({
     const response = await mutate({ action: "coupons", coupons: items });
     setBusy(false);
     if (response.ok) {
+      const payload = await response.json();
+      setItems((current) => current.map((item) => ({ ...item, id: payload.savedIds?.[item.id] ?? item.id })));
       setSaveState("saved");
       notify("Coupons saved.");
       router.refresh();
@@ -506,7 +523,8 @@ export function Coupons({
         </span>
         <Button
           variant="secondary"
-          onClick={() =>
+          onClick={() => {
+            setSaveState("unsaved");
             setItems((current) => [
               ...current,
               {
@@ -525,8 +543,8 @@ export function Coupons({
                 categoryIds: [],
                 usageCount: 0,
               },
-            ])
-          }
+            ]);
+          }}
         >
           New coupon
         </Button>
@@ -560,7 +578,7 @@ export function Coupons({
             )}
             {items.map((item, index) => (
               <tr key={item.id}>
-                <td>
+                <td data-label="Eligibility">
                   <details className="coupon-restrictions">
                     <summary>
                       {item.productIds.length || item.categoryIds.length ? "Restricted" : "All products"}
@@ -608,15 +626,15 @@ export function Coupons({
                     </small>
                   </details>
                 </td>
-                <td>{item.usageCount}</td>
-                <td>
+                <td data-label="Uses">{item.usageCount}</td>
+                <td data-label="Code">
                   <input
                     aria-label="Coupon code"
                     value={item.code}
                     onChange={(event) => update(index, { code: event.target.value.toUpperCase() })}
                   />
                 </td>
-                <td>
+                <td data-label="Offer">
                   <select
                     aria-label="Coupon type"
                     value={item.type}
@@ -649,49 +667,49 @@ export function Coupons({
                     }
                   />
                 </td>
-                <td>
+                <td data-label="Minimum order (CAD)">
                   <MoneyInput
                     label="Minimum order"
                     value={item.minimumOrder}
                     onChange={(value) => update(index, { minimumOrder: value ?? 0 })}
                   />
                 </td>
-                <td>
+                <td data-label="Maximum discount (CAD)">
                   <MoneyInput
                     label="Maximum discount"
                     value={item.maximumDiscount}
                     onChange={(value) => update(index, { maximumDiscount: value })}
                   />
                 </td>
-                <td>
+                <td data-label="Total usage limit">
                   <OptionalNumber
                     label="Total usage limit"
                     value={item.usageLimit}
                     onChange={(value) => update(index, { usageLimit: value })}
                   />
                 </td>
-                <td>
+                <td data-label="Per customer">
                   <OptionalNumber
                     label="Per customer limit"
                     value={item.perCustomerLimit}
                     onChange={(value) => update(index, { perCustomerLimit: value })}
                   />
                 </td>
-                <td>
+                <td data-label="Starts">
                   <DateTimeInput
                     label="Coupon start"
                     value={item.startsAt}
                     onChange={(startsAt) => update(index, { startsAt })}
                   />
                 </td>
-                <td>
+                <td data-label="Expires">
                   <DateTimeInput
                     label="Coupon expiry"
                     value={item.expiresAt}
                     onChange={(expiresAt) => update(index, { expiresAt })}
                   />
                 </td>
-                <td>
+                <td data-label="Active">
                   <input
                     aria-label="Coupon active"
                     type="checkbox"
@@ -699,7 +717,7 @@ export function Coupons({
                     onChange={(event) => update(index, { active: event.target.checked })}
                   />
                 </td>
-                <td>
+                <td data-label="Actions">
                   {item.id.startsWith("new-") && (
                     <button
                       type="button"
@@ -730,7 +748,7 @@ function MoneyInput({
 }) {
   return (
     <input
-      aria-label={`${label} in naira`}
+      aria-label={`${label} in CAD`}
       type="number"
       min="0"
       value={value === null ? "" : value / 100}

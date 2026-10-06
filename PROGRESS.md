@@ -1,20 +1,41 @@
 # Project Progress and TODOs
 
-Last updated: 2026-09-27
+Last updated: 2026-10-06
 Active development branch: `develop`
+Latest prior application commit: `b8b126b`
 Baseline commit for the premium pass: `9818e17`
 
 This is the living checkpoint for implementation progress. Update it when a feature, migration, test, deployment prerequisite, or known limitation changes. `implementation.md` remains the full product plan and definition of done.
 
 ## Current checkpoint
 
+Customer wording controls now cover the previously fixed labels and customer emails, with searchable screen groups in Admin → Content. Real admin save/reload/public rendering, local SMTP capture and phone/desktop checks passed; test edits were restored and temporary sessions revoked. See [the wording report](docs/customer-wording.md). Immutable test audit records were retained after automatic approval review rejected deletion. This does not change production launch readiness.
+
+The owner workflow repairs are committed and verified: repeat editing of delivery areas/coupons, working marketing previews and PNG/ZIP downloads, carousel photo navigation to product details, readable quote payment layout, automatically refreshed quote-email status, single-source WhatsApp links in customer pages/emails/PDFs and full product-edit access from inventory. The public canonical/marketing URL is https://www.ndeelicious.com. See [the owner workflow verification report](docs/owner-workflow-fixes.md). Verification passed 113 regression and 58 API tests, TypeScript/build/quality/CSS checks, 28 authenticated admin checks and the real browser workflow smoke. Send quote delivered only to a local TLS mail sink; the accepted quote created a Stripe test Checkout with the correct area fee. Tagged fixtures, sessions and limiter records were removed, carousel settings restored, unrelated owner records retained, and no real payment or external email occurred. Deployment and real inbox/paid journeys remain open.
+
+The stockist update passed the full 110-regression/58-functional project gate, 56 final visual/accessibility browser checks and mobile/link smoke checks. The regenerated PDF has ten pages.
+
+The owner supplied an additional Instagram business post identifying frozen Nigerian-style meat pies, chicken pies and beef sausage rolls, plus four stockists in Halifax/Dartmouth. These product descriptions are now included in storefront copy and the regenerated policy pack. The ready-to-bake page links to Kalisimbi Shop, Iyalode African Wholesales Market, Chater Meat Market and Wazobia African Shop. Current stock/prices/hours are referred to each retailer; bakery delivery coverage and cake-only cancellation rules remain separate. Only business/content settings were updated with a private backup; existing catalogue and financial records were preserved.
+
+The owner-approved Merchant policy pack and Halifax business profile are implemented. Wedding cake cancellations require one calendar month notice; other cakes require seven days. Customer cancellation/change-of-mind payments are non-refundable, with mandatory consumer remedies preserved. The five policy documents and nine-page PDF are in [the Merchant documentation folder](docs/merchant-center/README.md). Only existing business/content database settings were updated, with a private pre-update backup; catalogue, inventory and financial records were preserved. City/province/timezone now use Halifax, NS and America/Halifax, and the storefront describes custom cakes and frozen, ready-to-bake Nigerian-style pies using the supplied food-safety statement.
+
+Merchant update verification: `npm run check` passed **110 regression / 58 functional tests**, TypeScript, quality, CSS tokens and production build. The final visual/accessibility browser run passed **56 checks** across seven viewports and four themes. Seven public pages, checkout policy links and the printable document bundle passed content/mobile smoke checks. Actual delivery areas/rates/times, live domain verification and genuine catalogue details remain prerequisites for Merchant submission; no submission or deployment was performed.
+
+Production closure remains **NOT READY**. Remote main `b1d106a` was safely merged into local develop at `8a5301a` before creating the closure branch; existing uncommitted work was preserved. No open PRs were found. Remote application CI still needs a new passing run, and scheduled notifications fail because their GitHub production secrets are empty. See [the production closure audit](docs/production-closure.md) for exact branch SHAs, environment requirements and remaining risks.
+
+On the owner-authorized configured test database, corrected migration `0027` was applied after rollback verification; counts and content hashes for every pre-existing public table were unchanged. The migration closes a reproduced forged-custom-cake inventory bypass and validates linked status on insert/link changes. The expanded rollback suite passed **27 checks**. A separate true two-connection stock race passed with one winner/one rejection and cleanup of its disposable orders/items/reservations. Order count returned to zero, catalogue stock was unchanged, and temporary browser admin sessions/storage files were removed. No Stripe charge or SMTP message was sent.
+
+Production closure verification before the Merchant policy update: `npm run check` passed **108 regression / 58 functional tests**, quality, the 58-token CSS audit, TypeScript and the production build. Full public Playwright passed **167**, skipped **134**; authenticated admin passed **28/28** after fixing a reproduced 320px custom-cake workspace overflow. Stripe test API and SMTP authentication passed read-only verification. Complete paid browser journeys, true quote/document/refund races, durable delivery recovery, production deployment configuration and real devices remain open. Structured logs now omit raw provider messages; browser target safety and SMTP rejected-recipient handling have regression coverage.
+
+The final staged-file check includes newly tracked files that incremental checks had skipped. Two analytics accessibility lint defects and five formatting discrepancies were corrected; the subsequent canonical gate and authenticated 28-check rerun passed. A separate build without `.env.local` passed. The final telemetry-suppressed browser smoke passed seven checks (two admin checks skipped without credentials). All 63 synthetic events from earlier browser runs were removed, preserving the 22 pre-session analytics records with the same content hash. Final read-only verification found zero orders, the original ten admin sessions, zero legacy Supabase Auth sessions and no retained public limiter rows.
+
 The premium UX/system-simplicity pass is implemented through its application and database layers. Theme resolution, carousel agency/availability, maximum-budget discovery, persisted official documents, accepted-quote checkout, and the independent Marketing studio now share canonical domain helpers instead of duplicating financial or availability logic.
 
 Migrations `0022` through `0026` are additive and have been applied to the currently configured Supabase database. Browser E2E remains intentionally open until isolated Supabase/Stripe services and a browser harness are configured; production services must not be used for destructive automated journeys.
 
-Migration `0027_workflow_integrity.sql` is implemented but still needs to be applied and transactionally verified in each environment. It makes custom-cake quote orders inventory-neutral, makes linked order status authoritative, persists document presentation, and adds durable quote-email delivery state.
+Migration `0027_workflow_integrity.sql` is corrected, applied and rollback-verified in the configured owner-authorized test database as of 2026-10-05. It still needs repeat verification in any separate staging/production environment. Durable SMTP delivery and lease recovery remain unverified end to end.
 
-The initial full-stack application is committed on `main`. The current `develop` branch adds:
+The initial full-stack application is committed on `main`. Development work preserved on the current closure branch adds:
 
 - Provider-neutral SMTP transactional email through Gmail-compatible STARTTLS, app-password, or OAuth2 credentials.
 - Customer emails for orders, cake requests, and newsletter sign-ups.
@@ -24,9 +45,15 @@ The initial full-stack application is committed on `main`. The current `develop`
 - Incremental Biome linting and formatting for every changed file, locally and in CI.
 - A clean full-repository Biome lint baseline; the former 82-error/141-warning backlog is resolved.
 
-The Canada commerce, owner-managed storefront settings, complete order lifecycle, immutable admin audit ledger, and search/social metadata are implemented. The active implementation checkpoint is now **G13 · Analytics and monitoring**.
+The Canada commerce, owner-managed storefront settings, complete order lifecycle, immutable admin audit ledger, search/social metadata, analytics, monitoring foundations, performance pass, and accessibility pass are implemented. The active implementation checkpoint is now **G15 · Security and test depth**.
 
 The first-party admin OTP/SMTP security remediation is implemented and verified locally. Migrations `0003` through `0017` are applied to the project's configured Supabase database. Deployment remains blocked on production environment configuration and revocation of legacy Supabase Auth sessions.
+
+G13 is complete at the application and configured-database layers: the dashboard includes a concise 30-day business pulse, the dedicated Analytics workspace progressively exposes financial, customer, product, cake, promotion, fulfilment, inventory, and operational calculations, and structured server error logging is wired through Next.js instrumentation and critical commerce boundaries. Migration `0028_privacy_analytics.sql` was transactionally verified and applied to the currently configured Supabase database; a live application-API event was stored with privacy-safe metadata and then removed.
+
+G14 is complete at the application layer. Public storefront data now uses a five-minute server cache with immediate invalidation after owner mutations, the home LCP image has an exact 1440px candidate and high fetch priority, critical shells include keyboard skip links, and data visualizations have text alternatives. The responsive/axe suite passed at 320px and desktop, and a cache-warm production build under 4G plus 4× CPU throttling measured mobile LCP 0.77s / INP-style interaction latency 152ms / CLS 0 and desktop LCP 2.07s / CLS 0. Authenticated admin and field Core Web Vitals verification remain staging-environment checks under G16.
+
+G15 is active. Durable database-backed abuse protection now covers the public submission, quote, order, tracking, payment-status, document, review, and analytics endpoints. Requester identifiers are HMAC fingerprints rather than stored IP addresses, the limiter is atomic across application instances, and it fails closed when its database dependency is unavailable. Baseline browser security headers are enabled globally, Next.js is patched to 16.3.8, and the production dependency audit reports zero known vulnerabilities. Database integration suites, full browser abuse journeys, and remaining concurrency/payment edge cases are still open.
 
 ## Implemented
 
@@ -43,6 +70,12 @@ The first-party admin OTP/SMTP security remediation is implemented and verified 
 - [x] Replaced the fixed 48-line document PDF with a visually verified, branded, wrapped, multi-page table renderer; saved document layouts, accents, notes, and visibility options now drive downloads and customer copies.
 - [x] Added durable custom-cake quote delivery state with queued/sent/failed visibility, admin retry, interrupted-delivery lease recovery, and status changes only after SMTP succeeds.
 - [x] Made linked order status authoritative for custom cakes and allowed only explicitly marked custom-cake lines to bypass catalogue inventory reservation.
+- [x] Added database-derived admin analytics with rolling comparisons, decision-oriented insights, privacy-preserving aggregate customer reporting, and a concise dashboard summary.
+- [x] Added allow-listed anonymous commerce events that respect Global Privacy Control and never store names, emails, addresses, payment details, or search text.
+- [x] Added structured server error logging through Next.js request instrumentation and critical admin, order, analytics, and Stripe boundaries.
+- [x] Added short-lived, explicitly invalidated storefront data caching, responsive image candidates, keyboard skip links, chart text alternatives, and authenticated admin axe coverage.
+- [x] Added atomic multi-instance public-endpoint rate limiting with privacy-safe requester fingerprints, `429` retry guidance, fail-closed behavior, and service-role-only database access.
+- [x] Added global CSP, permissions, referrer, HSTS, MIME-sniffing, and frame-denial headers; upgraded Next.js to the patched 16.3.8 release.
 
 - [x] Next.js App Router storefront and shared layout.
 - [x] Product catalogue, category pages, product details, cart, and local cart state.
@@ -84,6 +117,20 @@ The first-party admin OTP/SMTP security remediation is implemented and verified 
 - [x] Reworked the owner-facing Delivery, Inventory, Products, Audit Log, Custom Cakes, Settings, and Website Text workspaces for responsive task-focused use; added custom-cake workflow status management and grouped database-backed option editing.
 
 ## Verification status
+
+Verified on 2026-10-02 after the responsive-system CI stabilization:
+
+- `npm run check` — quality, CSS token audit, 93 regression tests, 55 functional tests, strict TypeScript, and the 46-route production build passed.
+- A clean production build with no `.env.local` passed after marking database-backed root metadata and layout rendering as request-time work.
+- The formerly flaky custom-cake builder overflow check passed 21 consecutive runs across all seven configured Playwright viewports.
+- GitHub scheduled notifications still require repository/environment secrets `PRODUCTION_SITE_URL` and `CRON_SECRET`; the workflow exits before dispatch while they are unset.
+- G13 application verification — CSS token and quality checks, 96 regression tests, 57 functional tests, strict TypeScript, and the 47-route production build passed.
+- Migration `0028_privacy_analytics.sql` was rollback-verified and applied on 2026-10-02. RLS was enabled, `service_role` insert was allowed, `anon` insert was denied, and a live `/api/analytics/events` request returned 204, persisted the allow-listed event, and was cleaned up.
+- G14 browser verification — 47 public responsive, interaction, visual-theme, reduced-motion, and axe checks passed at 320px and desktop; 35 environment-gated tokenized/admin checks skipped as designed.
+- G14 throttled production lab — cache-warm mobile measured LCP 0.77s, interaction latency 152ms, and CLS 0; desktop measured LCP 2.07s and CLS 0. Production field metrics remain a launch/staging verification item.
+- G15 security verification — migration `0029_public_rate_limits.sql` passed rollback-only atomic limit and role checks, was applied to the configured database, and a live route check returned 120 expected validation responses followed by one `429`; its exact verification row was then removed.
+- G15 local gate — `npm run check` passed on Next.js 16.3.8 with 99 regression tests, 58 functional tests, strict TypeScript, and the 47-route production build. `npm audit --omit=dev` reports zero known vulnerabilities.
+- G15 production-header smoke check — `/admin/login` returned the configured Content Security Policy, Permissions Policy, Referrer Policy, HSTS, `nosniff`, and frame-denial headers.
 
 Verified locally on 2026-09-19 before introducing the CI files:
 
@@ -139,7 +186,10 @@ CI command ownership:
 
 ## TODO — immediate
 
-- [ ] Apply `db/migrations/0027_workflow_integrity.sql` to each environment, then transactionally verify custom-quote payment, normal inventory reservation, linked cake/order status, document presentation persistence, and quote-email retry.
+- [x] Apply corrected `db/migrations/0027_workflow_integrity.sql` to the owner-authorized configured test environment and run 27 rollback workflow checks plus a true stock reservation race with cleanup.
+- [ ] Repeat 0027 verification in separate staging/production and prove durable quote-email retry/lease recovery with a safe mail sink.
+- [x] Apply `db/migrations/0028_privacy_analytics.sql` to the currently configured database and verify privacy-safe anonymous event ingestion. Repeat when isolated staging and any separate production database are created.
+- [x] Apply `db/migrations/0029_public_rate_limits.sql` to the currently configured database and verify atomic enforcement, RLS/role restrictions, and an application-level `429`. Repeat for isolated staging and any separate production database.
 - [ ] Configure isolated browser-test Supabase and Stripe services, then add the Phase 7 Playwright journeys for themes, mobile, reduced motion, carousel, budget, quote/payment, and immutable receipt workflows.
 - [x] Add admin email and copy-secure-link controls for issued invoices and receipts; generated links create new revocable opaque access tokens.
 - [ ] Add live database integration tests for document immutability, revoked/expired access, revision races, and concurrent quote conversion. Unit/functional coverage is present, but production Supabase is intentionally not used as an automated destructive test target.
@@ -154,6 +204,7 @@ CI command ownership:
 - [ ] Run `npm run admin:bootstrap` in each intended environment after its variables and migration are ready.
 - [ ] Globally revoke existing Supabase Auth admin sessions and correct the Supabase Auth Site URL to an absolute `https://...` URL until every old deployment is retired.
 - [ ] Configure GitHub/Vercel deployment values, then set repository variable `VERCEL_CD_ENABLED=true`.
+- [ ] Configure GitHub production secrets `PRODUCTION_SITE_URL` and `CRON_SECRET` so the scheduled notification workflow can dispatch successfully.
 - [ ] Subscribe each Stripe webhook endpoint to `refund.created`, `refund.updated`, and `refund.failed` in addition to the Checkout Session events before enabling live refunds.
 - [ ] Add branch protection for `main` and `develop`, requiring all four CI jobs.
 - [x] Apply `db/migrations/0003_product_media.sql` to the currently configured Supabase environment before deploying G02 image management.
@@ -175,8 +226,8 @@ Complete these checkpoints in order unless a newly discovered dependency require
 - [x] **G10 · Phases 22–23 — Content and settings:** make saved admin content and centralized business settings drive the storefront.
 - [x] **G11 · Phase 24 — Audit logging:** record sensitive admin changes with before/after values and actor identity.
 - [x] **G12 · Phase 25 — SEO:** add Twitter metadata and Product, Organization, and Breadcrumb structured data.
-- [ ] **G13 · Phase 26 — Analytics and monitoring:** add privacy-conscious commerce events, error monitoring, and structured operational logs.
-- [ ] **G14 · Phases 27–28 — Performance and accessibility:** measure targets, fix material issues, and automate critical accessibility checks.
+- [x] **G13 · Phase 26 — Analytics and monitoring:** add privacy-conscious commerce events, error monitoring, and structured operational logs.
+- [x] **G14 · Phases 27–28 — Performance and accessibility:** measure targets, fix material issues, and automate critical accessibility checks.
 - [ ] **G15 · Phases 29–30 — Security and test depth:** add durable public-endpoint abuse protection, database integration tests, browser E2E, and concurrency/payment edge cases.
 - [ ] **G16 · Phase 31 — Staging:** configure and validate isolated staging services and full customer/admin journeys.
 - [ ] **G17 · Phase 32 — Production content:** replace fallback products, placeholder images, contact details, policies, and delivery data.
@@ -200,7 +251,7 @@ Complete these checkpoints in order unless a newly discovered dependency require
 - [ ] Add browser E2E coverage for admin login, products, inventory, coupons, and order processing.
 - [x] Add Stripe webhook, duplicate event, delayed event, and failed-payment tests.
 - [x] Add coupon expiry, usage-limit, minimum-order, eligibility, per-customer, and out-of-stock race-condition tests.
-- [ ] Add accessibility checks for critical customer and admin journeys.
+- [x] Add accessibility checks for critical customer and admin journeys; the broader end-to-end workflow suite remains open.
 - [x] Add an incremental lint/format policy and CI check for every changed file.
 - [x] Resolve the pre-existing full-repository Biome lint backlog (82 errors and 141 warnings).
 - [ ] Normalize untouched legacy formatting incrementally when those files enter an implementation checkpoint.
@@ -210,9 +261,9 @@ Complete these checkpoints in order unless a newly discovered dependency require
 - [ ] Create and validate separate development, staging, and production Supabase/Stripe/SMTP environments.
 - [ ] Enter owner-approved business contact details, catalogue records, imagery, policy dates, and final editorial copy through admin before launch; runtime fallbacks have been removed.
 - [ ] Confirm the owner-approved province, timezone, delivery areas, tax registration/rates, and CAD catalogue prices in admin before accepting live orders; migration defaults intentionally do not invent these business facts.
-- [ ] Add analytics, error monitoring, and structured logs.
-- [ ] Review rate limiting for a multi-instance production deployment.
-- [ ] Add durable abuse protection for public contact, newsletter, cake-request, and order endpoints.
+- [x] Add analytics, error monitoring, and structured logs.
+- [x] Review rate limiting for a multi-instance production deployment.
+- [x] Add durable abuse protection for public contact, newsletter, cake-request, order, quote, tracking, payment, review, document, and analytics endpoints.
 - [ ] Complete security, privacy, accessibility, and performance audits.
 - [ ] Run database migrations and seed only the intended environment.
 - [ ] Perform the full customer and admin regression checklist from `implementation.md`.

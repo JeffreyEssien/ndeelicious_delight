@@ -1,10 +1,13 @@
 "use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 
 import Image from "next/image";
 import { useState } from "react";
 import type { Product } from "@/types";
 
 export function ProductGallery({ product }: { product: Product }) {
+  const t = useCustomerText("product gallery");
+
   const images = product.images?.length
     ? product.images
     : product.image
@@ -15,7 +18,7 @@ export function ProductGallery({ product }: { product: Product }) {
   if (!selected) {
     return (
       <div className="gallery gallery-empty">
-        <div className="gallery-main missing-image">No product image has been uploaded.</div>
+        <div className="gallery-main missing-image">{t("No product image has been uploaded.")}</div>
       </div>
     );
   }
@@ -28,7 +31,7 @@ export function ProductGallery({ product }: { product: Product }) {
           alt={selected.altText}
           fill
           priority
-          sizes="(max-width:800px) 100vw, 55vw"
+          sizes={"(max-width:800px) 100vw, 55vw"}
           style={{ objectFit: "contain", objectPosition: product.imagePosition }}
         />
       </div>
@@ -39,11 +42,11 @@ export function ProductGallery({ product }: { product: Product }) {
               type="button"
               className={image.id === selected.id ? "active" : ""}
               aria-pressed={image.id === selected.id}
-              aria-label={`View image: ${image.altText}`}
+              aria-label={t("View image: {value1}", { value1: image.altText })}
               onClick={() => setSelectedId(image.id)}
               key={image.id}
             >
-              <Image src={image.url} alt="" fill sizes="100px" />
+              <Image src={image.url} alt="" fill sizes={"100px"} />
             </button>
           ))}
         </div>

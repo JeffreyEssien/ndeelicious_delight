@@ -3,6 +3,7 @@ import { isSameOrigin } from "@/lib/auth/validation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { emailFrame, escapeHtml } from "@/lib/email/mailer";
 import { sendEmailToActiveAdmins } from "@/lib/email/admin-recipients";
+import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(100),
@@ -14,6 +15,8 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
+  const limited = await enforcePublicRateLimit(request, { scope: "contact", maximum: 5, windowSeconds: 3600 });
+  if (limited) return limited;
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Please complete the contact form." }, { status: 400 });
   const db = createServiceClient();

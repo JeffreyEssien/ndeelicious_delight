@@ -13,6 +13,7 @@ export const businessSettingsSchema = z.object({
   phone: text(40),
   whatsapp: text(40),
   address: text(300),
+  city: text(120).optional(),
   country: z.literal("CA"),
   province: text(2).transform((value) => value.toUpperCase()),
   postalCode: text(7).transform((value) => value.toUpperCase()),
@@ -49,6 +50,7 @@ const titleBodySchema = z.object({ title: text(160), body: text(1_500) });
 const sectionHeadingSchema = z.object({ eyebrow: text(120), headline: text(300) });
 
 export const storefrontContentSchema = z.object({
+  customerText: z.record(z.string().max(200), z.record(z.string().max(5000), z.string().max(5000))).default({}),
   global: z.object({
     announcement: z.object({ text: text(300), linkLabel: text(80), href }),
     navigation: z.array(z.object({ label: text(80), href })).max(12),
@@ -106,6 +108,10 @@ export const storefrontContentSchema = z.object({
     hero: heroSchema,
     section: sectionHeadingSchema,
     steps: z.array(titleBodySchema).max(12),
+    stockists: z
+      .array(z.object({ name: text(120), city: text(120), url: href }))
+      .max(20)
+      .optional(),
   }),
   delivery: z.object({
     hero: heroSchema,

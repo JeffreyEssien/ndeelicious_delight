@@ -73,6 +73,12 @@ export const Icon = ({ name, ...props }: Props & { name: string }) => {
         <rect x="14" y="14" width="6" height="6" />
       </>
     ),
+    chart: (
+      <>
+        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+        <path d="m4 7 6-4 6 7 5-5" />
+      </>
+    ),
     orders: (
       <>
         <path d="M6 3h12v18H6zM9 8h6M9 12h6M9 16h4" />

@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 import type { Product, ProductImage, ProductVariant } from "@/types";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 type ProductRow = {
   id: string;
@@ -85,7 +87,7 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
   };
 }
 
-export async function getProducts(options: { includeInactive?: boolean; client?: SupabaseClient } = {}) {
+async function loadProducts(options: { includeInactive?: boolean; client?: SupabaseClient } = {}) {
   const supabase = options.client ?? (await createClient());
   let query = supabase
     .from("products")
@@ -102,11 +104,24 @@ export async function getProducts(options: { includeInactive?: boolean; client?:
   return (data as unknown as ProductRow[] | null)?.map((row) => mapProduct(row, options.includeInactive)) ?? [];
 }
 
+const getCachedProducts = unstable_cache(
+  () => loadProducts({ client: createServiceClient() }),
+  ["storefront-products"],
+  {
+    tags: ["storefront"],
+    revalidate: 300,
+  },
+);
+
+export function getProducts(options: { includeInactive?: boolean; client?: SupabaseClient } = {}) {
+  return options.client || options.includeInactive ? loadProducts(options) : getCachedProducts();
+}
+
 export async function getProduct(slug: string) {
   return (await getProducts()).find((product) => product.slug === slug);
 }
 
-export async function getDeliveryZones(client?: SupabaseClient, includeInactive = false) {
+async function loadDeliveryZones(client?: SupabaseClient, includeInactive = false) {
   const supabase = client ?? (await createClient());
   let query = supabase
     .from("delivery_zones")
@@ -123,4 +138,14 @@ export async function getDeliveryZones(client?: SupabaseClient, includeInactive 
     estimate: zone.estimated_time ?? "Awaiting a delivery estimate",
     active: zone.active,
   }));
+}
+
+const getCachedDeliveryZones = unstable_cache(
+  () => loadDeliveryZones(createServiceClient()),
+  ["storefront-delivery-zones"],
+  { tags: ["storefront"], revalidate: 300 },
+);
+
+export function getDeliveryZones(client?: SupabaseClient, includeInactive = false) {
+  return client || includeInactive ? loadDeliveryZones(client, includeInactive) : getCachedDeliveryZones();
 }

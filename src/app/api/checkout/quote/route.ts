@@ -4,9 +4,12 @@ import { getDeliveryZones, getProducts } from "@/lib/data/catalog";
 import { getCoupon } from "@/lib/data/coupons";
 import { isSameOrigin } from "@/lib/auth/validation";
 import { getBusinessSettings } from "@/lib/data/settings";
+import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
+  const limited = await enforcePublicRateLimit(request, { scope: "checkout-quote", maximum: 60, windowSeconds: 60 });
+  if (limited) return limited;
   try {
     const body: unknown = await request.json();
     const parsed = checkoutSchema.safeParse(body);

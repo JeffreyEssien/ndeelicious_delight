@@ -1,3 +1,4 @@
+import type { CustomerText } from "@/content/customer-text";
 import type { BusinessDocumentData } from "@/components/documents/business-document";
 import type { BusinessSettings } from "@/types/content";
 
@@ -41,6 +42,7 @@ export type PersistedDocument = {
 };
 
 export type DocumentDTO = BusinessDocumentData & {
+  customerText?: CustomerText;
   id: string;
   revision: number;
   amountDue?: number;

@@ -1,3 +1,4 @@
+import { getCustomerEmailText } from "@/lib/customer-text";
 import { calculateCakeQuote } from "@/features/cakes/pricing";
 import { CommerceError } from "@/features/checkout/pricing";
 import { cakeConfigurationSchema } from "@/validations/cake";
@@ -6,6 +7,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
 import { sendEmailToActiveAdmins } from "@/lib/email/admin-recipients";
 import { getCakeConfiguration } from "@/lib/data/settings";
+import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
 const imageExtensions: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -29,6 +31,8 @@ async function requestPayload(request: Request) {
 export async function POST(request: Request) {
   try {
     if (!isSameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
+    const limited = await enforcePublicRateLimit(request, { scope: "cake-request", maximum: 5, windowSeconds: 3600 });
+    if (limited) return limited;
     const { body, reference } = await requestPayload(request);
     const parsed = cakeConfigurationSchema.safeParse(body);
     if (!parsed.success)
@@ -83,13 +87,15 @@ export async function POST(request: Request) {
       if (referencePath) await service.storage.from("cake-reference-images").remove([referencePath]);
       throw error;
     }
+    const { t, frame } = await getCustomerEmailText(service);
     await Promise.all([
       sendTransactionalEmail({
         to: customerEmail,
-        subject: `Cake request ${requestNumber} received`,
+        subject: t("Cake request {number} received", { number: requestNumber }),
         html: emailFrame(
-          "Your cake request is with us",
-          `<p>Thank you, ${escapeHtml(parsed.data.customerName)}. We’ll review request <b>${requestNumber}</b> and reply with the next step.</p>`,
+          t("Your cake request is with us"),
+          `<p>${escapeHtml(t("Thank you, {name}. We’ll review request {number} and reply with the next step.", { name: parsed.data.customerName, number: requestNumber }))}</p>`,
+          frame,
         ),
       }),
       sendEmailToActiveAdmins(service, {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { marketingExportSchema, storeCarouselSchema } from "./settings";
+import { marketingExportSchema, storeCarouselSchema, storefrontContentSchema } from "./settings";
 
 const validCarousel = {
   enabled: true,
@@ -49,5 +49,22 @@ describe("marketingExportSchema", () => {
     });
     expect(marketing.productIds).toHaveLength(1);
     expect(marketing.template).toBe("brand");
+  });
+});
+
+describe("customer wording settings", () => {
+  it("accepts legacy settings and preserves meaningful whitespace", () => {
+    expect(storefrontContentSchema.shape.customerText.parse(undefined)).toEqual({});
+    expect(
+      storefrontContentSchema.shape.customerText.parse({ emails: { "Hello {name},": " Hello {name}, " } }).emails[
+        "Hello {name},"
+      ],
+    ).toBe(" Hello {name}, ");
+  });
+  it("rejects non-text and oversized wording overrides", () => {
+    expect(storefrontContentSchema.shape.customerText.safeParse({ footer: { Explore: 123 } }).success).toBe(false);
+    expect(
+      storefrontContentSchema.shape.customerText.safeParse({ footer: { Explore: "a".repeat(5001) } }).success,
+    ).toBe(false);
   });
 });

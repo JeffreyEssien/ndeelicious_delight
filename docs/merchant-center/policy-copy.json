@@ -1,0 +1,239 @@
+{
+  "updated": "5 October 2026",
+  "businessName": "Ndeeelicious Delight",
+  "contactEmail": "ndidiamakaoseafiana@gmail.com",
+  "phone": "+19025803019",
+  "location": "Halifax, Nova Scotia, Canada",
+  "businessDescription": "Custom cakes and frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls. Food Safety & Handler Certified.",
+  "documents": [
+    {
+      "slug": "returns-refunds-cancellations",
+      "websitePath": "/refund-policy",
+      "title": "Returns, refunds and cake cancellations",
+      "sections": [
+        {
+          "heading": "Cake orders",
+          "body": "Our cake cancellation and no-refund policy applies to wedding cakes and all other cake orders. Cakes are made to order and are perishable. We do not accept change-of-mind cake returns."
+        },
+        {
+          "heading": "Wedding cake cancellations",
+          "body": "To cancel a wedding cake order, you must give us written notice at least one calendar month before the scheduled delivery or collection date. One calendar month is not a fixed 30-day period. Include your order number, customer name and scheduled date in your request."
+        },
+        {
+          "heading": "Other cake cancellations",
+          "body": "To cancel any other cake order, you must give us written notice at least one week (seven days) before the scheduled delivery or collection date. Include your order number, customer name and scheduled date in your request."
+        },
+        {
+          "heading": "No cancellation refunds for cakes",
+          "body": "Amounts already paid for cake orders, including deposits where applicable, are non-refundable when you cancel or change your mind. Providing the required notice allows you to request cancellation; it does not make the payment refundable. We do not promise store credit, an exchange or a transfer to a different date as part of this policy."
+        },
+        {
+          "heading": "How to request cancellation",
+          "body": "Send your written request to ndidiamakaoseafiana@gmail.com or use the contact form on our website. The notice period is measured from when we receive your written request. We will confirm the outcome in writing. Requests received inside the required notice period do not qualify under our cake cancellation policy."
+        },
+        {
+          "heading": "Other bakery products",
+          "body": "For non-cake products, change-of-mind returns are generally unavailable because the items are perishable. Cancellation requests for non-cake products are reviewed according to the notice received and preparation already completed. The wedding and other-cake notice periods and cake no-refund rule above apply only to cakes."
+        },
+        {
+          "heading": "Damaged, incorrect or unsafe products",
+          "body": "If your order arrives damaged, materially incorrect or appears unsafe, contact us as soon as possible with your order number, a description and photographs where available. Do not consume food you believe is unsafe. We will review the concern and provide any remedy required under applicable consumer protection law."
+        },
+        {
+          "heading": "Your consumer rights",
+          "body": "Nothing in this policy excludes rights or remedies that cannot lawfully be excluded, including any applicable rights relating to defective goods or an order we cannot fulfil. Our no-refund rule concerns customer cancellation and change of mind; it does not remove mandatory legal remedies."
+        }
+      ]
+    },
+    {
+      "slug": "terms-of-service",
+      "websitePath": "/terms",
+      "title": "Terms of service",
+      "sections": [
+        {
+          "heading": "About the bakery",
+          "body": "These terms apply to purchases from Ndeeelicious Delight. Contact us at ndidiamakaoseafiana@gmail.com or +19025803019 about an order or these terms."
+        },
+        {
+          "heading": "Orders and payment",
+          "body": "Review your selected products, cake options, spelling, delivery or collection date, contact information and address before submitting an order. Payment is processed securely through Stripe. An unpaid checkout or payment redirect alone is not confirmation of payment. For a quoted cake, review and accept the quote and complete the required payment before treating the order as confirmed."
+        },
+        {
+          "heading": "Prices, delivery fees and taxes",
+          "body": "Prices are shown in Canadian dollars (CAD). Applicable delivery fees and taxes are displayed in the checkout total before payment. A custom-cake builder estimate is not a final accepted quote. The accepted quote and checkout show the agreed cake price and applicable fulfilment charges."
+        },
+        {
+          "heading": "Custom cake designs",
+          "body": "Reference photographs guide an original design. Handmade cakes can vary in appearance, and exact reproduction or colour matching is not guaranteed. Confirm the design, size, flavours and inscription in the quote before acceptance."
+        },
+        {
+          "heading": "Cake cancellation and refunds",
+          "body": "Wedding cake cancellation requests require written notice at least one calendar month before the scheduled delivery or collection date. Other cake cancellation requests require at least one week (seven days). Payments already made for cakes are non-refundable for customer cancellation or change of mind, even when the required notice is given. Read our Returns, refunds and cake cancellations policy at /refund-policy for the full rules and consumer-rights provisions."
+        },
+        {
+          "heading": "Changes to an order",
+          "body": "Contact us in writing as soon as possible to request a change. Changes depend on preparation, availability and the agreed date, and may require a revised quote. A requested change, reschedule or substitution takes effect only when we confirm it in writing. No store credit or date transfer is automatically included in the cake cancellation policy."
+        },
+        {
+          "heading": "Delivery and collection",
+          "body": "Choose an available fulfilment option during ordering and check the confirmed details. Delivery availability depends on the areas offered at checkout. Provide an accurate address, phone number and delivery instructions, and arrange for someone to receive the order. Collection details are supplied with confirmation. Contact us promptly if you cannot attend your collection window."
+        },
+        {
+          "heading": "Availability and fulfilment problems",
+          "body": "If an ingredient, product or fulfilment option becomes unavailable, we will contact you rather than make an unapproved material substitution. Any applicable mandatory rights or remedies remain available if we cannot supply your order."
+        },
+        {
+          "heading": "Ingredients, allergens and safe handling",
+          "body": "Check the product information and discuss allergies or dietary requirements with us before ordering. Do not assume that a product is free from an allergen unless we have expressly confirmed this. Follow the handling and storage information supplied for your order."
+        },
+        {
+          "heading": "Privacy and support",
+          "body": "Our privacy policy at /privacy explains how we handle personal information. Contact us with your order number if you need support. These terms do not restrict rights that cannot lawfully be excluded under applicable consumer protection law."
+        }
+      ]
+    },
+    {
+      "slug": "delivery-and-pickup",
+      "websitePath": "/delivery-information",
+      "title": "Delivery and pickup policy",
+      "sections": [
+        {
+          "heading": "Delivery availability",
+          "body": "Delivery is available only when an eligible delivery area and option are offered during ordering. We do not promise nationwide or international shipping. If no delivery option is available for your address, contact us before ordering or choose pickup when it is offered."
+        },
+        {
+          "heading": "Delivery charges",
+          "body": "Delivery charges depend on the selected delivery area and are shown at checkout before payment. Any applicable order minimum is shown with the delivery option. Review the full order total, including any taxes, before paying."
+        },
+        {
+          "heading": "Preparation and delivery dates",
+          "body": "The available date depends on the product, bakery capacity and agreed cake requirements. The cake builder currently requires at least 72 hours' notice; a wedding cake or complex custom design may need an individually agreed preparation schedule. Your confirmed delivery or collection arrangement is the schedule for your order. Contact us before paying if you need a specific event time."
+        },
+        {
+          "heading": "Pickup",
+          "body": "Pickup has no delivery charge. Choose pickup when available during ordering. We provide the collection location and agreed window with your confirmation. Please contact us if you need collection details before placing the order."
+        },
+        {
+          "heading": "Receiving your order",
+          "body": "Provide an accurate delivery address, contact number and access instructions. Arrange for someone to receive your cake or other perishable items at the agreed time. Follow the handling and storage instructions supplied with the order."
+        },
+        {
+          "heading": "Delays and delivery problems",
+          "body": "Contact us promptly if your order has not arrived within the confirmed arrangement or if your delivery details change. We will review the circumstances and communicate the next steps. Any mandatory consumer remedies remain available."
+        },
+        {
+          "heading": "Cancellations",
+          "body": "Wedding cake cancellation requests require at least one calendar month's written notice before the scheduled delivery or collection date. Other cakes require one week (seven days). Cake payments already made are non-refundable for customer cancellation or change of mind. See /refund-policy for the complete policy."
+        },
+        {
+          "heading": "Find our ready-to-bake products in stores",
+          "body": "Our frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls are available at selected stores across Halifax Regional Municipality: Kalisimbi Shop (Halifax) — https://www.instagram.com/kalisimbi_shop1/; Iyalode African Wholesales Market (Dartmouth) — https://www.instagram.com/iyalodeafricanwholesalemarket/; Chater Meat Market (Dartmouth) — https://www.instagram.com/chatermeatmarket/; Wazobia African Shop (Halifax) — https://www.instagram.com/wazobia__market/. Contact the store for current stock, prices and opening hours. Purchases from a stockist are handled by that retailer; contact the store with your receipt for purchase support. Store availability does not establish bakery delivery coverage."
+        },
+        {
+          "heading": "Contact",
+          "body": "For delivery or collection questions, email ndidiamakaoseafiana@gmail.com, call +19025803019 or use our website contact form."
+        }
+      ]
+    },
+    {
+      "slug": "privacy-policy",
+      "websitePath": "/privacy",
+      "title": "Privacy policy",
+      "sections": [
+        {
+          "heading": "Information we collect",
+          "body": "Ndeeelicious Delight collects the information you provide to place an order, request a cake quote, contact us, subscribe to our newsletter or submit a review. This may include your name, email, phone number, delivery address, order details, cake preferences, messages and reference photographs."
+        },
+        {
+          "heading": "How we use information",
+          "body": "We use this information to prepare and fulfil orders, issue quotes and financial documents, communicate payment and order updates, answer enquiries, maintain business records and protect the service against fraud or abuse. Newsletter signup is optional. You may contact us to ask to stop receiving marketing messages."
+        },
+        {
+          "heading": "Payments and service providers",
+          "body": "Stripe processes payment card information through its secure payment service. We store order and payment references and statuses, rather than full card credentials. Our database, storage, hosting and email providers process information needed to operate the website and deliver your order communications. Provider processing may occur outside your province or country."
+        },
+        {
+          "heading": "Browser storage and analytics",
+          "body": "The website stores your basket locally in your browser. Anonymous storefront analytics use a random browser identifier to record selected actions such as product views and basket activity; these analytics payloads do not include names, email addresses, delivery addresses or payment details. This tracking respects the browser's Global Privacy Control signal. Administrative login uses a session cookie. You can clear browser storage through your browser settings, which may remove your saved basket."
+        },
+        {
+          "heading": "Security and retention",
+          "body": "We use access controls and other technical measures to protect information. We keep information for order fulfilment, support, security and applicable record-keeping needs. Order, invoice and receipt records may need to be retained even after a request to delete other information. No online service can guarantee absolute security."
+        },
+        {
+          "heading": "Your requests",
+          "body": "You may ask about your personal information or request access, correction or deletion where applicable. Contact ndidiamakaoseafiana@gmail.com. We may need to verify your identity before acting, and some business records may be subject to legal retention requirements."
+        },
+        {
+          "heading": "Contact and updates",
+          "body": "For privacy questions, contact ndidiamakaoseafiana@gmail.com or +19025803019. We will publish changes to this policy on this page with an updated date."
+        }
+      ]
+    },
+    {
+      "slug": "business-contact-information",
+      "websitePath": "/contact",
+      "title": "Business and customer support information",
+      "sections": [
+        {
+          "heading": "Business name",
+          "body": "Ndeeelicious Delight"
+        },
+        {
+          "heading": "Location",
+          "body": "Halifax, Nova Scotia, Canada"
+        },
+        {
+          "heading": "What we offer",
+          "body": "Custom cakes and frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls."
+        },
+        {
+          "heading": "Food safety",
+          "body": "Food Safety & Handler Certified."
+        },
+        {
+          "heading": "Customer support email",
+          "body": "ndidiamakaoseafiana@gmail.com"
+        },
+        {
+          "heading": "Customer support phone",
+          "body": "+19025803019"
+        },
+        {
+          "heading": "What to include",
+          "body": "For order questions, include your order number, customer name, scheduled delivery or collection date and a description of the issue. For cancellation requests, contact us in writing by email or through our website contact form."
+        },
+        {
+          "heading": "Find our ready-to-bake products in stores",
+          "body": "Our frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls are available at selected stores across Halifax Regional Municipality: Kalisimbi Shop (Halifax) — https://www.instagram.com/kalisimbi_shop1/; Iyalode African Wholesales Market (Dartmouth) — https://www.instagram.com/iyalodeafricanwholesalemarket/; Chater Meat Market (Dartmouth) — https://www.instagram.com/chatermeatmarket/; Wazobia African Shop (Halifax) — https://www.instagram.com/wazobia__market/. Contact the store for current stock, prices and opening hours. Purchases from a stockist are handled by that retailer; contact the store with your receipt for purchase support. Store availability does not establish bakery delivery coverage."
+        },
+        {
+          "heading": "Cake cancellation notice",
+          "body": "Wedding cakes require at least one calendar month's written notice. Other cakes require at least one week (seven days). Cake payments already made are non-refundable for customer cancellation or change of mind, subject to mandatory consumer rights. Read /refund-policy for the full policy."
+        }
+      ]
+    }
+  ],
+  "stockists": [
+    {
+      "name": "Kalisimbi Shop",
+      "city": "Halifax",
+      "url": "https://www.instagram.com/kalisimbi_shop1/"
+    },
+    {
+      "name": "Iyalode African Wholesales Market",
+      "city": "Dartmouth",
+      "url": "https://www.instagram.com/iyalodeafricanwholesalemarket/"
+    },
+    {
+      "name": "Chater Meat Market",
+      "city": "Dartmouth",
+      "url": "https://www.instagram.com/chatermeatmarket/"
+    },
+    {
+      "name": "Wazobia African Shop",
+      "city": "Halifax",
+      "url": "https://www.instagram.com/wazobia__market/"
+    }
+  ]
+}

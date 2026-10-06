@@ -1,10 +1,12 @@
+import { customerText } from "@/content/customer-text";
+import { whatsappUrl } from "@/lib/contact";
 import { readFileSync } from "node:fs";
 import { resolve, sep } from "node:path";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { DocumentDTO } from "./dto";
 
 type Logo = { bytes: Buffer; width: number; height: number };
-type Page = { commands: string[]; y: number };
+type Page = { commands: string[]; y: number; link?: string };
 
 const PAGE_WIDTH = 612;
 const PAGE_HEIGHT = 792;
@@ -113,15 +115,20 @@ function localLogo(logoUrl: string | undefined): Logo | undefined {
   return undefined;
 }
 
-function tableHeader(page: Page, accent: readonly number[], design: DocumentDTO["design"]) {
+function tableHeader(
+  page: Page,
+  accent: readonly number[],
+  design: DocumentDTO["design"],
+  t: ReturnType<typeof customerText>,
+) {
   const minimal = design === "minimal";
   if (!minimal) fill(page, MARGIN, page.y - 5, PAGE_WIDTH - MARGIN * 2, 24, accent);
   else line(page, MARGIN, page.y - 5, PAGE_WIDTH - MARGIN, page.y - 5, accent);
   const color = minimal ? accent : [1, 1, 1];
-  text(page, "DESCRIPTION", MARGIN + 8, page.y + 3, 8, true, color);
-  text(page, "QTY", 367, page.y + 3, 8, true, color);
-  text(page, "UNIT PRICE", 420, page.y + 3, 8, true, color);
-  text(page, "AMOUNT", 520, page.y + 3, 8, true, color);
+  text(page, t("DESCRIPTION"), MARGIN + 8, page.y + 3, 8, true, color);
+  text(page, t("QTY"), 367, page.y + 3, 8, true, color);
+  text(page, t("UNIT PRICE"), 420, page.y + 3, 8, true, color);
+  text(page, t("AMOUNT"), 520, page.y + 3, 8, true, color);
   page.y -= 18;
 }
 
@@ -132,6 +139,7 @@ function header(
   logo: Logo | undefined,
   continuation: boolean,
 ) {
+  const t = customerText(document.customerText ?? {}, "business document");
   const modern = document.design === "modern";
   fill(page, 0, 0, PAGE_WIDTH, PAGE_HEIGHT, [1, 1, 1]);
   if (modern) fill(page, 0, PAGE_HEIGHT - 82, PAGE_WIDTH, 82, accent);
@@ -143,7 +151,7 @@ function header(
   } else text(page, document.business.businessName, MARGIN, PAGE_HEIGHT - 52, 15, true, modern ? [1, 1, 1] : accent);
   text(
     page,
-    `${document.kind.toUpperCase()} ${document.number}`,
+    `${t(document.kind).toUpperCase()} ${document.number}`,
     360,
     PAGE_HEIGHT - 42,
     14,
@@ -152,7 +160,7 @@ function header(
   );
   text(
     page,
-    continuation ? "Continued" : document.status.replaceAll("_", " "),
+    continuation ? t("Continued") : t(document.status.replaceAll("_", " ")),
     360,
     PAGE_HEIGHT - 59,
     9,
@@ -164,6 +172,7 @@ function header(
 }
 
 export function renderPaginatedDocumentPdf(document: DocumentDTO) {
+  const t = customerText(document.customerText ?? {}, "business document");
   const accent = rgb(document.accentColor);
   const logo = localLogo(document.logoUrl);
   const pages: Page[] = [];
@@ -176,7 +185,7 @@ export function renderPaginatedDocumentPdf(document: DocumentDTO) {
   let page = addPage(false);
   const money = (value: number) => formatMoney(value, document.business.currency, document.business.locale);
 
-  text(page, "FROM", MARGIN, page.y, 8, true, accent);
+  text(page, t("FROM"), MARGIN, page.y, 8, true, accent);
   text(page, document.business.businessName, MARGIN, page.y - 17, 11, true);
   wrap(document.business.address, 43)
     .slice(0, 2)
@@ -192,7 +201,7 @@ export function renderPaginatedDocumentPdf(document: DocumentDTO) {
   );
   if ((document.showBusinessTaxNumber ?? true) && document.business.taxRegistrationNumber)
     text(page, `${document.business.taxLabel} no. ${document.business.taxRegistrationNumber}`, MARGIN, page.y - 70, 8);
-  text(page, "PREPARED FOR", 322, page.y, 8, true, accent);
+  text(page, t("PREPARED FOR"), 322, page.y, 8, true, accent);
   text(page, document.customer.name, 322, page.y - 17, 11, true);
   text(page, document.customer.email, 322, page.y - 33, 9);
   if (document.customer.phone) text(page, document.customer.phone, 322, page.y - 45, 9);
@@ -206,7 +215,7 @@ export function renderPaginatedDocumentPdf(document: DocumentDTO) {
 
   text(
     page,
-    `Issued ${formatDate(document.issuedAt, document.business.locale, document.business.timezone)}`,
+    t("Issued {date}", { date: formatDate(document.issuedAt, document.business.locale, document.business.timezone) }),
     MARGIN,
     page.y,
     9,
@@ -214,7 +223,9 @@ export function renderPaginatedDocumentPdf(document: DocumentDTO) {
   if (document.validUntil)
     text(
       page,
-      `Valid until ${formatDate(document.validUntil, document.business.locale, document.business.timezone)}`,
+      t("Valid until {date}", {
+        date: formatDate(document.validUntil, document.business.locale, document.business.timezone),
+      }),
       230,
       page.y,
       9,
@@ -222,13 +233,13 @@ export function renderPaginatedDocumentPdf(document: DocumentDTO) {
   if (document.dueAt)
     text(
       page,
-      `Due ${formatDate(document.dueAt, document.business.locale, document.business.timezone)}`,
+      t("Due {date}", { date: formatDate(document.dueAt, document.business.locale, document.business.timezone) }),
       390,
       page.y,
       9,
     );
   page.y -= 38;
-  tableHeader(page, accent, document.design);
+  tableHeader(page, accent, document.design, t);
 
   for (const item of document.lines) {
     const details = [item.detail, (document.showSku ?? true) && item.sku ? `SKU ${item.sku}` : ""]
@@ -239,7 +250,7 @@ export function renderPaginatedDocumentPdf(document: DocumentDTO) {
     const rowHeight = Math.max(44, 20 + (nameLines.length + detailLines.length) * 11);
     if (page.y - rowHeight < 145) {
       page = addPage(true);
-      tableHeader(page, accent, document.design);
+      tableHeader(page, accent, document.design, t);
     }
     nameLines.forEach((value, index) => {
       text(page, value, MARGIN + 8, page.y - 15 - index * 11, 10, true);
@@ -255,27 +266,27 @@ export function renderPaginatedDocumentPdf(document: DocumentDTO) {
   }
 
   const totals: Array<[string, number, boolean]> = [
-    ["Subtotal", document.subtotal, false],
-    ...(document.discount ? [["Discount", -document.discount, false] as [string, number, boolean]] : []),
-    ...(document.delivery ? [["Delivery", document.delivery, false] as [string, number, boolean]] : []),
+    [t("Subtotal"), document.subtotal, false],
+    ...(document.discount ? [[t("Discount"), -document.discount, false] as [string, number, boolean]] : []),
+    ...(document.delivery ? [[t("Delivery"), document.delivery, false] as [string, number, boolean]] : []),
     ...(document.tax ? [[document.business.taxLabel, document.tax, false] as [string, number, boolean]] : []),
-    ["Total", document.total, true],
+    [t("Total"), document.total, true],
     ...((document.showPaymentDetails ?? true) && document.paid !== undefined
-      ? [["Paid", document.paid, false] as [string, number, boolean]]
+      ? [[t("Paid"), document.paid, false] as [string, number, boolean]]
       : []),
     ...((document.showPaymentDetails ?? true) && document.refunded
-      ? [["Refunded", -document.refunded, false] as [string, number, boolean]]
+      ? [[t("Refunded"), -document.refunded, false] as [string, number, boolean]]
       : []),
-    ...(document.amountDue ? [["Amount due", document.amountDue, true] as [string, number, boolean]] : []),
+    ...(document.amountDue ? [[t("Amount due"), document.amountDue, true] as [string, number, boolean]] : []),
   ];
   const noteLines = [
     ...(document.notes ?? []),
-    document.footerMessage || `Thank you for choosing ${document.business.businessName}.`,
+    document.footerMessage || t("Thank you for choosing {business}.", { business: document.business.businessName }),
   ].flatMap((value) => wrap(value, 72));
   const required = Math.max(totals.length * 17 + 34, noteLines.length * 12 + 34);
   if (page.y - required < 70) page = addPage(true);
   const summaryTop = page.y - 18;
-  text(page, "NOTES", MARGIN, summaryTop, 8, true, accent);
+  text(page, t("NOTES"), MARGIN, summaryTop, 8, true, accent);
   noteLines.forEach((value, index) => {
     text(page, value, MARGIN, summaryTop - 17 - index * 12, 9);
   });
@@ -297,7 +308,20 @@ export function renderPaginatedDocumentPdf(document: DocumentDTO) {
   pages.forEach((current, index) => {
     line(current, MARGIN, 40, PAGE_WIDTH - MARGIN, 40);
     text(current, document.business.businessName, MARGIN, 24, 8, false, [0.45, 0.42, 0.4]);
-    text(current, `Page ${index + 1} of ${pages.length}`, PAGE_WIDTH - 94, 24, 8, false, [0.45, 0.42, 0.4]);
+    const whatsapp = whatsappUrl(document.business.whatsapp);
+    if (whatsapp) {
+      text(current, t("Chat with us on WhatsApp"), 250, 24, 8, true, accent);
+      current.link = whatsapp;
+    }
+    text(
+      current,
+      t("Page {page} of {pages}", { page: index + 1, pages: pages.length }),
+      PAGE_WIDTH - 94,
+      24,
+      8,
+      false,
+      [0.45, 0.42, 0.4],
+    );
   });
   return buildPdf(pages, logo);
 }
@@ -333,7 +357,7 @@ function buildPdf(pages: Page[], logo: Logo | undefined) {
     const resources = `/Font << /F1 3 0 R /F2 4 0 R >>${logo ? " /XObject << /Im1 5 0 R >>" : ""}`;
     objects.push(
       Buffer.from(
-        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << ${resources} >> /Contents ${contentNumber} 0 R >>`,
+        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << ${resources} >> /Contents ${contentNumber} 0 R ${page.link ? `/Annots [<< /Type /Annot /Subtype /Link /Rect [248 20 370 34] /Border [0 0 0] /A << /S /URI /URI (${pdfText(page.link)}) >> >>]` : ""} >>`,
       ),
       streamObject(Buffer.from(page.commands.join("\n"))),
     );

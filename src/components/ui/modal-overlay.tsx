@@ -61,8 +61,12 @@ export function ModalOverlay({
   const panel = useRef<HTMLElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const overlayId = useRef(Symbol("modal-overlay"));
+  const onCloseRef = useRef(onClose);
 
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     if (!open || !mounted) return;
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -73,7 +77,7 @@ export function ModalOverlay({
       if (event.key !== "Escape" || overlayStack.at(-1) !== id) return;
       event.preventDefault();
       event.stopPropagation();
-      onClose();
+      onCloseRef.current();
     };
     document.addEventListener("keydown", handleEscape, true);
     const frame = window.requestAnimationFrame(() => {

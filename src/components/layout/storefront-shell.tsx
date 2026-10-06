@@ -1,26 +1,35 @@
+import { getCustomerText } from "@/lib/customer-text";
+import { whatsappUrl } from "@/lib/contact";
 import { CartDrawer } from "@/components/cart/cart-drawer";
 import { getBusinessSettings, getStorefrontContent } from "@/lib/data/settings";
 import { Footer } from "./footer";
 import { Header } from "./header";
 
 export async function StorefrontShell({ children }: { children: React.ReactNode }) {
+  const t = await getCustomerText("storefront shell");
+
   const [content, business] = await Promise.all([getStorefrontContent(), getBusinessSettings()]);
-  const whatsapp = business.whatsapp.replace(/\D/g, "");
+  const whatsapp = whatsappUrl(business.whatsapp);
   return (
     <>
+      <a className="skip-link" href="#main-content">
+        {t("Skip to main content")}
+      </a>
       <Header content={content.global} business={business} />
-      <main>{children}</main>
+      <main id="main-content" tabIndex={-1}>
+        {children}
+      </main>
       <Footer content={content.global} business={business} />
       <CartDrawer />
       {whatsapp && (
         <a
           className="whatsapp-fab"
-          href={`https://wa.me/${whatsapp}`}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`Chat with ${business.businessName} on WhatsApp`}
+          href={whatsapp}
+          target={"_blank"}
+          rel={"noreferrer"}
+          aria-label={t("Chat with {value1} on WhatsApp", { value1: business.businessName })}
         >
-          wa
+          {t("wa")}
         </a>
       )}
     </>

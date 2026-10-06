@@ -1,6 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+// Responsive/axe coverage does not test event ingestion. Keep synthetic visits
+// out of business analytics; API ingestion has its own functional tests.
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/analytics/events", (route) => route.fulfill({ status: 204 }));
+});
+
 const customerRoutes = [
   "/",
   "/shop",
@@ -13,6 +19,7 @@ const customerRoutes = [
 
 const adminRoutes = [
   "/admin",
+  "/admin/analytics",
   "/admin/orders",
   "/admin/custom-cakes",
   "/admin/products",
@@ -90,20 +97,35 @@ const themes = {
 };
 
 async function settle(page: Page) {
-  await page.waitForLoadState("domcontentloaded");
-  await page.locator("body").waitFor({ state: "visible" });
-  await page.evaluate(() => document.fonts.ready);
+  await expect
+    .poll(async () => {
+      try {
+        await page.waitForLoadState("domcontentloaded");
+        if (!(await page.locator("body").isVisible())) return false;
+        await page.evaluate(() => document.fonts.ready);
+        return true;
+      } catch (error) {
+        if (page.isClosed()) throw error;
+        return false;
+      }
+    })
+    .toBe(true);
   const readyControl = page.locator("[data-ui-ready]");
   if (await readyControl.count()) await expect(readyControl.first()).toHaveAttribute("data-ui-ready", "true");
 }
 
 async function expectNoPageOverflow(page: Page) {
   await expect
-    .poll(() =>
-      page.evaluate(() =>
-        document.documentElement ? document.documentElement.scrollWidth <= window.innerWidth : false,
-      ),
-    )
+    .poll(async () => {
+      try {
+        return await page.evaluate(() =>
+          document.documentElement ? document.documentElement.scrollWidth <= window.innerWidth : false,
+        );
+      } catch (error) {
+        if (page.isClosed()) throw error;
+        return false;
+      }
+    })
     .toBe(true);
 }
 
@@ -371,10 +393,35 @@ test.describe("authenticated admin responsiveness", () => {
   );
   for (const route of adminRoutes) {
     test(`${route} has no accidental page overflow`, async ({ page }) => {
+      const imageWarnings: string[] = [];
+      page.on("console", (message) => {
+        if (message.text().includes('parent element with invalid "position"')) imageWarnings.push(message.text());
+      });
       const response = await page.goto(route);
       expect(response?.status()).toBeLessThan(400);
       await settle(page);
       await expectNoPageOverflow(page);
+      if (route === "/admin/carousel") {
+        const imageContainer = page.locator(".carousel-preview .carousel-image").first();
+        if (await imageContainer.count()) {
+          await expect(imageContainer).toHaveCSS("position", "relative");
+          await expect(imageContainer).toHaveCSS("display", "block");
+          const bounds = await imageContainer.boundingBox();
+          expect(bounds?.height).toBeGreaterThan(100);
+          expect(imageWarnings).toEqual([]);
+        }
+      }
+    });
+  }
+
+  for (const route of ["/admin", "/admin/analytics"]) {
+    test(`${route} has no serious axe violations`, async ({ page }) => {
+      await page.goto(route);
+      await settle(page);
+      const results = await new AxeBuilder({ page }).analyze();
+      expect(
+        results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? "")),
+      ).toEqual([]);
     });
   }
 });

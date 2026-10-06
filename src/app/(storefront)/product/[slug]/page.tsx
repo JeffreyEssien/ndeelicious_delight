@@ -1,3 +1,4 @@
+import { getCustomerText } from "@/lib/customer-text";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -17,8 +18,10 @@ import { productBreadcrumbJsonLd, productJsonLd, serializeJsonLd } from "@/lib/s
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const t = await getCustomerText("Page: Product");
+
   const p = await getProduct((await params).slug);
-  if (!p) return { title: "Product not found", robots: { index: false, follow: false } };
+  if (!p) return { title: t("Product not found"), robots: { index: false, follow: false } };
   const path = `/product/${encodeURIComponent(p.slug)}`;
   const images = p.image ? [{ url: p.image, alt: p.images?.[0]?.altText || p.name }] : [];
   return {
@@ -36,6 +39,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+  const t = await getCustomerText("Page: Product");
+
   const product = await getProduct((await params).slug);
   if (!product) notFound();
   const [products, content, reviews, business] = await Promise.all([
@@ -52,19 +57,20 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       {/* biome-ignore lint/security/noDangerouslySetInnerHtml: serializeJsonLd escapes HTML-significant characters. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
       <div className="site-container breadcrumbs">
-        <Link href="/">Home</Link>
+        <Link href="/">{t("Home")}</Link>
         <span>/</span>
-        <Link href="/shop">Shop</Link>
+        <Link href="/shop">{t("Shop")}</Link>
         <span>/</span>
         <span>{product.name}</span>
       </div>
       <section className="site-container product-detail">
         <ProductGallery product={product} />
         <div className="product-copy">
-          {product.badge && <Badge tone="berry">{product.badge}</Badge>}
+          {product.badge && <Badge tone={"berry"}>{product.badge}</Badge>}
           <h1>{product.name}</h1>
           <div className="product-price">
-            {formatMoney(product.price, business.currency, business.locale)}{" "}
+            {formatMoney(product.price, business.currency, business.locale)}
+            {t(" ")}
             {product.compareAtPrice && <s>{formatMoney(product.compareAtPrice, business.currency, business.locale)}</s>}
           </div>
           <p className="lead">{product.shortDescription}</p>
@@ -86,19 +92,19 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             </p>
           </div>
           <details open>
-            <summary>Description</summary>
+            <summary>{t("Description")}</summary>
             <p>{product.description}</p>
           </details>
           <details>
-            <summary>Ingredients & allergens</summary>
+            <summary>{t("Ingredients & allergens")}</summary>
             <p>{product.ingredients}</p>
             <p>
-              <b>Contains:</b> {product.allergens.join(", ")}
+              <b>{t("Contains:")}</b> {product.allergens.join(", ")}
             </p>
           </details>
           {(product.storageInstructions || product.preparationInstructions) && (
             <details>
-              <summary>Storage & preparation</summary>
+              <summary>{t("Storage & preparation")}</summary>
               {product.storageInstructions && <p>{product.storageInstructions}</p>}
               {product.preparationInstructions && <p>{product.preparationInstructions}</p>}
             </details>
@@ -110,9 +116,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <section className="section section-tint">
           <div className="site-container">
             <div className="section-title-row">
-              <h2>You may also love</h2>
+              <h2>{t("You may also love")}</h2>
               <Link className="inline-link" href="/shop">
-                Shop all <Icon name="arrow" />
+                {t("Shop all")}
+                <Icon name="arrow" />
               </Link>
             </div>
             <ProductGrid items={related} />

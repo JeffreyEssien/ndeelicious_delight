@@ -44,7 +44,11 @@ describe("SMTP transactional email", () => {
     vi.stubEnv("SMTP_PASSWORD", "app-password");
     vi.stubEnv("SMTP_FROM_EMAIL", "bakery@gmail.com");
     vi.stubEnv("SMTP_FROM_NAME", "Ndeeelicious Test");
-    mocks.sendMail.mockResolvedValue({ messageId: "smtp-message-id" });
+    mocks.sendMail.mockResolvedValue({
+      messageId: "smtp-message-id",
+      accepted: ["customer@example.com"],
+      rejected: [],
+    });
 
     await expect(
       sendTransactionalEmail({
@@ -76,6 +80,15 @@ describe("SMTP transactional email", () => {
 
     await expect(
       sendTransactionalEmail({ to: "customer@example.com", subject: "Hello", html: "<p>Hello</p>" }),
+    ).resolves.toEqual({ sent: false, reason: "provider-error" });
+  });
+  it("does not report successful handoff when SMTP rejects a recipient", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("SMTP_USER", "bakery@gmail.com");
+    vi.stubEnv("SMTP_PASSWORD", "app-password");
+    mocks.sendMail.mockResolvedValue({ messageId: "id", accepted: [], rejected: ["customer@example.com"] });
+    await expect(
+      sendTransactionalEmail({ to: "customer@example.com", subject: "Quote", html: "<p>Quote</p>" }),
     ).resolves.toEqual({ sent: false, reason: "provider-error" });
   });
 });

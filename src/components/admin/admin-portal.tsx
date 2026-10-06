@@ -31,6 +31,8 @@ import type {
   MarketingExport,
 } from "@/types/content";
 import { resolveThemeTokens, themeTokenCss } from "@/lib/theme/tokens";
+import type { AnalyticsSnapshot } from "@/features/analytics/analytics";
+import { AnalyticsWorkspace } from "@/components/admin/analytics-workspace";
 
 type Props = {
   section?: string;
@@ -48,6 +50,7 @@ type Props = {
   initialCarousel: StoreCarousel;
   initialMarketing: MarketingExport;
   initialAuditLogs: AdminAuditLog[];
+  initialAnalytics: AnalyticsSnapshot | null;
   siteUrl: string;
 };
 const titles: Record<string, string> = {
@@ -65,6 +68,7 @@ const titles: Record<string, string> = {
   delivery: "Delivery zones",
   settings: "Business settings",
   audit: "Audit log",
+  analytics: "Analytics & insights",
 };
 const themes: { id: StoreTheme; name: string; description: string; colors: string[] }[] = [
   {
@@ -110,6 +114,7 @@ export function AdminPortal({
   initialCarousel,
   initialMarketing,
   initialAuditLogs,
+  initialAnalytics,
   siteUrl,
 }: Props) {
   const [products, setProducts] = useState(initialProducts);
@@ -194,7 +199,9 @@ export function AdminPortal({
     const response = await mutate({ action: "delivery-zones", zones });
     setZoneBusy(false);
     if (response.ok) {
-      notify("Delivery zones saved.");
+      const payload = await response.json();
+      setZones((current) => current.map((zone) => ({ ...zone, id: payload.savedIds?.[zone.id] ?? zone.id })));
+      notify("Delivery areas saved.");
       router.refresh();
     } else notify("Delivery zones could not be saved.");
   }
@@ -225,7 +232,10 @@ export function AdminPortal({
           )}
         </div>
       </div>
-      {section === "dashboard" && <Dashboard products={products} orders={orders} cakes={initialCakes} />}
+      {section === "dashboard" && initialAnalytics && (
+        <Dashboard products={products} orders={orders} cakes={initialCakes} analytics={initialAnalytics} />
+      )}
+      {section === "analytics" && initialAnalytics && <AnalyticsWorkspace snapshot={initialAnalytics} />}
       {section === "orders" && (
         <>
           <AdminFilters
@@ -271,7 +281,7 @@ export function AdminPortal({
           onDuplicate={duplicateProduct}
         />
       )}
-      {section === "inventory" && <Inventory products={products} onChange={inventory} />}
+      {section === "inventory" && <Inventory products={products} onChange={inventory} onEdit={setEditor} />}
       {section === "customers" && <Customers orders={orders} />}
       {section === "coupons" && <Coupons initial={initialCoupons} products={products} categories={initialCategories} />}
       {section === "reviews" && <Reviews initial={initialReviews} />}
@@ -443,36 +453,49 @@ function Dashboard({
   products,
   orders,
   cakes,
+  analytics,
 }: {
   products: Product[];
   orders: AdminOrder[];
   cakes: AdminCakeRequest[];
+  analytics: AnalyticsSnapshot;
 }) {
   const money = useMoney();
-  const today = new Date().toISOString().slice(0, 10);
-  const todayOrders = orders.filter((o) => o.date.slice(0, 10) === today);
+  const summary = analytics.periods["30d"];
   const low = products.filter((p) => p.stockQuantity <= p.lowStockThreshold);
   return (
     <>
       <div className="metric-grid">
         <Metric
-          label="Today’s revenue"
-          value={money(
-            todayOrders
-              .filter((o) =>
-                ["PAID", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "DELIVERED"].includes(o.status),
-              )
-              .reduce((sum, o) => sum + o.total, 0),
-          )}
-          delta={`${todayOrders.length} orders today`}
+          label="30-day net revenue"
+          value={money(summary.netRevenue)}
+          delta={
+            summary.revenueChange === null
+              ? "First comparison period"
+              : `${summary.revenueChange >= 0 ? "+" : ""}${summary.revenueChange.toFixed(1)}% vs prior 30 days`
+          }
         />
-        <Metric label="Total orders" value={String(orders.length)} delta="Across the connected store" />
         <Metric
-          label="Custom requests"
-          value={String(cakes.length)}
-          delta={`${cakes.filter((c) => c.status === "QUOTE_REQUIRED").length} need a quote`}
+          label="Paid orders"
+          value={String(summary.paidOrders)}
+          delta={`${money(summary.averageOrderValue)} average order`}
+        />
+        <Metric
+          label="Returning customers"
+          value={`${summary.repeatCustomerRate.toFixed(1)}%`}
+          delta={`${summary.returningCustomers} returned in 30 days`}
         />
         <Metric label="Low stock" value={String(low.length)} delta="Review inventory" />
+      </div>
+      <div className="dashboard-analytics-link">
+        <div>
+          <span className="overline">Business pulse</span>
+          <b>{summary.insights[0]?.title ?? "Your analytics are ready"}</b>
+          <p>{summary.insights[0]?.meaning ?? "See performance across sales, customers and operations."}</p>
+        </div>
+        <Link className="button button-secondary" href="/admin/analytics">
+          Open analytics <Icon name="arrow" />
+        </Link>
       </div>
       <div className="dashboard-grid">
         <div className="admin-card">
@@ -1034,9 +1057,11 @@ function Products({
 function Inventory({
   products,
   onChange,
+  onEdit,
 }: {
   products: Product[];
   onChange: (productId: string, variantId: string, quantity: number) => void;
+  onEdit: (product: Product) => void;
 }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"ALL" | "LOW" | "OUT">("ALL");
@@ -1126,6 +1151,9 @@ function Inventory({
                 <b>{product.name}</b>
                 <small>{variant.name}</small>
                 <code>{variant.sku ?? "SKU pending"}</code>
+                <button className="text-button" type="button" onClick={() => onEdit(product)}>
+                  Edit product, options & stock settings
+                </button>
               </div>
               <div className="inventory-quantity">
                 <span>On hand</span>
@@ -1288,7 +1316,8 @@ function DeliveryZones({
         <div>
           <b>Delivery areas</b>
           <p>
-            Customers choose one of the active areas below. The fee, minimum order, and estimate appear at checkout.
+            Set each Canadian area’s name, delivery fee (CAD), minimum order and delivery estimate. Activate it and save
+            to make it available at checkout.
           </p>
         </div>
         <Button variant="secondary" onClick={add}>
@@ -1318,6 +1347,7 @@ function DeliveryZones({
             <div className="zone-fields">
               <Input
                 label="Area name"
+                placeholder="For example: Halifax or Dartmouth"
                 value={zone.name}
                 onChange={(event) => update(zone.id, { name: event.target.value })}
               />
@@ -1516,7 +1546,7 @@ function BusinessSettings({
           </div>
           <label className="field">
             <span>Delivery area</span>
-            <input readOnly value="Toronto" />
+            <input readOnly value={initial.city || "Delivery area"} />
           </label>
           <article className="store-theme-preview-product">
             <span className="badge badge-berry">Bestseller</span>
@@ -1624,8 +1654,14 @@ function BusinessSettings({
         <Input name="businessName" label="Business name" defaultValue={initial.businessName} />
         <Input name="contactEmail" label="Contact email" type="email" defaultValue={initial.contactEmail} />
         <Input name="phone" label="Phone" defaultValue={initial.phone} />
-        <Input name="whatsapp" label="WhatsApp" defaultValue={initial.whatsapp} />
+        <Input
+          name="whatsapp"
+          label="WhatsApp link or international number"
+          placeholder="https://wa.me/19025551234"
+          defaultValue={initial.whatsapp}
+        />
         <Input name="address" label="Address" defaultValue={initial.address} />
+        <Input name="city" label="City" defaultValue={initial.city ?? ""} />
         <Input name="province" label="Province or territory code" maxLength={2} defaultValue={initial.province} />
         <Input name="postalCode" label="Business postal code" maxLength={7} defaultValue={initial.postalCode} />
         <input name="country" type="hidden" value="CA" />

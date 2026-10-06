@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
+import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
 const schema = z
   .string()
@@ -8,6 +9,8 @@ const schema = z
   .max(255);
 
 export async function GET(request: Request) {
+  const limited = await enforcePublicRateLimit(request, { scope: "payment-status", maximum: 180, windowSeconds: 900 });
+  if (limited) return limited;
   const sessionId = new URL(request.url).searchParams.get("session");
   const parsed = schema.safeParse(sessionId);
   if (!parsed.success) return Response.json({ error: "Invalid payment session." }, { status: 400 });

@@ -1,6 +1,9 @@
 "use client";
+import { useCustomerText } from "@/components/customer-text-provider";
 import { type FormEvent, useState } from "react";
 export function NewsletterForm() {
+  const t = useCustomerText("newsletter form");
+
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -24,24 +27,24 @@ export function NewsletterForm() {
       setBusy(false);
     }
   }
-  if (done) return <p className="newsletter-success">✓ You’re on the list. Welcome.</p>;
+  if (done) return <p className="newsletter-success">{t("✓ You’re on the list. Welcome.")}</p>;
   return (
     <form className="newsletter-form" onSubmit={submit}>
-      <label className="sr-only" htmlFor="newsletter-email">
-        Email address
+      <label className="sr-only" htmlFor={"newsletter-email"}>
+        {t("Email address")}
       </label>
       <input
         id="newsletter-email"
         type="email"
         required
-        placeholder="Email address"
+        placeholder={t("Email address")}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
-      <button type="submit" disabled={busy} aria-label="Subscribe">
-        {busy ? "…" : "→"}
+      <button type="submit" disabled={busy} aria-label={t("Subscribe")}>
+        {busy ? t("…") : t("→")}
       </button>
-      {error && <small role="alert">{error}</small>}
+      {error && <small role="alert">{t(error)}</small>}
     </form>
   );
 }

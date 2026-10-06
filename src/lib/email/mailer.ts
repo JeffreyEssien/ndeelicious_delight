@@ -66,6 +66,9 @@ export async function sendTransactionalEmail(input: EmailInput) {
       subject: input.subject,
       html: input.html,
     });
+    if (!result.accepted?.length || result.rejected?.length) {
+      return { sent: false, reason: "provider-error" as const };
+    }
     return { sent: true, id: result.messageId };
   } catch (error) {
     const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "unknown";
@@ -74,6 +77,6 @@ export async function sendTransactionalEmail(input: EmailInput) {
   }
 }
 
-export function emailFrame(title: string, body: string) {
-  return `<div style="background:#faf8f5;padding:32px;font-family:Arial,sans-serif;color:#241b1e"><div style="max-width:600px;margin:auto;background:#fff;padding:32px;border-radius:16px"><p style="color:#792f49;font-weight:700">Ndeeelicious Delight</p><h1 style="font-size:26px">${escapeHtml(title)}</h1>${body}<p style="margin-top:32px;color:#6e6669;font-size:13px">Made with care.</p></div></div>`;
+export function emailFrame(title: string, body: string, wording: { businessName?: string; footer?: string } = {}) {
+  return `<div style="background:#faf8f5;padding:32px;font-family:Arial,sans-serif;color:#241b1e"><div style="max-width:600px;margin:auto;background:#fff;padding:32px;border-radius:16px"><p style="color:#792f49;font-weight:700">${escapeHtml(wording.businessName ?? "Ndeeelicious Delight")}</p><h1 style="font-size:26px">${escapeHtml(title)}</h1>${body}<p style="margin-top:32px;color:#6e6669;font-size:13px">${escapeHtml(wording.footer ?? "Made with care.")}</p></div></div>`;
 }
