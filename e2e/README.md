@@ -26,7 +26,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=fixture-key \
 SUPABASE_SERVICE_ROLE_KEY=fixture-service-key \
 ADMIN_AUTH_SECRET=isolated-ndee-browser-secret-32-characters \
 NEXT_PUBLIC_SITE_URL=http://localhost:3100 \
-SMTP_HOST= SMTP_USER= SMTP_PASSWORD= npm run dev -- --port 3100
+STRIPE_SECRET_KEY= SMTP_HOST= SMTP_USER= SMTP_PASSWORD= npm run dev -- --port 3100
 ```
 
 Run the customer tests before the owner test, which changes local fixture data:
@@ -43,3 +43,15 @@ captures both full-page and viewport result screenshots under `test-results/`.
 The owner test signs a session using the fixture secret and exercises the actual
 admin pages and API save paths. The fixture server contains no remote database
 connection or production secrets. Restart it to restore sample data.
+
+The commerce admin suite also checks delivery saves/reloads, duplicate prefix rejection,
+postal checkout and real quote totals, and actual PNG/ZIP download bytes with image/logo
+failure handling. Run it on `phone-375` and `desktop`:
+
+```sh
+NDEE_BROWSER_FIXTURES=true PLAYWRIGHT_BASE_URL=http://localhost:3100 \
+PLAYWRIGHT_ISOLATED_ENVIRONMENT=true npx playwright test e2e/commerce-admin.spec.ts --project=phone-375 --workers=1
+```
+
+The five-width customer loop uses 375×812, 390×844 and 430×932 for the corresponding phones.
+Snapshots are under `test-results/`; they are generated artifacts, not production data.

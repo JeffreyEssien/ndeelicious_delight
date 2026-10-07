@@ -7,7 +7,8 @@ import type {
   marketingExportSchema,
 } from "@/validations/settings";
 
-export type BusinessSettings = z.infer<typeof businessSettingsSchema>;
+export type BusinessSettings = Omit<z.infer<typeof businessSettingsSchema>, "deliveryTaxMode" | "fulfilmentSchedule"> &
+  Partial<Pick<z.infer<typeof businessSettingsSchema>, "deliveryTaxMode" | "fulfilmentSchedule">>;
 export type StoreAppearance = z.infer<typeof storeAppearanceSchema>;
 export type StoreCarousel = z.infer<typeof storeCarouselSchema>;
 export type MarketingExport = z.infer<typeof marketingExportSchema>;
@@ -28,6 +29,13 @@ export type CakeOption = {
 };
 
 export type CakeConfigurationData = {
+  fulfilment?: {
+    schedule: import("@/features/fulfilment/types").FulfilmentSchedule | null;
+    areas: import("@/features/fulfilment/types").DeliveryArea[];
+    deliveryEnabled: boolean;
+    pickupEnabled: boolean;
+  };
+  relationships?: { cakeTypeId: string; optionId: string }[];
   options: CakeOption[];
   cakeTypes: import("@/validations/cake-type").CakeType[];
   timezone: string;

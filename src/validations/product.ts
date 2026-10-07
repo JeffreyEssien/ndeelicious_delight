@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { taxClasses } from "@/features/tax/types";
 
 export const productCategorySchema = z.enum(["CUSTOM_CAKES", "PASTRIES", "READY_TO_BAKE"]);
 export const productStatusSchema = z.enum(["ACTIVE", "OUT_OF_STOCK", "DRAFT", "ARCHIVED"]);
@@ -8,6 +9,7 @@ const optionalText = (maximum: number) => z.string().trim().max(maximum).optiona
 export const productVariantInputSchema = z.object({
   id: z.uuid().optional(),
   name: z.string().trim().min(1, "Each variant needs a name.").max(100),
+  packQuantity: z.number().int().positive().max(1000000).nullable().default(null),
   priceAdjustment: z.number().int().min(-100_000_000).max(100_000_000),
   stockQuantity: z.number().int().min(0).max(1_000_000),
   active: z.boolean().default(true),
@@ -32,6 +34,7 @@ export const productInputSchema = z
     description: z.string().trim().min(2).max(10_000),
     category: productCategorySchema,
     shoppingMode: z.enum(["READY_TO_ORDER", "MADE_TO_ORDER", "READY_TO_BAKE"]).default("READY_TO_ORDER"),
+    taxClass: z.enum(taxClasses).default("REQUIRES_REVIEW"),
     preparationHours: z.number().int().min(0).max(8760).default(0),
     price: z.number().int().min(0).max(1_000_000_000),
     discountPrice: z.number().int().min(0).max(1_000_000_000).nullable(),

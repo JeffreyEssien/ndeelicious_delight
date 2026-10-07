@@ -45,7 +45,22 @@ export default async function Page() {
                   <span>
                     <b>{zone.name}</b>
                     <small>
-                      {zone.estimate}
+                      {zone.estimate || business.fulfilmentSchedule?.defaultEstimate}
+                      <br />
+                      Postal prefixes: {zone.postalCodePrefixes.join(", ") || "Setup required"}
+                      {zone.freeDeliveryThreshold != null && (
+                        <>
+                          {" "}
+                          · Free delivery from{" "}
+                          {formatMoney(zone.freeDeliveryThreshold, business.currency, business.locale)}
+                        </>
+                      )}
+                      {zone.customerNote && (
+                        <>
+                          <br />
+                          {zone.customerNote}
+                        </>
+                      )}
                       {zone.minimumOrder > 0
                         ? t(" · {value1} minimum", {
                             value1: formatMoney(zone.minimumOrder, business.currency, business.locale),
@@ -67,6 +82,33 @@ export default async function Page() {
           </div>
         </div>
         <div className="delivery-notes">
+          <article>
+            <h3>Delivery schedule</h3>
+            {business.fulfilmentSchedule ? (
+              <>
+                <p>
+                  {business.fulfilmentSchedule.deliveryDays
+                    .map((day) => ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day])
+                    .join(", ") || "Delivery is paused"}
+                </p>
+                <p>
+                  {business.fulfilmentSchedule.sameDayEnabled
+                    ? `Same-day orders close at ${business.fulfilmentSchedule.sameDayCutoff} in eligible areas.`
+                    : "Same-day delivery is unavailable."}{" "}
+                  Times are in America/Halifax. Item preparation time also applies.
+                </p>
+                {business.fulfilmentSchedule.blackouts
+                  .filter((day) => day.active)
+                  .map((day) => (
+                    <p key={day.date}>
+                      {day.date}: {day.reason || "Closed"}
+                    </p>
+                  ))}
+              </>
+            ) : (
+              <p>Schedule setup is required. Contact the bakery for availability.</p>
+            )}
+          </article>
           {page.steps.map((step, index) => (
             <article key={step.title}>
               <span>{String(index + 1).padStart(2, "0")}</span>
@@ -84,9 +126,14 @@ export default async function Page() {
             </div>
             {(business.openingHours || business.address) && (
               <span>
-                {business.openingHours}
+                {business.fulfilmentSchedule?.pickupDays
+                  .map((day) => ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day])
+                  .join(", ") ?? "Pickup schedule setup required"}
+                {business.fulfilmentSchedule &&
+                  ` · ${business.fulfilmentSchedule.pickupHours.start}–${business.fulfilmentSchedule.pickupHours.end}`}
                 <br />
-                <b>{business.address}</b>
+                <b>{business.fulfilmentSchedule?.pickupAddress ?? business.address}</b>
+                <p>{business.fulfilmentSchedule?.pickupInstructions}</p>
               </span>
             )}
           </div>

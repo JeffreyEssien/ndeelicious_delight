@@ -7,18 +7,34 @@ import { CommerceError } from "@/features/checkout/pricing";
 const pricedCakeSteps = ["occasion", "size", "flavour", "filling", "design"] as const;
 
 export function calculateCakeConfigurationPrice(
-  config: Pick<CakeConfiguration, (typeof pricedCakeSteps)[number]>,
+  config: Pick<CakeConfiguration, (typeof pricedCakeSteps)[number] | "optionIds">,
   options: CakeOption[],
+  cakeType: CakeType | undefined,
 ) {
+  if (!cakeType || cakeType.basePrice == null)
+    throw new CommerceError(
+      "CAKE_SETUP_REQUIRED",
+      "This cake type needs a base price. Contact the bakery for a quote.",
+    );
   for (const key of pricedCakeSteps)
     if (!config[key]) throw new CommerceError("INCOMPLETE_CAKE", `Choose a ${key} for your cake.`);
-  const selected = pricedCakeSteps.map((type) =>
-    options.find((option) => option.type === type && option.name === config[type] && option.active),
-  );
+  const selected = pricedCakeSteps.map((type) => {
+    const id = config.optionIds?.[type];
+    const matches = options.filter(
+      (option) =>
+        option.type === type &&
+        option.active &&
+        (id ? option.id === id && option.name === config[type] : option.name === config[type]),
+    );
+    return matches.length === 1 ? matches[0] : undefined;
+  });
   if (selected.some((option) => !option))
     throw new CommerceError("INVALID_CAKE_OPTION", "One of the selected cake options is unavailable.");
+  const total = selected.reduce((sum, option) => sum + (option?.priceAdjustment ?? 0), cakeType.basePrice);
+  if (!Number.isSafeInteger(total) || total < 0 || total > 2147483647)
+    throw new CommerceError("INVALID_CAKE_PRICE", "This cake price needs review.");
   return {
-    total: selected.reduce((total, option) => total + (option?.priceAdjustment ?? 0), 0),
+    total,
     quoteRequired: selected.some((option) => option?.quoteRequired),
     selected: selected as CakeOption[],
   };
@@ -29,7 +45,7 @@ export function calculateCakeQuote(
   options: CakeOption[],
   input: { now?: Date; cakeType: CakeType; timezone: string },
 ) {
-  const pricing = calculateCakeConfigurationPrice(config, options);
+  const pricing = calculateCakeConfigurationPrice(config, options, input.cakeType);
   const now = input.now ?? new Date();
   if (!input.cakeType?.active || input.cakeType.id !== config.cakeTypeId || leadTimeHours(input.cakeType) <= 0)
     throw new CommerceError("INVALID_CAKE_TYPE", "Choose an available cake type with a configured lead time.");

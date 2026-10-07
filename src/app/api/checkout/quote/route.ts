@@ -1,3 +1,5 @@
+import { resolveCheckoutFulfilment } from "@/features/fulfilment/checkout";
+import { FulfilmentError, type DeliveryArea } from "@/features/fulfilment/types";
 import { checkoutSchema } from "@/validations/checkout";
 import { assertFulfilmentAvailable, calculateOrderQuote, CommerceError } from "@/features/checkout/pricing";
 import { getDeliveryZones, getProducts } from "@/lib/data/catalog";
@@ -25,18 +27,14 @@ export async function POST(request: Request) {
       getBusinessSettings(),
     ]);
     assertFulfilmentAvailable({ fulfilment: delivery.fulfilment, ...business });
-    const zone =
-      delivery.fulfilment === "delivery" ? deliveryZones.find((z) => z.id === delivery.zoneId && z.active) : undefined;
-    if (delivery.fulfilment === "delivery" && !zone)
-      return Response.json({ error: "That delivery zone is unavailable." }, { status: 400 });
     const coupon = await getCoupon(couponCode);
     if (couponCode && !coupon) return Response.json({ error: "That coupon is not valid." }, { status: 400 });
-    const quote = calculateOrderQuote({
+    const quoteInput = {
       cart,
       products,
       fulfilment: delivery.fulfilment,
-      deliveryFee: zone?.fee,
-      deliveryMinimum: zone?.minimumOrder,
+      deliveryFee: 0,
+      deliveryMinimum: 0,
       orderMinimum: business.orderMinimum,
       deliveryEnabled: business.deliveryEnabled,
       pickupEnabled: business.pickupEnabled,
@@ -46,11 +44,26 @@ export async function POST(request: Request) {
       taxEnabled: business.taxEnabled,
       taxRateBps: business.taxRateBps,
       taxDelivery: business.taxDelivery,
+      deliveryTaxMode: business.deliveryTaxMode,
+    };
+    const initialQuote = calculateOrderQuote(quoteInput);
+    const fulfilment = resolveCheckoutFulfilment({
+      delivery,
+      areas: deliveryZones as DeliveryArea[],
+      subtotal: initialQuote.subtotal,
+      preparationHours: initialQuote.preparationHours,
+      schedule: business.fulfilmentSchedule,
     });
+    const quote = {
+      ...calculateOrderQuote({ ...quoteInput, deliveryFee: fulfilment.fee }),
+      preparationReadyAt: fulfilment.earliestAt,
+      fulfilment,
+    };
+
     return Response.json({ quote });
   } catch (error) {
     if (error instanceof SyntaxError) return Response.json({ error: "The request body is invalid." }, { status: 400 });
-    if (error instanceof CommerceError)
+    if (error instanceof CommerceError || error instanceof FulfilmentError)
       return Response.json(
         { error: error.message, code: error.code },
         { status: error.code === "INSUFFICIENT_STOCK" ? 409 : 400 },

@@ -82,6 +82,7 @@ export function ProductEditor({
       featured: form.get("featured") === "on",
       shoppingMode: String(form.get("shoppingMode")),
       preparationHours: Number(form.get("preparationHours")),
+      taxClass: String(form.get("taxClass")),
       trackInventory: form.get("trackInventory") === "on",
       lowStockThreshold: Number(form.get("lowStockThreshold")),
       ingredients: String(form.get("ingredients")),
@@ -91,10 +92,11 @@ export function ProductEditor({
         .filter(Boolean),
       storageInstructions: String(form.get("storageInstructions")),
       preparationInstructions: String(form.get("preparationInstructions")),
-      variants: variants.map(({ id, name: variantName, priceAdjustment, stockQuantity, active }) => ({
+      variants: variants.map(({ id, name: variantName, priceAdjustment, stockQuantity, active, packQuantity }) => ({
         id,
         name: variantName,
         priceAdjustment,
+        packQuantity: packQuantity ?? null,
         stockQuantity,
         active,
       })),
@@ -182,6 +184,18 @@ export function ProductEditor({
 
         <div className="product-editor-section">
           <h3>Shopping &amp; preparation</h3>
+          <Select label="Tax classification" name="taxClass" defaultValue={product?.taxClass ?? "REQUIRES_REVIEW"}>
+            <option value="REQUIRES_REVIEW">Setup required</option>
+            <option value="ZERO_RATED_GROCERY">Eligible basic grocery (zero rated)</option>
+            <option value="SWEET_SINGLE_SERVING">Eligible sweet single servings (pack rule)</option>
+            <option value="FULL_CAKE">Eligible full cake (zero rated)</option>
+            <option value="WEDDING_CAKE">Eligible edible wedding cake (zero rated)</option>
+            <option value="STANDARD_TAXABLE">Standard taxable</option>
+          </Select>
+          <p>
+            Confirm CRA classification, serving size and packaging. Sweet servings qualify for the six-or-more rule only
+            when sold together without individual taxable packaging.
+          </p>
           <Select
             label="Shopping mode"
             name="shoppingMode"
@@ -248,6 +262,27 @@ export function ProductEditor({
               <Icon name="plus" /> Add variant
             </Button>
           </div>
+          <Button
+            variant="secondary"
+            type="button"
+            onClick={() =>
+              setVariants((current) => [
+                ...current,
+                ...[3, 6, 12]
+                  .filter((quantity) => !current.some((variant) => variant.packQuantity === quantity))
+                  .map((quantity) => ({
+                    name: `Pack of ${quantity}`,
+                    packQuantity: quantity,
+                    priceAdjustment: 0,
+                    stockQuantity: 0,
+                    active: false,
+                  })),
+              ])
+            }
+          >
+            Add 3 / 6 / 12 pack options
+          </Button>
+          <p>Set each pack’s actual price and availability before activating it.</p>
           {variants.map((variant, index) => (
             <div className="variant-editor" key={variant.id ?? `new-${index}`}>
               <Input
@@ -273,6 +308,22 @@ export function ProductEditor({
                     current.map((item, itemIndex) =>
                       itemIndex === index
                         ? { ...item, priceAdjustment: Math.round(Number(event.target.value) * 100) }
+                        : item,
+                    ),
+                  )
+                }
+              />
+              <Input
+                label="Pieces in this pack"
+                type="number"
+                min="1"
+                step="1"
+                value={variant.packQuantity ?? ""}
+                onChange={(event) =>
+                  setVariants((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index
+                        ? { ...item, packQuantity: event.target.value ? Number(event.target.value) : null }
                         : item,
                     ),
                   )

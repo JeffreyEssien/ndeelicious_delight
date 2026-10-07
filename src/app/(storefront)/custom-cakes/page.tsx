@@ -1,3 +1,4 @@
+import { optionsForCakeType } from "@/features/cakes/options";
 import { getCustomerText } from "@/lib/customer-text";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -23,15 +24,17 @@ export default async function Page({
     getCakeConfiguration(),
     searchParams,
   ]);
-  const recommendedValue = (type: "occasion" | "size" | "flavour" | "filling" | "design") => {
+  const recommendedOption = (type: "occasion" | "size" | "flavour" | "filling" | "design") => {
     const id = params[`${type}Id`];
     const legacyName = params[type];
-    const option =
-      typeof id === "string"
-        ? configuration.options.find((item) => item.id === id && item.type === type && item.active)
-        : undefined;
-    return option?.name ?? (typeof legacyName === "string" ? legacyName : undefined);
+    return optionsForCakeType(configuration, typeof params.cakeTypeId === "string" ? params.cakeTypeId : "").find(
+      (item) =>
+        item.type === type &&
+        (typeof id === "string" ? item.id === id : typeof legacyName === "string" && item.name === legacyName),
+    );
   };
+  const recommendedValue = (type: "occasion" | "size" | "flavour" | "filling" | "design") =>
+    recommendedOption(type)?.name;
   const hero = content.customCakes.hero;
   return (
     <>
@@ -51,6 +54,13 @@ export default async function Page({
           initialSelection={
             params.recommended === "1"
               ? {
+                  optionIds: {
+                    occasion: recommendedOption("occasion")?.id,
+                    size: recommendedOption("size")?.id,
+                    flavour: recommendedOption("flavour")?.id,
+                    filling: recommendedOption("filling")?.id,
+                    design: recommendedOption("design")?.id,
+                  },
                   cakeTypeId: typeof params.cakeTypeId === "string" ? params.cakeTypeId : undefined,
                   occasion: recommendedValue("occasion"),
                   size: recommendedValue("size"),

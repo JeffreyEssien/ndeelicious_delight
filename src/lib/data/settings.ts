@@ -1,3 +1,4 @@
+import { getDeliveryZones } from "./catalog";
 import { mergeCustomerText } from "@/content/customer-text";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
@@ -60,7 +61,7 @@ export const defaultMarketingExport: MarketingExport = {
   showLogo: true,
   showPrice: true,
   showSafeZone: true,
-  logoUrl: "/WhatsApp Image 2026-09-15 at 22.16.43.jpeg",
+  logoUrl: "/brand-logo.jpg",
   productIds: [],
 };
 
@@ -147,7 +148,7 @@ export async function getMarketingExport(client?: SupabaseClient): Promise<Marke
 
 export async function getCakeConfiguration(client?: SupabaseClient): Promise<CakeConfigurationData> {
   const db = client ?? createServiceClient();
-  const [{ data, error }, business, types] = await Promise.all([
+  const [{ data, error }, business, types, relationships, areas] = await Promise.all([
     db
       .from("custom_cake_options")
       .select("id,type,name,description,price_adjustment,quote_required,active,sort_order")
@@ -155,6 +156,8 @@ export async function getCakeConfiguration(client?: SupabaseClient): Promise<Cak
       .order("sort_order"),
     getBusinessSettings(db),
     db.from("cake_types").select("*").order("sort_order"),
+    db.from("cake_type_options").select("cake_type_id,option_id"),
+    getDeliveryZones(db),
   ]);
   if (error) throw error;
   const options = (data ?? []).map(
@@ -170,14 +173,24 @@ export async function getCakeConfiguration(client?: SupabaseClient): Promise<Cak
     }),
   );
   if (types.error) throw types.error;
+  if (relationships.error) throw relationships.error;
   return {
     options,
-    timezone: business.timezone,
+    fulfilment: {
+      schedule: business.fulfilmentSchedule,
+      areas,
+      deliveryEnabled: business.deliveryEnabled,
+      pickupEnabled: business.pickupEnabled,
+    },
+    relationships: (relationships.data ?? []).map((row) => ({ cakeTypeId: row.cake_type_id, optionId: row.option_id })),
+    timezone: "America/Halifax",
     cakeTypes: (types.data ?? []).map((row) => ({
       id: row.id,
       name: row.name,
       slug: row.slug,
       description: row.description,
+      basePrice: row.base_price ?? null,
+      taxClass: row.tax_class ?? "REQUIRES_REVIEW",
       leadTimeValue: Number(row.lead_time_value),
       leadTimeUnit: row.lead_time_unit,
       active: row.active,

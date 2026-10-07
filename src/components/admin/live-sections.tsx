@@ -466,7 +466,11 @@ export function CakeWorkspace({
         <CakeRequests initial={requests} />
       ) : (
         <>
-          <CakeTypesEditor initial={configuration.cakeTypes} />
+          <CakeTypesEditor
+            initial={configuration.cakeTypes}
+            options={configuration.options}
+            relationships={configuration.relationships ?? []}
+          />
           <CakeConfigurationEditor initial={configuration} />
         </>
       )}

@@ -6,6 +6,8 @@ import type { CakeConfigurationData, CakeOptionType } from "@/types/content";
 import { useMoney } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 import { Input, Textarea } from "@/components/ui/primitives";
+import { cakeAvailability } from "@/features/cakes/availability";
+import { optionsForCakeType } from "@/features/cakes/options";
 import { calculateCakeConfigurationPrice } from "@/features/cakes/pricing";
 import { trackCommerceEvent } from "@/lib/analytics/client";
 import { earliestCakeDate, leadTimeLabel } from "@/features/cakes/lead-time";
@@ -44,7 +46,7 @@ export function CakeBuilder({
 }: {
   configuration: CakeConfigurationData;
   initialSelection?: Partial<
-    Pick<CakeConfiguration, "cakeTypeId" | "occasion" | "size" | "flavour" | "filling" | "design">
+    Pick<CakeConfiguration, "cakeTypeId" | "occasion" | "size" | "flavour" | "filling" | "design" | "optionIds">
   >;
   budgetPreset?: { title: string; body: string };
 }) {
@@ -67,32 +69,52 @@ export function CakeBuilder({
         Object.entries(initialSelection ?? {}).filter(([type, name]) =>
           type === "cakeTypeId"
             ? configuration.cakeTypes.some((item) => item.active && item.id === name)
-            : configuration.options.some((option) => option.active && option.type === type && option.name === name),
+            : optionsForCakeType(configuration, String(initialSelection?.cakeTypeId ?? stored.cakeTypeId ?? "")).some(
+                (option) => option.active && option.type === type && option.name === name,
+              ),
         ),
       );
-      setConfig({ ...initial, ...stored, ...validPreset });
+      const next = { ...initial, ...stored, ...validPreset };
+      const compatible = optionsForCakeType(configuration, next.cakeTypeId);
+      next.optionIds = Object.fromEntries(
+        ["occasion", "size", "flavour", "filling", "design"].flatMap((family) => {
+          const selectedId = initialSelection?.optionIds?.[family as CakeOptionType] ?? stored.optionIds?.[family];
+          const matches = compatible.filter(
+            (option) =>
+              option.type === family && (selectedId ? option.id === selectedId : option.name === next[family]),
+          );
+          if (matches.length !== 1) {
+            next[family] = "";
+            return [];
+          }
+          next[family] = matches[0].name;
+          return [[family, matches[0].id]];
+        }),
+      );
+      setConfig(next);
     } catch {}
     setReady(true);
-  }, [configuration.options, configuration.cakeTypes, initialSelection]);
+  }, [configuration, initialSelection]);
   useEffect(() => {
     trackCommerceEvent("CAKE_BUILDER_STARTED");
   }, []);
   useEffect(() => {
     if (ready) localStorage.setItem("ndee-cake-v1", JSON.stringify(config));
   }, [config, ready]);
-  const options = (type: CakeOptionType) =>
-    configuration.options.filter((option) => option.active && option.type === type);
+  const allowedOptions = optionsForCakeType(configuration, config.cakeTypeId);
+  const options = (type: CakeOptionType) => allowedOptions.filter((option) => option.type === type);
   const pricing = useMemo(() => {
     try {
-      return calculateCakeConfigurationPrice(config, configuration.options).total;
+      return calculateCakeConfigurationPrice(
+        config,
+        optionsForCakeType(configuration, config.cakeTypeId),
+        configuration.cakeTypes.find((type) => type.id === config.cakeTypeId),
+      ).total;
     } catch {
       return 0;
     }
-  }, [config, configuration.options]);
-  const quote = configuration.options.some(
-    (option) =>
-      option.quoteRequired && [config.size, config.flavour, config.filling, config.design].includes(option.name),
-  );
+  }, [config, configuration]);
+  const quote = allowedOptions.some((option) => option.quoteRequired && config.optionIds?.[option.type] === option.id);
   const selectionCount = [
     config.occasion,
     config.size,
@@ -103,9 +125,46 @@ export function CakeBuilder({
   ].filter(Boolean).length;
   const selectedType = configuration.cakeTypes.find((type) => type.id === config.cakeTypeId && type.active);
   const leadNotice = selectedType ? `Minimum lead time: ${leadTimeLabel(selectedType)}` : "Choose a cake type";
-  const minDate = selectedType ? earliestCakeDate(selectedType, configuration.timezone) : "";
+  let minDate = selectedType ? earliestCakeDate(selectedType, configuration.timezone) : "";
+  let availabilityError = "";
+  if (selectedType && configuration.fulfilment) {
+    try {
+      minDate = cakeAvailability({ ...configuration.fulfilment, cakeType: selectedType }).date;
+    } catch (reason) {
+      availabilityError = reason instanceof Error ? reason.message : "Schedule setup is required.";
+    }
+  }
   function choose(key: keyof CakeConfiguration, value: string) {
-    setConfig((v) => ({ ...v, [key]: value, ...(key === "cakeTypeId" ? { deliveryDate: "" } : {}) }));
+    setConfig((v) => {
+      const next = { ...v, [key]: value };
+      if (key === "cakeTypeId") {
+        const compatible = optionsForCakeType(configuration, value);
+        const retained: NonNullable<CakeConfiguration["optionIds"]> = {};
+        for (const family of ["occasion", "size", "flavour", "filling", "design"] as const) {
+          const id = v.optionIds?.[family];
+          const matches = compatible.filter(
+            (option) => option.type === family && (id ? option.id === id : option.name === next[family]),
+          );
+          if (matches.length === 1) {
+            next[family] = matches[0].name;
+            retained[family] = matches[0].id;
+          } else next[family] = "";
+        }
+        next.optionIds = retained;
+        const type = configuration.cakeTypes.find((item) => item.id === value);
+        if (type && next.deliveryDate) {
+          try {
+            const earliest = configuration.fulfilment
+              ? cakeAvailability({ ...configuration.fulfilment, cakeType: type, requestedDate: next.deliveryDate }).date
+              : earliestCakeDate(type, configuration.timezone);
+            if (next.deliveryDate < earliest) next.deliveryDate = "";
+          } catch {
+            next.deliveryDate = "";
+          }
+        }
+      }
+      return next;
+    });
     setError("");
   }
   function valid() {
@@ -125,9 +184,21 @@ export function CakeBuilder({
       "deliveryDate",
     ];
     if (step === 7) return true;
+    if (step === 8 && availabilityError) {
+      setError(availabilityError);
+      return false;
+    }
     if (step === 8 && config.deliveryDate < minDate) {
       setError(`${leadNotice}. Earliest date: ${minDate}.`);
       return false;
+    }
+    if (step === 8 && selectedType && configuration.fulfilment) {
+      try {
+        cakeAvailability({ ...configuration.fulfilment, cakeType: selectedType, requestedDate: config.deliveryDate });
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : "Choose an available date.");
+        return false;
+      }
     }
     const key = keys[step];
     if (key && !config[key] && ![6, 7].includes(step)) {
@@ -268,50 +339,100 @@ export function CakeBuilder({
             <Choice
               title={t("What are we celebrating?")}
               subtitle={"Choose the occasion that feels closest."}
-              values={options("occasion").map((option) => option.name)}
-              selected={config.occasion}
-              onChoose={(v) => choose("occasion", v)}
+              values={options("occasion").map((option) => option.id)}
+              labels={options("occasion").map((option) => option.name)}
+              selected={config.optionIds?.occasion ?? ""}
+              onChoose={(id) => {
+                const option = options("occasion").find((item) => item.id === id);
+                if (option)
+                  setConfig((current) => ({
+                    ...current,
+                    occasion: option.name,
+                    optionIds: { ...current.optionIds, occasion: id },
+                  }));
+                setError("");
+              }}
             />
           )}
           {step === 1 && (
             <Choice
               title={t("How many are we serving?")}
               subtitle={"Serving sizes are a guide—extra slices are never a bad idea."}
-              values={options("size").map((option) => option.name)}
+              values={options("size").map((option) => option.id)}
+              labels={options("size").map((option) => option.name)}
               details={options("size").map((option) => option.description)}
               prices={options("size").map((option) => option.priceAdjustment)}
-              selected={config.size}
-              onChoose={(v) => choose("size", v)}
+              selected={config.optionIds?.size ?? ""}
+              onChoose={(id) => {
+                const option = options("size").find((item) => item.id === id);
+                if (option)
+                  setConfig((current) => ({
+                    ...current,
+                    size: option.name,
+                    optionIds: { ...current.optionIds, size: id },
+                  }));
+                setError("");
+              }}
             />
           )}
           {step === 2 && (
             <Choice
               title={t("Choose your cake flavour")}
               subtitle={"Every sponge is baked fresh for your date."}
-              values={options("flavour").map((option) => option.name)}
+              values={options("flavour").map((option) => option.id)}
+              labels={options("flavour").map((option) => option.name)}
               prices={options("flavour").map((option) => option.priceAdjustment)}
-              selected={config.flavour}
-              onChoose={(v) => choose("flavour", v)}
+              selected={config.optionIds?.flavour ?? ""}
+              onChoose={(id) => {
+                const option = options("flavour").find((item) => item.id === id);
+                if (option)
+                  setConfig((current) => ({
+                    ...current,
+                    flavour: option.name,
+                    optionIds: { ...current.optionIds, flavour: id },
+                  }));
+                setError("");
+              }}
             />
           )}
           {step === 3 && (
             <Choice
               title={t("Choose a filling")}
               subtitle={"The lovely layer between every sponge."}
-              values={options("filling").map((option) => option.name)}
+              values={options("filling").map((option) => option.id)}
+              labels={options("filling").map((option) => option.name)}
               prices={options("filling").map((option) => option.priceAdjustment)}
-              selected={config.filling}
-              onChoose={(v) => choose("filling", v)}
+              selected={config.optionIds?.filling ?? ""}
+              onChoose={(id) => {
+                const option = options("filling").find((item) => item.id === id);
+                if (option)
+                  setConfig((current) => ({
+                    ...current,
+                    filling: option.name,
+                    optionIds: { ...current.optionIds, filling: id },
+                  }));
+                setError("");
+              }}
             />
           )}
           {step === 4 && (
             <Choice
               title={t("Set the design direction")}
               subtitle={"We’ll interpret this in our signature considered style."}
-              values={options("design").map((option) => option.name)}
+              values={options("design").map((option) => option.id)}
+              labels={options("design").map((option) => option.name)}
               prices={options("design").map((option) => option.priceAdjustment)}
-              selected={config.design}
-              onChoose={(v) => choose("design", v)}
+              selected={config.optionIds?.design ?? ""}
+              onChoose={(id) => {
+                const option = options("design").find((item) => item.id === id);
+                if (option)
+                  setConfig((current) => ({
+                    ...current,
+                    design: option.name,
+                    optionIds: { ...current.optionIds, design: id },
+                  }));
+                setError("");
+              }}
             />
           )}
           {step === 5 && (
@@ -382,11 +503,11 @@ export function CakeBuilder({
               </p>
               <dl className="review-list">
                 {Object.entries(config)
-                  .filter(([k, v]) => v && k !== "referenceName" && k !== "cakeTypeId")
+                  .filter(([k, v]) => v && k !== "referenceName" && k !== "cakeTypeId" && k !== "optionIds")
                   .map(([k, v]) => (
                     <div key={k}>
                       <dt>{k.replace(/([A-Z])/g, " $1")}</dt>
-                      <dd>{v}</dd>
+                      <dd>{typeof v === "string" ? v : ""}</dd>
                     </div>
                   ))}
                 {config.referenceName && (
@@ -539,6 +660,7 @@ function Choice({
   title,
   subtitle,
   values,
+  labels,
   details,
   prices,
   selected,
@@ -547,6 +669,7 @@ function Choice({
   title: string;
   subtitle: string;
   values: string[];
+  labels?: string[];
   details?: string[];
   prices?: number[];
   selected: string;
@@ -568,7 +691,7 @@ function Choice({
             onClick={() => onChoose(value)}
           >
             <span className="choice-check">{selected === value && <Icon name="check" />}</span>
-            <b>{value}</b>
+            <b>{labels?.[i] ?? value}</b>
             {details?.[i] && <small>{details[i]}</small>}
             {prices && <em>{prices[i] ? `+${formatMoney(prices[i])}` : t("Included")}</em>}
           </button>

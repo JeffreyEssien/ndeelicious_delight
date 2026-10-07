@@ -1,3 +1,5 @@
+import { calculateLineTaxes } from "@/features/tax/calculator";
+import type { DeliveryTaxMode, TaxSnapshot } from "@/features/tax/types";
 import { variantPrice } from "@/features/catalog/pricing";
 import type { CartLine, Fulfilment, Product } from "@/types";
 import { formatMoney } from "@/lib/format";
@@ -20,6 +22,7 @@ export type CouponRule = {
 };
 
 export type OrderQuote = {
+  taxSnapshot: TaxSnapshot;
   lines: Array<{
     productId: string;
     variantId: string;
@@ -78,6 +81,7 @@ export function calculateOrderQuote(input: {
   taxRateBps?: number;
   taxDelivery?: boolean;
   now?: Date;
+  deliveryTaxMode?: DeliveryTaxMode | null;
 }): OrderQuote {
   assertFulfilmentAvailable(input);
   if (!input.cart.length) throw new CommerceError("EMPTY_CART", "Your basket is empty.");
@@ -116,6 +120,8 @@ export function calculateOrderQuote(input: {
   );
   const preparationReadyAt = new Date((input.now ?? new Date()).getTime() + preparationHours * 3600000).toISOString();
   const subtotal = lines.reduce((total, line) => total + line.lineTotal, 0);
+  if (!Number.isSafeInteger(subtotal) || subtotal > 2147483647)
+    throw new CommerceError("INVALID_ORDER_TOTAL", "This order amount needs review. Contact the bakery.");
   const orderMinimum = input.orderMinimum ?? 0;
   if (!Number.isSafeInteger(orderMinimum) || orderMinimum < 0)
     throw new CommerceError("INVALID_ORDER_MINIMUM", "The order minimum needs review.");
@@ -138,12 +144,44 @@ export function calculateOrderQuote(input: {
   const deliveryFee = input.fulfilment === "delivery" ? (input.deliveryFee ?? 0) : 0;
   if (deliveryFee < 0 || !Number.isSafeInteger(deliveryFee))
     throw new CommerceError("INVALID_DELIVERY_FEE", "The delivery fee is invalid.");
-  const taxRateBps = input.taxEnabled ? (input.taxRateBps ?? 0) : 0;
-  if (!Number.isInteger(taxRateBps) || taxRateBps < 0 || taxRateBps > 10_000)
+  if (
+    input.taxRateBps !== undefined &&
+    (!Number.isInteger(input.taxRateBps) || input.taxRateBps < 0 || input.taxRateBps > 10000)
+  )
     throw new CommerceError("INVALID_TAX_RATE", "The configured tax rate needs review.");
-  const taxableAmount = subtotal - discount + (input.taxDelivery ? deliveryFee : 0);
-  const taxTotal = Math.round((taxableAmount * taxRateBps) / 10_000);
+  const taxRateBps = input.taxEnabled ? 1400 : 0;
+  let taxSnapshot: TaxSnapshot;
+  try {
+    taxSnapshot = calculateLineTaxes({
+      lines: lines.map((line, index) => {
+        const product = input.products.find((item) => item.id === line.productId);
+        const variant = product?.variants.find((item) => item.id === line.variantId);
+        if (!product || !variant) throw new CommerceError("PRODUCT_UNAVAILABLE", "A product is no longer available.");
+        const productIds = input.coupon?.productIds ?? [];
+        const categoryIds = input.coupon?.categoryIds ?? [];
+        return {
+          id: `${line.productId}:${line.variantId}:${index}`,
+          grossAmount: line.lineTotal,
+          taxClass: product.taxClass ?? "REQUIRES_REVIEW",
+          packQuantity: variant.packQuantity ?? null,
+          discountEligible:
+            (!productIds.length || productIds.includes(product.id)) &&
+            (!categoryIds.length || Boolean(product.categoryId && categoryIds.includes(product.categoryId))),
+        };
+      }),
+      discount,
+      deliveryFee,
+      enabled: Boolean(input.taxEnabled),
+      deliveryTaxMode: input.deliveryTaxMode ?? null,
+    });
+  } catch (error) {
+    throw new CommerceError("TAX_SETUP_REQUIRED", error instanceof Error ? error.message : "Tax setup is required.");
+  }
+  const taxTotal = taxSnapshot.total;
+  if (subtotal - discount + deliveryFee + taxTotal > 2147483647)
+    throw new CommerceError("INVALID_ORDER_TOTAL", "This order amount needs review. Contact the bakery.");
   return {
+    taxSnapshot,
     preparationHours,
     preparationReadyAt,
     lines,

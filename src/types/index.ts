@@ -1,3 +1,5 @@
+import type { TaxClass } from "@/features/tax/types";
+
 export type Category = "CUSTOM_CAKES" | "PASTRIES" | "READY_TO_BAKE";
 export type ProductStatus = "ACTIVE" | "OUT_OF_STOCK" | "DRAFT" | "ARCHIVED";
 
@@ -6,6 +8,7 @@ export type Product = {
   categoryId?: string;
   shoppingMode?: "READY_TO_ORDER" | "MADE_TO_ORDER" | "READY_TO_BAKE";
   preparationHours?: number;
+  taxClass?: TaxClass;
   slug: string;
   name: string;
   shortDescription: string;
@@ -39,6 +42,7 @@ export type ProductImage = {
   storagePath?: string;
 };
 export type ProductVariant = {
+  packQuantity?: number | null;
   id: string;
   name: string;
   sku?: string;
@@ -49,6 +53,11 @@ export type ProductVariant = {
 export type CartLine = { productId: string; variantId: string; quantity: number };
 export type Fulfilment = "delivery" | "pickup";
 export type DeliveryZone = {
+  postalCodePrefixes?: string[];
+  freeDeliveryThreshold?: number | null;
+  customerNote?: string;
+  sameDayEligible?: boolean;
+  sortOrder?: number;
   id: string;
   name: string;
   fee: number;
@@ -58,6 +67,7 @@ export type DeliveryZone = {
 };
 
 export type CakeConfiguration = {
+  optionIds?: Partial<Record<"occasion" | "size" | "flavour" | "filling" | "design", string>>;
   cakeTypeId: string;
   occasion: string;
   size: string;

@@ -67,11 +67,11 @@ export function QuoteResponse({
         ? { fulfilment }
         : {
             fulfilment,
-            zoneId: String(form.get("zoneId") ?? ""),
             street: String(form.get("street") ?? ""),
             addressLine2: String(form.get("addressLine2") ?? ""),
             city: String(form.get("city") ?? ""),
-            province: String(form.get("province") ?? ""),
+            province: "NS",
+            country: "CA",
             postalCode: String(form.get("postalCode") ?? ""),
             notes: String(form.get("notes") ?? ""),
           };
@@ -146,25 +146,17 @@ export function QuoteResponse({
           )}
           {fulfilment === "delivery" && canDeliver && (
             <>
-              <Select name="zoneId" label={t("Delivery area")} required defaultValue="">
-                <option value="" disabled>
-                  {t("Choose an area")}
-                </option>
-                {zones.map((zone) => (
-                  <option value={zone.id} key={zone.id}>
-                    {zone.name} —{t(" ")}
-                    {new Intl.NumberFormat(locale, { style: "currency", currency }).format(zone.fee / 100)}{" "}
-                    {t("delivery")}
-                  </option>
-                ))}
-              </Select>
+              <Input name="postalCode" label={t("Postal code")} placeholder="B3H 2Y5" required />
+              <p>
+                Delivery is available to configured areas in Halifax Regional Municipality, Nova Scotia, Canada. Your
+                postal code determines the fee.
+              </p>
               <Input name="street" label={t("Street address")} required />
               <Input name="addressLine2" label={t("Apartment or unit (optional)")} />
               <div className="document-number-row">
                 <Input name="city" label={t("City")} required />
-                <Input name="province" label={t("Province code")} maxLength={2} required />
               </div>
-              <Input name="postalCode" label={t("Postal code")} required />
+
               <Textarea name="notes" label={t("Delivery instructions (optional)")} rows={3} />
             </>
           )}

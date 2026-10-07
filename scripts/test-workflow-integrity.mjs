@@ -57,14 +57,19 @@ try {
   await client.query("set local lock_timeout = '5s'");
   // Migration changes and all fixture rows are rolled back, even when a check fails.
   await client.query(await readFile(new URL("../db/migrations/0027_workflow_integrity.sql", import.meta.url), "utf8"));
+  const cakeTypeId = randomUUID();
+  await client.query(
+    "insert into public.cake_types(id,name,slug,lead_time_value,lead_time_unit,active,base_price,tax_class) values($1,'Rollback workflow fixture',$2,1,'days',true,0,'FULL_CAKE')",
+    [cakeTypeId, `rollback-${cakeTypeId}`],
+  );
   const cakeId = randomUUID();
   const documentId = randomUUID();
   const token = randomUUID().replaceAll("-", "").repeat(2);
   await client.query(
     `insert into public.custom_cake_orders
-    (id,request_number,customer_name,email,phone,configuration,requested_date)
-    values ($1,$2,'Rollback fixture','closure@example.invalid','0000000000','{}',current_date+30)`,
-    [cakeId, prefix],
+    (id,request_number,customer_name,email,phone,configuration,requested_date,cake_type_id)
+    values ($1,$2,'Rollback fixture','closure@example.invalid','0000000000','{}',current_date+30,$3)`,
+    [cakeId, prefix, cakeTypeId],
   );
   await client.query(
     `insert into public.business_documents
@@ -131,8 +136,14 @@ try {
   await test("duplicate acceptance and conversion create one inventory-neutral order", async () => {
     await client.query("select public.respond_to_quote($1,'ACCEPTED')", [token]);
     await client.query("select public.respond_to_quote($1,'ACCEPTED')", [token]);
-    const first = await client.query("select public.create_order_from_accepted_quote($1,'pickup') as result", [token]);
-    const second = await client.query("select public.create_order_from_accepted_quote($1,'pickup') as result", [token]);
+    const first = await client.query(
+      "select public.create_order_from_accepted_quote_v2($1,'pickup',null,null,jsonb_build_object('subtotal',1000,'deliveryFee',0,'taxTotal',0,'grandTotal',1000,'taxSnapshot',jsonb_build_object('jurisdiction','CA-NS','total',0),'fulfilment',jsonb_build_object('earliestAt',now()))) as result",
+      [token],
+    );
+    const second = await client.query(
+      "select public.create_order_from_accepted_quote_v2($1,'pickup',null,null,jsonb_build_object('subtotal',1000,'deliveryFee',0,'taxTotal',0,'grandTotal',1000,'taxSnapshot',jsonb_build_object('jurisdiction','CA-NS','total',0),'fulfilment',jsonb_build_object('earliestAt',now()))) as result",
+      [token],
+    );
     assert.equal(first.rows[0].result.orderId, second.rows[0].result.orderId);
     const id = first.rows[0].result.orderId;
     await client.query("select public.reserve_order_inventory($1)", [id]);
@@ -235,7 +246,10 @@ try {
   });
   await test("linked cake follows all successful fulfilment states and refund", async () => {
     await client.query("select public.respond_to_quote($1,'ACCEPTED')", [token]);
-    const result = await client.query("select public.create_order_from_accepted_quote($1,'pickup') as result", [token]);
+    const result = await client.query(
+      "select public.create_order_from_accepted_quote_v2($1,'pickup',null,null,jsonb_build_object('subtotal',1000,'deliveryFee',0,'taxTotal',0,'grandTotal',1000,'taxSnapshot',jsonb_build_object('jurisdiction','CA-NS','total',0),'fulfilment',jsonb_build_object('earliestAt',now()))) as result",
+      [token],
+    );
     const id = result.rows[0].result.orderId;
     await client.query("select public.reserve_order_inventory($1)", [id]);
     for (const status of ["PAID", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "DELIVERED", "REFUNDED"]) {
@@ -248,7 +262,10 @@ try {
   });
   await test("linked cancellation follows order and cannot be detached", async () => {
     await client.query("select public.respond_to_quote($1,'ACCEPTED')", [token]);
-    const result = await client.query("select public.create_order_from_accepted_quote($1,'pickup') as result", [token]);
+    const result = await client.query(
+      "select public.create_order_from_accepted_quote_v2($1,'pickup',null,null,jsonb_build_object('subtotal',1000,'deliveryFee',0,'taxTotal',0,'grandTotal',1000,'taxSnapshot',jsonb_build_object('jurisdiction','CA-NS','total',0),'fulfilment',jsonb_build_object('earliestAt',now()))) as result",
+      [token],
+    );
     await client.query("select public.transition_order_status($1,'CANCELLED')", [result.rows[0].result.orderNumber]);
     assert.equal(
       (await client.query("select status from public.custom_cake_orders where id=$1", [cakeId])).rows[0].status,
