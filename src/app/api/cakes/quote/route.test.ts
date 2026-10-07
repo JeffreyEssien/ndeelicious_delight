@@ -42,12 +42,17 @@ vi.mock("@/lib/data/settings", () => ({
   getCakeConfiguration: () =>
     Promise.resolve({
       timezone: "America/Halifax",
+      relationships: ["o", "s", "f", "i", "d"].map((optionId) => ({
+        cakeTypeId: "11111111-1111-4111-8111-111111111111",
+        optionId,
+      })),
       cakeTypes: [
         {
           id: "11111111-1111-4111-8111-111111111111",
           name: "Birthday Cake",
           slug: "birthday-cake",
           description: "",
+          basePrice: 0,
           leadTimeValue: 3,
           leadTimeUnit: "days",
           active: true,
@@ -229,6 +234,7 @@ describe("POST /api/cakes/quote", () => {
       expect.objectContaining({
         cake_type_id: validCake.cakeTypeId,
         lead_time_snapshot: expect.objectContaining({
+          basePrice: 0,
           leadTimeValue: 3,
           leadTimeUnit: "days",
           timezone: "America/Halifax",

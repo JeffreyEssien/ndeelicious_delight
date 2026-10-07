@@ -4,6 +4,7 @@ export function productRow(input: ProductInput, categoryId: string) {
   return {
     category_id: categoryId,
     shopping_mode: input.shoppingMode,
+    tax_class: input.taxClass,
     preparation_hours: input.preparationHours,
     name: input.name,
     slug: input.slug,

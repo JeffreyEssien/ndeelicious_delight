@@ -57,6 +57,20 @@ vi.mock("@/lib/data/settings", () => ({
       taxEnabled: false,
       taxRateBps: 0,
       taxDelivery: true,
+      fulfilmentSchedule: {
+        timezone: "America/Halifax",
+        deliveryDays: [0, 1, 2, 3, 4, 5, 6],
+        sameDayEnabled: false,
+        sameDayCutoff: "12:00",
+        defaultEstimate: "",
+        blackouts: [],
+        pickupEnabled: true,
+        pickupAddress: "Fixture address",
+        pickupInstructions: "",
+        pickupDays: [0, 1, 2, 3, 4, 5, 6],
+        pickupHours: { start: "00:00", end: "23:59" },
+        pickupPreparationBufferHours: 0,
+      },
     }),
 }));
 vi.mock("@/lib/supabase/service", () => ({

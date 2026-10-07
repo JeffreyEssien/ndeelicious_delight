@@ -1,3 +1,5 @@
+import { resolveCheckoutFulfilment } from "@/features/fulfilment/checkout";
+import { FulfilmentError, type DeliveryArea } from "@/features/fulfilment/types";
 import { checkoutSchema } from "@/validations/checkout";
 import { after } from "next/server";
 import { assertFulfilmentAvailable, calculateOrderQuote, CommerceError } from "@/features/checkout/pricing";
@@ -42,18 +44,14 @@ export async function POST(request: Request) {
     const customerEmail = customer.email.toLowerCase();
     const [products, zones, business] = await Promise.all([getProducts(), getDeliveryZones(), getBusinessSettings()]);
     assertFulfilmentAvailable({ fulfilment: delivery.fulfilment, ...business });
-    const zone =
-      delivery.fulfilment === "delivery" ? zones.find((item) => item.id === delivery.zoneId && item.active) : undefined;
-    if (delivery.fulfilment === "delivery" && !zone)
-      return Response.json({ error: "That delivery zone is unavailable." }, { status: 400 });
     const coupon = await getCoupon(couponCode);
     if (couponCode && !coupon) return Response.json({ error: "That coupon is not valid." }, { status: 400 });
-    const quote = calculateOrderQuote({
+    const quoteInput = {
       cart,
       products,
       fulfilment: delivery.fulfilment,
-      deliveryFee: zone?.fee,
-      deliveryMinimum: zone?.minimumOrder,
+      deliveryFee: 0,
+      deliveryMinimum: 0,
       orderMinimum: business.orderMinimum,
       deliveryEnabled: business.deliveryEnabled,
       pickupEnabled: business.pickupEnabled,
@@ -63,7 +61,23 @@ export async function POST(request: Request) {
       taxEnabled: business.taxEnabled,
       taxRateBps: business.taxRateBps,
       taxDelivery: business.taxDelivery,
+      deliveryTaxMode: business.deliveryTaxMode,
+    };
+    const initialQuote = calculateOrderQuote(quoteInput);
+    const fulfilment = resolveCheckoutFulfilment({
+      delivery,
+      areas: zones as DeliveryArea[],
+      subtotal: initialQuote.subtotal,
+      preparationHours: initialQuote.preparationHours,
+      schedule: business.fulfilmentSchedule,
     });
+    const zone = fulfilment.area;
+    const quote = {
+      ...calculateOrderQuote({ ...quoteInput, deliveryFee: fulfilment.fee }),
+      preparationReadyAt: fulfilment.earliestAt,
+      fulfilment,
+    };
+
     const service = createServiceClient();
     const { data: customerRow, error: customerError } = await service
       .from("customers")
@@ -80,7 +94,7 @@ export async function POST(request: Request) {
         addressLine2: delivery.addressLine2 ?? "",
         city: delivery.city,
         province: delivery.province,
-        postalCode: delivery.postalCode.toUpperCase(),
+        postalCode: fulfilment.postalCode ?? delivery.postalCode,
         country: delivery.country,
         instructions: delivery.notes ?? "",
       };
@@ -94,7 +108,7 @@ export async function POST(request: Request) {
         city: delivery.city,
         state: delivery.province,
         province: delivery.province,
-        postal_code: delivery.postalCode.toUpperCase(),
+        postal_code: fulfilment.postalCode ?? delivery.postalCode,
         country: delivery.country,
         instructions: delivery.notes || null,
       });
@@ -116,6 +130,8 @@ export async function POST(request: Request) {
         subtotal: quote.subtotal,
         discount_total: quote.discount,
         delivery_fee: quote.deliveryFee,
+        tax_snapshot: quote.taxSnapshot,
+        fulfilment_snapshot: fulfilment,
         tax_total: quote.taxTotal,
         tax_rate_bps: quote.taxRateBps,
         grand_total: quote.grandTotal,
@@ -128,7 +144,7 @@ export async function POST(request: Request) {
     if (orderError) throw orderError;
     orderId = order.id;
     const { error: itemsError } = await service.from("order_items").insert(
-      quote.lines.map((line) => ({
+      quote.lines.map((line, index) => ({
         order_id: order.id,
         product_id: uuidPattern.test(line.productId) ? line.productId : null,
         variant_id: uuidPattern.test(line.variantId) ? line.variantId : null,
@@ -140,6 +156,8 @@ export async function POST(request: Request) {
         final_price: line.lineTotal,
         product_snapshot: {
           ...line,
+          tax: quote.taxSnapshot.lines[index],
+          packQuantity: quote.taxSnapshot.lines[index].packQuantity,
           preparationHours: products.find((product) => product.id === line.productId)?.preparationHours ?? 0,
         },
       })),
@@ -189,7 +207,7 @@ export async function POST(request: Request) {
       await service.from("order_items").delete().eq("order_id", orderId);
       await service.from("orders").delete().eq("id", orderId);
     }
-    if (error instanceof CommerceError)
+    if (error instanceof CommerceError || error instanceof FulfilmentError)
       return Response.json({ error: error.message, code: error.code }, { status: 400 });
     if (error instanceof InventoryConflictError)
       return Response.json({ error: error.message, code: error.code }, { status: 409 });

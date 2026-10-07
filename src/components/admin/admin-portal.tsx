@@ -1,4 +1,6 @@
 "use client";
+import { deliveryAreasSchema } from "@/features/fulfilment/validation";
+import { FulfilmentSettings } from "./fulfilment-settings";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -191,19 +193,28 @@ export function AdminPortal({
     }
   }
   async function saveZones() {
-    if (zones.some((zone) => zone.name.trim().length < 2 || zone.fee < 0 || zone.minimumOrder < 0)) {
-      notify("Give every delivery zone a name, fee, and valid minimum order.");
-      return;
+    const parsed = deliveryAreasSchema.safeParse(zones.map((zone, sortOrder) => ({ ...zone, sortOrder })));
+    if (!parsed.success) {
+      notify(parsed.error.issues[0]?.message ?? "Check delivery areas.");
+      return false;
     }
     setZoneBusy(true);
-    const response = await mutate({ action: "delivery-zones", zones });
-    setZoneBusy(false);
-    if (response.ok) {
-      const payload = await response.json();
-      setZones((current) => current.map((zone) => ({ ...zone, id: payload.savedIds?.[zone.id] ?? zone.id })));
-      notify("Delivery areas saved.");
-      router.refresh();
-    } else notify("Delivery zones could not be saved.");
+    try {
+      const response = await mutate({ action: "delivery-zones", zones: parsed.data });
+      if (response.ok) {
+        notify("Delivery areas saved.");
+        router.refresh();
+      } else {
+        const payload = await response.json().catch(() => null);
+        notify(payload?.error ?? "Delivery zones could not be saved.");
+      }
+      return response.ok;
+    } catch {
+      notify("Delivery zones could not be saved. Retry.");
+      return false;
+    } finally {
+      setZoneBusy(false);
+    }
   }
   async function changeTheme(value: StoreTheme) {
     setTheme(value);
@@ -1273,28 +1284,49 @@ function DeliveryZones({
   zones: DeliveryZone[];
   setZones: React.Dispatch<React.SetStateAction<DeliveryZone[]>>;
   busy: boolean;
-  onSave: () => void;
+  onSave: () => Promise<boolean>;
 }) {
-  const { currency } = useBusinessSettings();
+  const [saveState, setSaveState] = useState("Saved");
+  const business = useBusinessSettings();
+  const { currency } = business;
   const money = useMoney();
   const active = zones.filter((zone) => zone.active);
-  const update = (id: string, values: Partial<DeliveryZone>) =>
+  const update = (id: string, values: Partial<DeliveryZone>) => {
+    setSaveState("Unsaved changes");
     setZones((current) => current.map((zone) => (zone.id === id ? { ...zone, ...values } : zone)));
-  const move = (index: number, direction: -1 | 1) =>
-    setZones((current) => {
+  };
+  const move = (index: number, direction: -1 | 1) => {
+    setSaveState("Unsaved changes");
+    return setZones((current) => {
       const next = [...current];
       const target = index + direction;
       if (target < 0 || target >= next.length) return current;
       [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
-  const add = () =>
-    setZones((current) => [
+  };
+  const add = () => {
+    setSaveState("Unsaved changes");
+    return setZones((current) => [
       ...current,
-      { id: `new-${crypto.randomUUID()}`, name: "", fee: 0, minimumOrder: 0, estimate: "", active: false },
+      {
+        id: crypto.randomUUID(),
+        name: "",
+        fee: 0,
+        minimumOrder: 0,
+        estimate: "",
+        active: false,
+        postalCodePrefixes: [],
+        freeDeliveryThreshold: null,
+        customerNote: "",
+        sameDayEligible: false,
+        sortOrder: current.length,
+      },
     ]);
+  };
   return (
     <div className="delivery-workspace">
+      <FulfilmentSettings business={business} />
       <div className="delivery-overview">
         <div>
           <span>Available areas</span>
@@ -1352,6 +1384,45 @@ function DeliveryZones({
                 onChange={(event) => update(zone.id, { name: event.target.value })}
               />
               <Input
+                label="Postal prefixes (comma separated)"
+                placeholder="B3H, B3J"
+                value={(zone.postalCodePrefixes ?? []).join(", ")}
+                onChange={(event) =>
+                  update(zone.id, {
+                    postalCodePrefixes: event.target.value
+                      .toUpperCase()
+                      .split(",")
+                      .map((value) => value.trim())
+                      .filter(Boolean),
+                  })
+                }
+              />
+              <Input
+                label={`Free delivery from (${currency}, optional)`}
+                type="number"
+                min="0"
+                step="0.01"
+                value={zone.freeDeliveryThreshold == null ? "" : zone.freeDeliveryThreshold / 100}
+                onChange={(event) =>
+                  update(zone.id, {
+                    freeDeliveryThreshold: event.target.value ? Math.round(Number(event.target.value) * 100) : null,
+                  })
+                }
+              />
+              <Input
+                label="Customer note"
+                value={zone.customerNote ?? ""}
+                onChange={(event) => update(zone.id, { customerNote: event.target.value })}
+              />
+              <label>
+                <input
+                  type="checkbox"
+                  checked={zone.sameDayEligible ?? false}
+                  onChange={(event) => update(zone.id, { sameDayEligible: event.target.checked })}
+                />{" "}
+                Eligible for same-day delivery
+              </label>
+              <Input
                 label="Delivery estimate"
                 value={zone.estimate}
                 placeholder="For example: Next day"
@@ -1390,7 +1461,7 @@ function DeliveryZones({
                   onClick={() =>
                     setZones((current) => [
                       ...current,
-                      { ...zone, id: `new-${crypto.randomUUID()}`, name: `${zone.name} copy`, active: false },
+                      { ...zone, id: crypto.randomUUID(), name: `${zone.name} copy`, active: false },
                     ])
                   }
                 >
@@ -1411,8 +1482,18 @@ function DeliveryZones({
         ))}
       </div>
       <div className="admin-save-bar">
-        <span>Changes stay in draft until you save them.</span>
-        <Button disabled={busy} onClick={onSave}>
+        <span role="status">{saveState}</span>
+        <Button
+          disabled={busy}
+          onClick={async () => {
+            setSaveState("Saving…");
+            try {
+              setSaveState((await onSave()) ? "Saved" : "Error: save failed. Retry.");
+            } catch {
+              setSaveState("Error: save failed. Retry.");
+            }
+          }}
+        >
           {busy ? "Saving delivery areas…" : "Save delivery areas"}
         </Button>
       </div>
@@ -1687,19 +1768,11 @@ function BusinessSettings({
           label="GST/HST registration number"
           defaultValue={initial.taxRegistrationNumber}
         />
-        <Input
-          name="taxRate"
-          label="Combined tax rate (%)"
-          type="number"
-          min="0"
-          max="100"
-          step="0.01"
-          defaultValue={initial.taxRateBps / 100}
-        />
-        <label className="check-row">
-          <input name="taxDelivery" type="checkbox" defaultChecked={initial.taxDelivery} />
-          <span>Apply configured tax to delivery fees</span>
-        </label>
+        <input name="taxRate" type="hidden" value="14" />
+        <p>
+          Nova Scotia HST is 14% on eligible taxable lines. Product classification and pack quantity determine each
+          line’s treatment. Delivery treatment is configured in Delivery → Advanced tax settings.
+        </p>
         <label className="check-row">
           <input name="deliveryEnabled" type="checkbox" defaultChecked={initial.deliveryEnabled} />
           <span>Offer delivery at checkout</span>

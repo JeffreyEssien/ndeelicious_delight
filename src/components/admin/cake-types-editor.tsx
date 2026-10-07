@@ -2,7 +2,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cakeTypesSchema, type CakeType } from "@/validations/cake-type";
-export function CakeTypesEditor({ initial }: { initial: CakeType[] }) {
+export function CakeTypesEditor({
+  initial,
+  options,
+  relationships,
+}: {
+  initial: CakeType[];
+  options: import("@/types/content").CakeOption[];
+  relationships: { cakeTypeId: string; optionId: string }[];
+}) {
+  const [assignments, setAssignments] = useState(relationships);
   const [types, setTypes] = useState(initial);
   const [state, setState] = useState("Saved");
   const [error, setError] = useState("");
@@ -43,7 +52,7 @@ export function CakeTypesEditor({ initial }: { initial: CakeType[] }) {
       const response = await fetch("/api/admin/mutate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "cake-types", cakeTypes: parsed.data }),
+        body: JSON.stringify({ action: "cake-types", cakeTypes: parsed.data, assignments }),
       });
       if (!response.ok) throw new Error((await response.json()).error ?? "Cake types could not be saved.");
       setState("Saved");
@@ -72,6 +81,57 @@ export function CakeTypesEditor({ initial }: { initial: CakeType[] }) {
               Description
               <textarea value={type.description} onChange={(e) => update(type.id, { description: e.target.value })} />
             </label>
+            <label>
+              Base price (CAD)
+              <input
+                type="number"
+                min="0"
+                required={type.active}
+                step="0.01"
+                value={type.basePrice == null ? "" : type.basePrice / 100}
+                onChange={(e) =>
+                  update(type.id, { basePrice: e.target.value ? Math.round(Number(e.target.value) * 100) : null })
+                }
+              />
+            </label>
+            <label>
+              Tax classification
+              <select
+                value={type.taxClass ?? "REQUIRES_REVIEW"}
+                onChange={(e) => update(type.id, { taxClass: e.target.value as CakeType["taxClass"] })}
+              >
+                <option value="REQUIRES_REVIEW">Setup required</option>
+                <option value="FULL_CAKE">Eligible full cake (zero rated)</option>
+                <option value="WEDDING_CAKE">Eligible edible wedding cake (zero rated)</option>
+                <option value="STANDARD_TAXABLE">Standard taxable</option>
+              </select>
+            </label>
+            <p>
+              {type.basePrice == null
+                ? "Setup required: enter the base price and assign choices below."
+                : "Option adjustments are added to this base price."}
+            </p>
+            <fieldset>
+              <legend>Available choices for this cake type</legend>
+              {options.map((option) => (
+                <label key={option.id}>
+                  <input
+                    type="checkbox"
+                    checked={assignments.some((link) => link.cakeTypeId === type.id && link.optionId === option.id)}
+                    onChange={(e) => {
+                      setAssignments((current) =>
+                        e.target.checked
+                          ? [...current, { cakeTypeId: type.id, optionId: option.id }]
+                          : current.filter((link) => link.cakeTypeId !== type.id || link.optionId !== option.id),
+                      );
+                      setState("Unsaved changes");
+                    }}
+                  />
+                  {option.type}: {option.name}
+                  {option.active ? "" : " (inactive)"}
+                </label>
+              ))}
+            </fieldset>
             <label>
               Lead time
               <input

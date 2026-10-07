@@ -18,7 +18,7 @@ const storageState = adminStorage
 
 const viewports = [
   ["phone-320", 320, 568],
-  ["phone-375", 375, 667],
+  ["phone-375", 375, 812],
   ["phone-390", 390, 844],
   ["phone-430", 430, 932],
   ["tablet-portrait", 768, 1024],

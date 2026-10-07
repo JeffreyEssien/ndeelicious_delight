@@ -6,7 +6,11 @@ import Link from "next/link";
 import { useCart, useDeliveryZones, useProducts } from "@/components/providers";
 import { formatMoney } from "@/lib/format";
 import { Icon } from "@/components/ui/icons";
-import { Input, Select, Textarea } from "@/components/ui/primitives";
+import { Input, Textarea } from "@/components/ui/primitives";
+import { resolveDeliveryArea } from "@/features/fulfilment/resolver";
+import { resolveCheckoutFulfilment } from "@/features/fulfilment/checkout";
+import { calculateOrderQuote } from "@/features/checkout/pricing";
+import type { DeliveryArea } from "@/features/fulfilment/types";
 import type { Fulfilment } from "@/types";
 import type { BusinessSettings } from "@/types/content";
 import { trackCommerceEvent } from "@/lib/analytics/client";
@@ -21,7 +25,7 @@ type Info = {
   postalCode: string;
   notes: string;
 };
-const provinces = ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"];
+
 export function CheckoutFlow({ business }: { business: BusinessSettings }) {
   const t = useCustomerText("checkout flow");
 
@@ -37,12 +41,21 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
     street: "",
     addressLine2: "",
     city: "",
-    province: business.province,
+    province: "NS",
     postalCode: "",
     notes: "",
   });
   const [fulfilment, setFulfilment] = useState<Fulfilment>(canDeliver ? "delivery" : "pickup");
-  const [zone, setZone] = useState("");
+  let zone = "";
+  let areaError = "";
+  try {
+    if (fulfilment === "delivery") zone = resolveDeliveryArea(info.postalCode, deliveryZones as DeliveryArea[]).area.id;
+  } catch (reason) {
+    areaError = reason instanceof Error ? reason.message : "Check your postal code.";
+  }
+  const [serverQuote, setServerQuote] = useState<{ taxTotal: number; grandTotal: number; deliveryFee: number } | null>(
+    null,
+  );
   const [coupon, setCoupon] = useState("");
   const [applied, setApplied] = useState(false);
   const [discount, setDiscount] = useState(0);
@@ -50,15 +63,50 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
   const [couponBusy, setCouponBusy] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof Info | string, string>>>({});
   const [busy, setBusy] = useState(false);
-  const delivery = fulfilment === "delivery" ? (deliveryZones.find((z) => z.id === zone)?.fee ?? 0) : 0;
-  const tax = business.taxEnabled
-    ? Math.round(((cart.subtotal - discount + (business.taxDelivery ? delivery : 0)) * business.taxRateBps) / 10_000)
-    : 0;
-  const total = cart.subtotal + delivery - discount + tax;
+  let delivery = 0;
+  let tax = 0;
+  let total = cart.subtotal;
+  let earliestLabel = "";
+  let fulfilmentError = "";
+  let freeDeliveryRemaining: number | null = null;
+  try {
+    const preparationHours = Math.max(
+      0,
+      ...cart.lines.map((line) => products.find((product) => product.id === line.productId)?.preparationHours ?? 0),
+    );
+    const availability = resolveCheckoutFulfilment({
+      delivery: { fulfilment, postalCode: info.postalCode, zoneId: zone || undefined },
+      areas: deliveryZones as DeliveryArea[],
+      subtotal: cart.subtotal,
+      preparationHours,
+      schedule: business.fulfilmentSchedule ?? null,
+    });
+    delivery = serverQuote?.deliveryFee ?? availability.fee;
+    earliestLabel = availability.label;
+    freeDeliveryRemaining = availability.freeDeliveryRemaining;
+    const quote = calculateOrderQuote({
+      cart: cart.lines,
+      products,
+      fulfilment,
+      deliveryFee: delivery,
+      taxEnabled: business.taxEnabled,
+      deliveryTaxMode: business.deliveryTaxMode,
+    });
+    tax = serverQuote?.taxTotal ?? quote.taxTotal;
+    total = serverQuote?.grandTotal ?? quote.grandTotal;
+  } catch (reason) {
+    fulfilmentError = reason instanceof Error ? reason.message : "Fulfilment setup is required.";
+  }
   const money = (value: number) => formatMoney(value, business.currency, business.locale);
   useEffect(() => {
     if (cart.count > 0) trackCommerceEvent("CHECKOUT_STARTED");
   }, [cart.count]);
+  useEffect(() => {
+    if (!cart.lines.length) return;
+    setServerQuote(null);
+    setApplied(false);
+    setDiscount(0);
+  }, [cart.lines]);
   const resolved = useMemo(
     () =>
       cart.lines.flatMap((line) => {
@@ -70,9 +118,11 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
   );
   function set<K extends keyof Info>(key: K, value: Info[K]) {
     setInfo((v) => ({ ...v, [key]: value }));
+    resetCoupon();
     setErrors((v) => ({ ...v, [key]: undefined }));
   }
   function resetCoupon() {
+    setServerQuote(null);
     setApplied(false);
     setDiscount(0);
     setCouponError("");
@@ -92,14 +142,15 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
     if (step === 1) {
       const found: typeof errors = {};
       if (fulfilment === "delivery") {
-        if (!zone) found.zone = "Choose a delivery area.";
+        if (!zone) found.postalCode = areaError;
         if (info.street.trim().length < 5) found.street = "Enter a complete delivery address.";
         if (info.city.trim().length < 2) found.city = "Enter a valid city.";
-        if (!provinces.includes(info.province)) found.province = "Choose a province or territory.";
+
         if (!/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(info.postalCode.trim()))
           found.postalCode = "Enter a valid Canadian postal code.";
       }
       const selectedZone = fulfilment === "delivery" ? deliveryZones.find((item) => item.id === zone) : undefined;
+      if (fulfilmentError) found.fulfilment = fulfilmentError;
       const minimum = Math.max(business.orderMinimum, selectedZone?.minimumOrder ?? 0);
       if (cart.subtotal < minimum)
         found.fulfilment = t("Add {value1} more before continuing.", { value1: money(minimum - cart.subtotal) });
@@ -141,10 +192,13 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error);
       setDiscount(payload.quote.discount);
+      setServerQuote(payload.quote);
       setApplied(true);
       trackCommerceEvent("COUPON_APPLIED", { metadata: { discount: payload.quote.discount } });
     } catch (reason) {
+      setServerQuote(null);
       setDiscount(0);
+      setServerQuote(null);
       setApplied(false);
       setCouponError(reason instanceof Error ? reason.message : "That coupon is not valid.");
     } finally {
@@ -313,6 +367,14 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                 </button>
               )}
             </div>
+            {earliestLabel && <p>Earliest available: {earliestLabel}</p>}
+            {freeDeliveryRemaining !== null && (
+              <p>
+                {freeDeliveryRemaining === 0
+                  ? "Your order qualifies for free delivery."
+                  : `Add ${money(freeDeliveryRemaining)} for free delivery.`}
+              </p>
+            )}
             {errors.fulfilment && (
               <p className="form-error" role="alert">
                 {t(errors.fulfilment)}
@@ -320,24 +382,17 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
             )}
             {fulfilment === "delivery" ? (
               <div className="form-stack">
-                <Select
-                  label={t("Delivery area")}
-                  value={zone}
-                  error={t(errors.zone)}
-                  onChange={(e) => {
-                    setZone(e.target.value);
-                    resetCoupon();
-                    setErrors((v) => ({ ...v, zone: undefined }));
-                  }}
-                >
-                  <option value="">{t("Choose your area")}</option>
-                  {deliveryZones.map((z) => (
-                    <option value={z.id} key={z.id}>
-                      {z.name} · {money(z.fee)}
-                      {z.minimumOrder > 0 ? t(" · {value1} minimum", { value1: money(z.minimumOrder) }) : ""}
-                    </option>
-                  ))}
-                </Select>
+                <Input
+                  label={t("Postal code")}
+                  autoComplete="postal-code"
+                  value={info.postalCode}
+                  error={t(errors.postalCode)}
+                  onChange={(e) => set("postalCode", e.target.value.toUpperCase())}
+                  placeholder="B3H 2Y5"
+                />
+                <p role="status">
+                  {zone ? deliveryZones.find((area) => area.id === zone)?.name : areaError} · Nova Scotia, Canada
+                </p>
                 <Input
                   label={t("Street address")}
                   autoComplete="street-address"
@@ -358,26 +413,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                     error={t(errors.city)}
                     onChange={(e) => set("city", e.target.value)}
                   />
-                  <Select
-                    label={t("Province or territory")}
-                    value={info.province}
-                    error={t(errors.province)}
-                    onChange={(e) => set("province", e.target.value)}
-                  >
-                    <option value="">{t("Choose one")}</option>
-                    {provinces.map((province) => (
-                      <option key={province}>{province}</option>
-                    ))}
-                  </Select>
                 </div>
-                <Input
-                  label={t("Postal code")}
-                  autoComplete="postal-code"
-                  value={info.postalCode}
-                  error={t(errors.postalCode)}
-                  onChange={(e) => set("postalCode", e.target.value.toUpperCase())}
-                  placeholder={t("A1A 1A1")}
-                />
                 <Textarea
                   label={t("Delivery notes (optional)")}
                   rows={3}

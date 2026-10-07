@@ -1,14 +1,20 @@
+import { calculateCakeConfigurationPrice } from "@/features/cakes/pricing";
 import type { Product } from "@/types";
 import type { CakeOption, CakeOptionType } from "@/types/content";
 import { productStartingPrice, variantPrice } from "@/features/catalog/pricing";
 import { getPurchasableVariants, isProductPurchasable } from "@/features/catalog/availability";
-import { calculateCakeConfigurationPrice } from "@/features/cakes/pricing";
+import { optionsForCakeType } from "@/features/cakes/options";
+import { leadTimeHours } from "@/features/cakes/lead-time";
+import type { CakeType } from "@/validations/cake-type";
 
 export type BudgetPreset = { maximum: number; productCount: number };
 export type CakeBudgetRecommendation = {
   id: string;
   total: number;
-  selections: Record<CakeOptionType, CakeOption>;
+  cakeType: CakeType;
+  pricingMode: "EXACT_PRICE" | "STARTING_FROM" | "QUOTE_REQUIRED";
+  leadTimeHours: number;
+  selections: Partial<Record<CakeOptionType, CakeOption>>;
 };
 export type CakeRecommendationBand = {
   maximum: number;
@@ -68,86 +74,119 @@ export function closestProductsAboveBudget(products: Product[], maximum: number,
     .slice(0, limit);
 }
 
-export function cakeRecommendations(options: CakeOption[], maximum: number, limit = 6): CakeBudgetRecommendation[] {
-  const activeByType = new Map(
-    cakeSteps.map((type) => [
-      type,
-      options
-        .filter((option) => option.active && !option.quoteRequired && option.type === type)
-        .sort((a, b) => a.priceAdjustment - b.priceAdjustment),
-    ]),
-  );
-  if (cakeSteps.some((type) => !activeByType.get(type)?.length)) return [];
-
-  type PartialChoice = { total: number; selected: Partial<Record<CakeOptionType, CakeOption>> };
-  let candidates: PartialChoice[] = [{ total: 0, selected: {} }];
-  for (const type of cakeSteps) {
-    candidates = candidates
-      .flatMap((candidate) =>
-        (activeByType.get(type) ?? []).map((option) => ({
-          total: candidate.total + option.priceAdjustment,
-          selected: { ...candidate.selected, [type]: option },
-        })),
-      )
-      .filter((candidate) => candidate.total <= maximum)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5_000);
+export function cakeRecommendations(input: {
+  cakeTypes: CakeType[];
+  options: CakeOption[];
+  relationships: { cakeTypeId: string; optionId: string }[];
+  maximum: number;
+  limit?: number;
+}): CakeBudgetRecommendation[] {
+  if (!Number.isSafeInteger(input.maximum) || input.maximum <= 0) return [];
+  const results: CakeBudgetRecommendation[] = [];
+  for (const cakeType of input.cakeTypes) {
+    if (!cakeType.active || cakeType.basePrice == null || leadTimeHours(cakeType) <= 0) continue;
+    const allowed = optionsForCakeType(input, cakeType.id);
+    if (cakeSteps.some((step) => !allowed.some((option) => option.type === step))) continue;
+    let candidates: { total: number; selections: Partial<Record<CakeOptionType, CakeOption>>; quote: boolean }[] = [
+      { total: cakeType.basePrice, selections: {}, quote: false },
+    ];
+    for (const step of cakeSteps) {
+      const choices = allowed
+        .filter((option) => option.type === step)
+        .sort((a, b) => a.priceAdjustment - b.priceAdjustment || a.id.localeCompare(b.id));
+      candidates = candidates
+        .flatMap((candidate) =>
+          choices.map((option) => ({
+            total: candidate.total + option.priceAdjustment,
+            selections: { ...candidate.selections, [step]: option },
+            quote: candidate.quote || option.quoteRequired,
+          })),
+        )
+        .filter((candidate) => candidate.total <= input.maximum);
+      // Keep the cheapest paths as well as near-budget paths so future steps cannot erase all valid configurations.
+      candidates.sort((a, b) => a.total - b.total);
+      if (candidates.length > 5000) candidates = [...candidates.slice(0, 2500), ...candidates.slice(-2500)];
+    }
+    for (const candidate of candidates) {
+      const selected = candidate.selections;
+      const canonical = calculateCakeConfigurationPrice(
+        {
+          occasion: selected.occasion?.name ?? "",
+          size: selected.size?.name ?? "",
+          flavour: selected.flavour?.name ?? "",
+          filling: selected.filling?.name ?? "",
+          design: selected.design?.name ?? "",
+          optionIds: Object.fromEntries(cakeSteps.map((step) => [step, selected[step]?.id])),
+        },
+        allowed,
+        cakeType,
+      );
+      results.push({
+        id: `${cakeType.id}:${cakeSteps.map((step) => candidate.selections[step]?.id).join(":")}`,
+        cakeType,
+        total: canonical.total,
+        pricingMode: candidate.quote
+          ? Object.values(candidate.selections).every((option) => option.quoteRequired)
+            ? "QUOTE_REQUIRED"
+            : "STARTING_FROM"
+          : "EXACT_PRICE",
+        selections: candidate.selections,
+        leadTimeHours: leadTimeHours(cakeType),
+      });
+    }
   }
-
-  const matching = candidates.map((candidate) => {
-    const selections = candidate.selected as Record<CakeOptionType, CakeOption>;
-    const pricing = calculateCakeConfigurationPrice(
-      {
-        occasion: selections.occasion.name,
-        size: selections.size.name,
-        flavour: selections.flavour.name,
-        filling: selections.filling.name,
-        design: selections.design.name,
-      },
-      options,
-    );
-    return {
-      id: cakeSteps.map((type) => candidate.selected[type]?.id).join("-"),
-      total: pricing.total,
-      selections,
-    };
-  });
-  const picked: CakeBudgetRecommendation[] = [];
-  const signatures = new Set<string>();
-  for (const candidate of matching) {
-    const signature = ["size", "flavour", "filling", "design"]
-      .map((type) => candidate.selections[type as CakeOptionType].id)
-      .join(":");
-    if (signatures.has(signature)) continue;
-    signatures.add(signature);
-    picked.push(candidate);
-    if (picked.length === limit) break;
-  }
-  return picked;
+  return results
+    .sort((a, b) => b.total - a.total || a.cakeType.sortOrder - b.cakeType.sortOrder || a.id.localeCompare(b.id))
+    .slice(0, input.limit ?? 6);
 }
 
 export function cakeRecommendationHref(recommendation: CakeBudgetRecommendation) {
   const query = new URLSearchParams();
-  for (const type of cakeSteps) query.set(`${type}Id`, recommendation.selections[type].id);
+  query.set("cakeTypeId", recommendation.cakeType.id);
+  for (const type of cakeSteps) {
+    const option = recommendation.selections[type];
+    if (option) query.set(`${type}Id`, option.id);
+  }
   query.set("recommended", "1");
   return `/custom-cakes?${query.toString()}`;
 }
 
 export function cakeRecommendationBands(
-  options: CakeOption[],
+  input: Omit<Parameters<typeof cakeRecommendations>[0], "maximum" | "limit">,
   maximum: number,
   bandCount = 3,
   recommendationsPerBand = 12,
 ): CakeRecommendationBand[] {
   if (maximum <= 0) return [];
-  const rawMaximums = Array.from({ length: bandCount }, (_, index) =>
-    friendlyMaximum((maximum * (index + 1)) / bandCount),
-  );
-  const maximums = [...new Set(rawMaximums.map((value) => Math.min(value, maximum)))];
+  const maximums = [
+    ...new Set(
+      Array.from({ length: bandCount }, (_, index) =>
+        Math.min(maximum, friendlyMaximum((maximum * (index + 1)) / bandCount)),
+      ),
+    ),
+  ];
   return maximums
-    .map((bandMaximum) => ({
-      maximum: bandMaximum,
-      recommendations: cakeRecommendations(options, bandMaximum, recommendationsPerBand),
+    .map((value) => ({
+      maximum: value,
+      recommendations: cakeRecommendations({ ...input, maximum: value, limit: recommendationsPerBand }),
     }))
-    .filter((band) => band.recommendations.length > 0);
+    .filter((band) => band.recommendations.length);
+}
+
+export function cakeBudgetState(
+  input: Omit<Parameters<typeof cakeRecommendations>[0], "limit">,
+): "AVAILABLE" | "UNAVAILABLE" | "SETUP_REQUIRED" | "INCOMPLETE" | "QUOTE_REQUIRED" | "BELOW_BUDGET" {
+  const active = input.cakeTypes.filter((type) => type.active);
+  if (!active.length) return "UNAVAILABLE";
+  if (active.every((type) => type.basePrice == null)) return "SETUP_REQUIRED";
+  const configured = active.filter(
+    (type) =>
+      type.basePrice != null &&
+      cakeSteps.every((step) => optionsForCakeType(input, type.id).some((option) => option.type === step)),
+  );
+  if (!configured.length) return "INCOMPLETE";
+  if (cakeRecommendations({ ...input, limit: 1 }).length) return "AVAILABLE";
+  if (configured.every((type) => optionsForCakeType(input, type.id).every((option) => option.quoteRequired)))
+    return "QUOTE_REQUIRED";
+  return "BELOW_BUDGET";
 }

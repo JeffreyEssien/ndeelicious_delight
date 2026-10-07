@@ -28,6 +28,21 @@ const business = {
   taxLabel: "HST",
   taxRateBps: 1400,
   taxDelivery: true,
+  deliveryTaxMode: "SEPARATE_TAXABLE_SERVICE",
+  fulfilmentSchedule: {
+    timezone: "America/Halifax",
+    deliveryDays: [0, 1, 2, 3, 4, 5, 6],
+    sameDayEnabled: false,
+    sameDayCutoff: "12:00",
+    defaultEstimate: "Next available day",
+    blackouts: [],
+    pickupEnabled: true,
+    pickupAddress: "Fixture bakery, Halifax",
+    pickupInstructions: "Bring your order number.",
+    pickupDays: [0, 1, 2, 3, 4, 5, 6],
+    pickupHours: { start: "09:00", end: "17:00" },
+    pickupPreparationBufferHours: 0,
+  },
 };
 const id = (n) => `${String(n).padStart(8, "0")}-1111-4111-8111-111111111111`;
 const cakeTypes = [
@@ -36,6 +51,8 @@ const cakeTypes = [
     name: "Wedding Cake",
     slug: "wedding-cake",
     description: "A celebration made for your wedding.",
+    base_price: 200,
+    tax_class: "FULL_CAKE",
     lead_time_value: 3,
     lead_time_unit: "weeks",
     active: true,
@@ -48,6 +65,8 @@ const cakeTypes = [
     name: "Birthday Cake",
     slug: "birthday-cake",
     description: "For birthdays big and small.",
+    base_price: 200,
+    tax_class: "FULL_CAKE",
     lead_time_value: 1,
     lead_time_unit: "weeks",
     active: true,
@@ -67,6 +86,7 @@ const products = seedProducts.slice(0, 8).map((p, i) => ({
   low_stock_threshold: p.lowStockThreshold,
   shopping_mode: p.category === "READY_TO_BAKE" ? "READY_TO_BAKE" : i === 1 ? "MADE_TO_ORDER" : "READY_TO_ORDER",
   preparation_hours: i === 1 ? 48 : 0,
+  tax_class: i === 1 ? "SWEET_SINGLE_SERVING" : "STANDARD_TAXABLE",
   categories: {
     id: id(50),
     slug:
@@ -74,14 +94,15 @@ const products = seedProducts.slice(0, 8).map((p, i) => ({
   },
   product_variants: (i === 1
     ? [
-        { name: "Pack of 3", priceAdjustment: 0 },
-        { name: "Pack of 6", priceAdjustment: 1200 },
-        { name: "Pack of 12", priceAdjustment: 3500 },
+        { name: "Pack of 3", priceAdjustment: 0, packQuantity: 3 },
+        { name: "Pack of 6", priceAdjustment: 1200, packQuantity: 6 },
+        { name: "Pack of 12", priceAdjustment: 3500, packQuantity: 12 },
       ]
     : p.variants
   ).map((v, j) => ({
     id: id(100 + i * 10 + j),
     name: v.name,
+    pack_quantity: v.packQuantity ?? null,
     sku: `FIXTURE-${i}-${j}`,
     price_adjustment: i === 1 ? v.priceAdjustment : Math.round(v.priceAdjustment / 1000),
     stock_quantity: i === 1 ? 0 : v.stockQuantity,
@@ -118,6 +139,10 @@ const tables = {
   products,
   cake_types: cakeTypes,
   custom_cake_options: cakeOptions,
+  cake_type_options: cakeTypes.flatMap((type) =>
+    cakeOptions.map((option) => ({ cake_type_id: type.id, option_id: option.id })),
+  ),
+  delivery_zones: [],
   categories: [
     { id: id(50), slug: "custom-cakes", name: "Custom cakes" },
     { id: id(51), slug: "pastries", name: "Pastries" },
@@ -136,6 +161,7 @@ const tables = {
     },
   ],
 };
+const initialTables = structuredClone(tables);
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://127.0.0.1");
   const table = url.pathname.split("/").pop();
@@ -145,6 +171,16 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(status, { "content-type": "application/json" });
     res.end(JSON.stringify(value));
   };
+  if (url.pathname === "/__fixtures/reset" && req.method === "POST") {
+    for (const key of Object.keys(tables)) tables[key] = structuredClone(initialTables[key] ?? []);
+    respond(200, {});
+    return;
+  }
+  if (url.pathname === "/__fixtures/reset-delivery-areas" && req.method === "POST") {
+    tables.delivery_zones.length = 0;
+    respond(200, {});
+    return;
+  }
   if (url.pathname === "/__fixtures/reset-cake-types" && req.method === "POST") {
     tables.cake_types.length = 0;
     respond(200, {});
@@ -162,6 +198,51 @@ const server = http.createServer(async (req, res) => {
       return true;
     });
   if (url.pathname.includes("/rpc/")) {
+    const args = body ? JSON.parse(body) : {};
+    if (table === "consume_public_rate_limit") {
+      respond(200, { allowed: true, retry_after: 1 });
+      return;
+    }
+    if (table === "save_cake_configuration") {
+      for (const type of args.p_types) {
+        const values = {
+          id: type.id,
+          name: type.name,
+          slug: type.slug,
+          description: type.description,
+          base_price: type.basePrice,
+          tax_class: type.taxClass,
+          lead_time_value: type.leadTimeValue,
+          lead_time_unit: type.leadTimeUnit,
+          active: type.active,
+          sort_order: type.sortOrder,
+          image: type.image,
+          customer_notice: type.customerNotice,
+        };
+        const row = tables.cake_types.find((item) => item.id === type.id);
+        if (row) Object.assign(row, values);
+        else tables.cake_types.push(values);
+      }
+      if (args.p_assignments)
+        tables.cake_type_options = args.p_assignments.map((link) => ({
+          cake_type_id: link.cakeTypeId,
+          option_id: link.optionId,
+        }));
+    }
+    if (table === "save_delivery_areas")
+      tables.delivery_zones = args.p_areas.map((area) => ({
+        id: area.id,
+        name: area.name,
+        fee: area.fee,
+        minimum_order: area.minimumOrder,
+        estimated_time: area.estimate,
+        active: area.active,
+        sort_order: area.sortOrder,
+        postal_code_prefixes: area.postalCodePrefixes,
+        free_delivery_threshold: area.freeDeliveryThreshold,
+        customer_note: area.customerNote,
+        same_day_eligible: area.sameDayEligible,
+      }));
     respond(200, id(997));
     return;
   }
@@ -181,7 +262,9 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "POST") {
     const values = JSON.parse(body);
     rows = (Array.isArray(values) ? values : [values]).map((value) => {
-      let row = all.find((row) => row.id === value.id && value.id);
+      let row = all.find((row) =>
+        table === "site_settings" ? row.key === value.key : row.id === value.id && value.id,
+      );
       if (row) Object.assign(row, value);
       else {
         row = { id: id(1000 + all.length), ...value };

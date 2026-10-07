@@ -1,13 +1,19 @@
 # Project Progress and TODOs
 
-Last updated: 2026-10-06
-Active development branch: `develop`
+Last updated: 2026-10-07
+Active development branch: `commerce/full-implementation`
 Latest prior application commit: `b8b126b`
 Baseline commit for the premium pass: `9818e17`
 
 This is the living checkpoint for implementation progress. Update it when a feature, migration, test, deployment prerequisite, or known limitation changes. `implementation.md` remains the full product plan and definition of done.
 
 ## Current checkpoint
+
+The full commerce specification is implemented on `commerce/full-implementation`, based on reconciled remote main `dde3e06`. Cake base prices and assigned options, explicit pack quantities, postal-code delivery resolution, Halifax fulfilment scheduling, line tax/discount snapshots, quote checkout, and owner configuration controls now share canonical domain logic. See [the verification report](docs/full-commerce-verification.md) and [rollout/recovery instructions](docs/commerce-rollout.md).
+
+Migrations 0030–0031 were previously applied; 0032–0033 are now applied and verified against the configured Supabase database. An encrypted affected-configuration backup was created before application. Transactional write probes were rolled back and owner CMS content was preserved. Verification passes 137 regression tests, 64 API tests, TypeScript, production build, quality, CSS tokens, and local migration/quote-conversion checks. Isolated browser journeys cover five phone widths and owner configuration/marketing exports. An actual Stripe test Checkout matched the recorded CAD 45.60 total and was expired without collecting payment.
+
+Production remains **NOT READY**: the live database has no active priced cake types/assignments, covered postal areas, structured schedule, or selected delivery-tax mode; eight active products need tax review and fourteen active variants lack pack counts. Owner-approved values, an authorized isolated database workflow run, and a paid Stripe/webhook journey remain pending. No production deployment or merge to main is performed until those acceptance gates are complete.
 
 Customer wording controls now cover the previously fixed labels and customer emails, with searchable screen groups in Admin → Content. Real admin save/reload/public rendering, local SMTP capture and phone/desktop checks passed; test edits were restored and temporary sessions revoked. See [the wording report](docs/customer-wording.md). Immutable test audit records were retained after automatic approval review rejected deletion. This does not change production launch readiness.
 

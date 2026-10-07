@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { fulfilmentScheduleSchema } from "@/features/fulfilment/validation";
 
 const text = (maximum = 2_000) => z.string().trim().max(maximum);
 const href = text(2_000).refine(
@@ -32,6 +33,8 @@ export const businessSettingsSchema = z.object({
   taxRegistrationNumber: text(50).default(""),
   taxRateBps: z.number().int().min(0).max(10_000),
   taxDelivery: z.boolean(),
+  deliveryTaxMode: z.enum(["SEPARATE_TAXABLE_SERVICE", "FOLLOW_ORDER_ITEMS"]).nullable().default(null),
+  fulfilmentSchedule: fulfilmentScheduleSchema.nullable().default(null),
 });
 
 const heroSchema = z.object({

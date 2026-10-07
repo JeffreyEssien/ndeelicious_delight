@@ -7,8 +7,32 @@ vi.mock("@/lib/data/catalog", () => ({
   getProducts: () => Promise.resolve(testProducts),
   getDeliveryZones: () =>
     Promise.resolve([
-      { id: "dz1", name: "Central", fee: 250000, minimumOrder: 0, estimate: "Scheduled", active: true },
-      { id: "dz2", name: "Outer", fee: 400000, minimumOrder: 2000000, estimate: "Scheduled", active: true },
+      {
+        id: "dz1",
+        name: "Central",
+        fee: 250000,
+        minimumOrder: 0,
+        estimate: "Scheduled",
+        active: true,
+        freeDeliveryThreshold: null,
+        sameDayEligible: false,
+        customerNote: "",
+        sortOrder: 0,
+        postalCodePrefixes: ["B3H"],
+      },
+      {
+        id: "dz2",
+        name: "Outer",
+        fee: 400000,
+        minimumOrder: 2000000,
+        estimate: "Scheduled",
+        active: true,
+        freeDeliveryThreshold: null,
+        sameDayEligible: false,
+        customerNote: "",
+        sortOrder: 1,
+        postalCodePrefixes: ["B2Y"],
+      },
     ]),
 }));
 
@@ -23,6 +47,20 @@ vi.mock("@/lib/data/settings", () => ({
       taxEnabled: false,
       taxRateBps: 0,
       taxDelivery: true,
+      fulfilmentSchedule: {
+        timezone: "America/Halifax",
+        deliveryDays: [0, 1, 2, 3, 4, 5, 6],
+        sameDayEnabled: false,
+        sameDayCutoff: "12:00",
+        defaultEstimate: "",
+        blackouts: [],
+        pickupEnabled: true,
+        pickupAddress: "Fixture address",
+        pickupInstructions: "",
+        pickupDays: [0, 1, 2, 3, 4, 5, 6],
+        pickupHours: { start: "00:00", end: "23:59" },
+        pickupPreparationBufferHours: 0,
+      },
     }),
 }));
 
@@ -41,9 +79,9 @@ const valid = {
     fulfilment: "delivery",
     zoneId: "dz1",
     street: "12 King Street",
-    city: "Toronto",
-    province: "ON",
-    postalCode: "M5H 1A1",
+    city: "Halifax",
+    province: "NS",
+    postalCode: "B3H 2Y5",
     country: "CA",
   },
   cart: [{ productId: "p2", variantId: "v1", quantity: 3 }],
@@ -88,7 +126,7 @@ describe("POST /api/checkout/quote", () => {
     const res = await POST(
       new Request("http://localhost/api/checkout/quote", {
         method: "POST",
-        body: JSON.stringify({ ...valid, delivery: { ...valid.delivery, zoneId: "dz2" } }),
+        body: JSON.stringify({ ...valid, delivery: { ...valid.delivery, zoneId: "dz2", postalCode: "B2Y 1A1" } }),
       }),
     );
     expect(res.status).toBe(400);

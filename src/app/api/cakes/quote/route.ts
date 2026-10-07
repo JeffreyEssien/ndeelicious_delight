@@ -1,3 +1,6 @@
+import { cakeAvailability } from "@/features/cakes/availability";
+import { FulfilmentError } from "@/features/fulfilment/types";
+import { optionsForCakeType } from "@/features/cakes/options";
 import { leadTimeLabel } from "@/features/cakes/lead-time";
 import { getCustomerEmailText } from "@/lib/customer-text";
 import { calculateCakeQuote } from "@/features/cakes/pricing";
@@ -49,10 +52,12 @@ export async function POST(request: Request) {
     const configuration = await getCakeConfiguration(service);
     const cakeType = configuration.cakeTypes.find((type) => type.id === parsed.data.cakeTypeId && type.active);
     if (!cakeType) throw new CommerceError("INVALID_CAKE_TYPE", "Choose an available cake type.");
-    const quote = calculateCakeQuote(parsed.data, configuration.options, {
+    const quote = calculateCakeQuote(parsed.data, optionsForCakeType(configuration, cakeType.id), {
       cakeType,
       timezone: configuration.timezone,
     });
+    if (configuration.fulfilment)
+      cakeAvailability({ ...configuration.fulfilment, cakeType, requestedDate: parsed.data.deliveryDate });
     const customerEmail = parsed.data.email.toLowerCase();
     const { data: customer, error: customerError } = await service
       .from("customers")
@@ -131,7 +136,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     if (error instanceof SyntaxError) return Response.json({ error: "The request body is invalid." }, { status: 400 });
-    if (error instanceof CommerceError)
+    if (error instanceof CommerceError || error instanceof FulfilmentError)
       return Response.json({ error: error.message, code: error.code }, { status: 400 });
     return Response.json({ error: "We couldn’t price this cake. Please try again." }, { status: 500 });
   }

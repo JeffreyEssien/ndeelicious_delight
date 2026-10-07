@@ -19,6 +19,7 @@ export type PersistedDocument = {
   customer_snapshot: BusinessDocumentData["customer"];
   line_items_snapshot: BusinessDocumentData["lines"];
   totals_snapshot: {
+    taxSnapshot?: import("@/features/tax/types").TaxSnapshot | null;
     subtotal: number;
     discount?: number;
     delivery?: number;
