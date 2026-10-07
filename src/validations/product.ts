@@ -31,6 +31,8 @@ export const productInputSchema = z
     shortDescription: z.string().trim().min(2).max(500),
     description: z.string().trim().min(2).max(10_000),
     category: productCategorySchema,
+    shoppingMode: z.enum(["READY_TO_ORDER", "MADE_TO_ORDER", "READY_TO_BAKE"]).default("READY_TO_ORDER"),
+    preparationHours: z.number().int().min(0).max(8760).default(0),
     price: z.number().int().min(0).max(1_000_000_000),
     discountPrice: z.number().int().min(0).max(1_000_000_000).nullable(),
     status: productStatusSchema,
@@ -45,6 +47,17 @@ export const productInputSchema = z
     images: z.array(productImageInputSchema).max(12),
   })
   .superRefine((product, context) => {
+    if (
+      product.variants.some(
+        (variant) => variant.active && (product.discountPrice ?? product.price) + variant.priceAdjustment < 0,
+      )
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["variants"],
+        message: "Active variants must have a nonnegative final price.",
+      });
+    }
     if (product.discountPrice !== null && product.discountPrice > product.price) {
       context.addIssue({
         code: "custom",

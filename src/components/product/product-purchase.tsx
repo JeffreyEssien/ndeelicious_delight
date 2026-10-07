@@ -1,15 +1,23 @@
 "use client";
 import { useCustomerText } from "@/components/customer-text-provider";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Product } from "@/types";
 import { useCart, useMoney } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 import { getDefaultPurchasableVariant, isVariantPurchasable } from "@/features/catalog/availability";
+import { variantPrice, preparationLabel } from "@/features/catalog/pricing";
 import { trackCommerceEvent } from "@/lib/analytics/client";
 export function ProductPurchase({ product }: { product: Product }) {
   const t = useCustomerText("product purchase");
 
-  const [variant, setVariant] = useState(getDefaultPurchasableVariant(product)?.id ?? product.variants[0]?.id ?? "");
+  const params = useSearchParams();
+  const requestedVariant = product.variants.find(
+    (v) => v.id === params.get("variant") && isVariantPurchasable(product, v),
+  );
+  const [variant, setVariant] = useState(
+    requestedVariant?.id ?? getDefaultPurchasableVariant(product)?.id ?? product.variants[0]?.id ?? "",
+  );
   const [quantity, setQuantity] = useState(1);
   const cart = useCart();
   const formatMoney = useMoney();
@@ -22,9 +30,9 @@ export function ProductPurchase({ product }: { product: Product }) {
   return (
     <div className="purchase-box">
       <fieldset className="variant-options">
-        <legend>{t("Choose an option")}</legend>
+        <legend>{t("Choose your pack")}</legend>
         {product.variants
-          .filter((item) => item.active)
+          .filter((item) => item.active !== false)
           .map((v) => (
             <label key={v.id} className={variant === v.id ? "selected" : ""}>
               <input
@@ -36,10 +44,14 @@ export function ProductPurchase({ product }: { product: Product }) {
                 onChange={() => setVariant(v.id)}
               />
               <span>{v.name}</span>
-              <b>{v.priceAdjustment ? `+${formatMoney(v.priceAdjustment)}` : t("Included")}</b>
+              <b>{formatMoney(variantPrice(product, v))}</b>
             </label>
           ))}
       </fieldset>
+      <p aria-live="polite">
+        <strong>{formatMoney(variantPrice(product, selected))}</strong> · {preparationLabel(product)}
+        {selected.sku && <small> · SKU {selected.sku}</small>}
+      </p>
       <div className="purchase-row">
         <div className="quantity large">
           <button
@@ -52,7 +64,9 @@ export function ProductPurchase({ product }: { product: Product }) {
           <span>{quantity}</span>
           <button
             type="button"
-            onClick={() => setQuantity(Math.min(selected.stockQuantity, quantity + 1))}
+            onClick={() =>
+              setQuantity(Math.min(product.trackInventory === false ? 50 : selected.stockQuantity, quantity + 1))
+            }
             aria-label={t("Increase quantity")}
           >
             <Icon name="plus" />
@@ -67,14 +81,14 @@ export function ProductPurchase({ product }: { product: Product }) {
           {unavailable
             ? t("Unavailable")
             : t("Add to basket · {value1}", {
-                value1: formatMoney((product.price + selected.priceAdjustment) * quantity),
+                value1: formatMoney(variantPrice(product, selected) * quantity),
               })}
         </button>
       </div>
       <p className="stock-note">
         {unavailable
           ? t("This option is currently unavailable.")
-          : selected.stockQuantity <= product.lowStockThreshold
+          : product.trackInventory !== false && selected.stockQuantity <= product.lowStockThreshold
             ? t("Only {value1} left for this bake.", { value1: selected.stockQuantity })
             : t("Available to add to your basket.")}
       </p>

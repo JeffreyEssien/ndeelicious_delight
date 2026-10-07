@@ -71,12 +71,7 @@ export default async function Page() {
             <article key={step.title}>
               <span>{String(index + 1).padStart(2, "0")}</span>
               <h3>{step.title}</h3>
-              <p>
-                {step.body.replace(
-                  t("current bakery setting"),
-                  t("{value1}-hour minimum", { value1: business.cakeLeadHours }),
-                )}
-              </p>
+              <p>{step.body.replace(t("current bakery setting"), t("Preparation time shown for each cake type"))}</p>
             </article>
           ))}
         </div>

@@ -232,4 +232,57 @@ describe("POST /api/admin/mutate inventory operations", () => {
     expect(response.status).toBe(400);
     expect(mocks.upsert).not.toHaveBeenCalled();
   });
+  it("rejects activating a cake type without lead time before writing", async () => {
+    const response = await POST(
+      request({
+        action: "cake-types",
+        cakeTypes: [
+          {
+            id: "11111111-1111-4111-8111-111111111111",
+            name: "Wedding Cake",
+            slug: "wedding-cake",
+            description: "",
+            leadTimeValue: 0,
+            leadTimeUnit: "weeks",
+            active: true,
+            sortOrder: 0,
+            image: "",
+            customerNotice: "",
+          },
+        ],
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(mocks.upsert).not.toHaveBeenCalled();
+  });
+  it("saves admin cake timing in friendly units and records the change", async () => {
+    const response = await POST(
+      request({
+        action: "cake-types",
+        cakeTypes: [
+          {
+            id: "11111111-1111-4111-8111-111111111111",
+            name: "Wedding Cake",
+            slug: "wedding-cake",
+            description: "",
+            leadTimeValue: 4,
+            leadTimeUnit: "weeks",
+            active: true,
+            sortOrder: 0,
+            image: "",
+            customerNotice: "Allow four weeks.",
+          },
+        ],
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(mocks.upsert).toHaveBeenCalledWith([
+      expect.objectContaining({ lead_time_value: 4, lead_time_unit: "weeks", customer_notice: "Allow four weeks." }),
+    ]);
+    expect(mocks.recordAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ action: "CAKE_TYPES_CHANGED" }),
+    );
+  });
 });

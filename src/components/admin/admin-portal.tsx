@@ -1445,7 +1445,6 @@ function BusinessSettings({
     const value = {
       ...initial,
       ...fields,
-      cakeLeadHours: Number(fields.cakeLeadHours),
       orderMinimum: Math.round(Number(fields.orderMinimum) * 100),
       taxRateBps: Math.round(Number(fields.taxRate) * 100),
       deliveryEnabled: fields.deliveryEnabled === "on",
@@ -1709,13 +1708,6 @@ function BusinessSettings({
           <input name="pickupEnabled" type="checkbox" defaultChecked={initial.pickupEnabled} />
           <span>Offer bakery pickup at checkout</span>
         </label>
-        <Input
-          name="cakeLeadHours"
-          label="Custom cake lead time (hours)"
-          type="number"
-          min="1"
-          defaultValue={initial.cakeLeadHours}
-        />
         <span className="document-save-state" role="status">
           {businessState === "saved"
             ? "Business settings saved"

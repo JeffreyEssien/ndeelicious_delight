@@ -5,13 +5,14 @@ export type AdminAuditTarget =
   | { type: "order"; orderNumber: string }
   | { type: "site-setting"; key: string }
   | { type: "cake-order"; id: string }
+  | { type: "cake-types" }
   | { type: "cake-options" }
   | { type: "review"; id: string }
   | { type: "coupons" }
   | { type: "delivery-zones" };
 
 const productFields =
-  "id,category_id,name,slug,short_description,description,base_price,discount_price,sku,status,featured,track_inventory,stock_quantity,low_stock_threshold,ingredients,allergens,storage_instructions,preparation_instructions,product_variants(id,name,sku,price_adjustment,stock_quantity,active),product_images(id,url,alt_text,sort_order,storage_path)";
+  "id,shopping_mode,preparation_hours,category_id,name,slug,short_description,description,base_price,discount_price,sku,status,featured,track_inventory,stock_quantity,low_stock_threshold,ingredients,allergens,storage_instructions,preparation_instructions,product_variants(id,name,sku,price_adjustment,stock_quantity,active),product_images(id,url,alt_text,sort_order,storage_path)";
 
 export async function readAdminAuditState(db: SupabaseClient, target: AdminAuditTarget): Promise<unknown> {
   if (target.type === "product") {
@@ -46,6 +47,11 @@ export async function readAdminAuditState(db: SupabaseClient, target: AdminAudit
     const { data, error } = await db.from("reviews").select("id,status").eq("id", target.id).maybeSingle();
     if (error) throw error;
     return data;
+  }
+  if (target.type === "cake-types") {
+    const { data, error } = await db.from("cake_types").select("*").order("sort_order");
+    if (error) throw error;
+    return data ?? [];
   }
   if (target.type === "cake-options") {
     const { data, error } = await db

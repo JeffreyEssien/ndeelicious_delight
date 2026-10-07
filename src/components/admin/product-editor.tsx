@@ -80,6 +80,8 @@ export function ProductEditor({
       discountPrice: form.get("discountPrice") ? Math.round(Number(form.get("discountPrice")) * 100) : null,
       status: String(form.get("status")) as ProductStatus,
       featured: form.get("featured") === "on",
+      shoppingMode: String(form.get("shoppingMode")),
+      preparationHours: Number(form.get("preparationHours")),
       trackInventory: form.get("trackInventory") === "on",
       lowStockThreshold: Number(form.get("lowStockThreshold")),
       ingredients: String(form.get("ingredients")),
@@ -179,6 +181,27 @@ export function ProductEditor({
         </div>
 
         <div className="product-editor-section">
+          <h3>Shopping &amp; preparation</h3>
+          <Select
+            label="Shopping mode"
+            name="shoppingMode"
+            defaultValue={
+              product?.shoppingMode ?? (product?.category === "READY_TO_BAKE" ? "READY_TO_BAKE" : "READY_TO_ORDER")
+            }
+          >
+            <option value="READY_TO_ORDER">Ready to Order</option>
+            <option value="MADE_TO_ORDER">Made to Order</option>
+            <option value="READY_TO_BAKE">Ready to Bake</option>
+          </Select>
+          <Input
+            label="Preparation time (hours)"
+            name="preparationHours"
+            type="number"
+            min="0"
+            max="8760"
+            defaultValue={product?.preparationHours ?? 0}
+            required
+          />
           <h3>Inventory</h3>
           <Checkbox label="Track inventory" name="trackInventory" defaultChecked={product?.trackInventory ?? true} />
           <div className="field-row">
@@ -202,7 +225,20 @@ export function ProductEditor({
 
         <div className="product-editor-section">
           <div className="editor-section-head">
-            <h3>Variants</h3>
+            <h3>Variants / packs</h3>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                setVariants((current) => [
+                  ...current.filter((v) => v.name !== "Standard"),
+                  ...[3, 6, 12]
+                    .filter((size) => !current.some((v) => v.name === `Pack of ${size}`))
+                    .map((size) => ({ name: `Pack of ${size}`, priceAdjustment: 0, stockQuantity: 0, active: false })),
+                ])
+              }
+            >
+              Add 3 / 6 / 12 packs
+            </Button>
             <Button
               variant="secondary"
               onClick={() =>

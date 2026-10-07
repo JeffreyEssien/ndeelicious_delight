@@ -1,3 +1,4 @@
+import { variantPrice } from "@/features/catalog/pricing";
 import type { CartLine, Fulfilment, Product } from "@/types";
 import { formatMoney } from "@/lib/format";
 
@@ -29,6 +30,8 @@ export type OrderQuote = {
     unitPrice: number;
     lineTotal: number;
   }>;
+  preparationHours: number;
+  preparationReadyAt: string;
   subtotal: number;
   discount: number;
   deliveryFee: number;
@@ -85,7 +88,7 @@ export function calculateOrderQuote(input: {
     if (!product || product.status === "DRAFT" || product.status === "ARCHIVED")
       throw new CommerceError("PRODUCT_UNAVAILABLE", "A product in your basket is no longer available.");
     const variant = product.variants.find((v) => v.id === line.variantId);
-    if (!variant || product.status === "OUT_OF_STOCK")
+    if (!variant || variant.active === false || product.status === "OUT_OF_STOCK")
       throw new CommerceError("VARIANT_UNAVAILABLE", `${product.name} is currently unavailable.`);
     if (product.trackInventory !== false) {
       const available = Math.min(product.stockQuantity, variant.stockQuantity);
@@ -93,7 +96,7 @@ export function calculateOrderQuote(input: {
       if (line.quantity > available)
         throw new CommerceError("INSUFFICIENT_STOCK", `Only ${available} of ${product.name} remain.`);
     }
-    const unitPrice = (product.discountPrice ?? product.price) + variant.priceAdjustment;
+    const unitPrice = variantPrice(product, variant);
     if (!Number.isSafeInteger(unitPrice) || unitPrice < 0)
       throw new CommerceError("INVALID_PRICE", "This item’s price needs review.");
     return {
@@ -107,6 +110,11 @@ export function calculateOrderQuote(input: {
       lineTotal: unitPrice * line.quantity,
     };
   });
+  const preparationHours = Math.max(
+    0,
+    ...input.cart.map((line) => input.products.find((product) => product.id === line.productId)?.preparationHours ?? 0),
+  );
+  const preparationReadyAt = new Date((input.now ?? new Date()).getTime() + preparationHours * 3600000).toISOString();
   const subtotal = lines.reduce((total, line) => total + line.lineTotal, 0);
   const orderMinimum = input.orderMinimum ?? 0;
   if (!Number.isSafeInteger(orderMinimum) || orderMinimum < 0)
@@ -136,6 +144,8 @@ export function calculateOrderQuote(input: {
   const taxableAmount = subtotal - discount + (input.taxDelivery ? deliveryFee : 0);
   const taxTotal = Math.round((taxableAmount * taxRateBps) / 10_000);
   return {
+    preparationHours,
+    preparationReadyAt,
     lines,
     subtotal,
     discount,

@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 const conflictCodes = new Set([
   "INSUFFICIENT_STOCK",
   "INVENTORY_NOT_COMMITTED",
+  "PRODUCT_PREPARATION_PENDING",
   "INVENTORY_RESERVATION_MISSING",
   "PRODUCT_UNAVAILABLE",
   "STOCK_BELOW_RESERVED",
@@ -30,9 +31,11 @@ function conflict(error: { message?: string; details?: string; hint?: string }) 
     code,
     code === "STOCK_BELOW_RESERVED"
       ? "Stock cannot be reduced below the quantity held for pending orders."
-      : code === "INVENTORY_NOT_COMMITTED"
-        ? "Mark the order as paid before moving it into fulfilment."
-        : undefined,
+      : code === "PRODUCT_PREPARATION_PENDING"
+        ? "This order is still within its configured preparation time."
+        : code === "INVENTORY_NOT_COMMITTED"
+          ? "Mark the order as paid before moving it into fulfilment."
+          : undefined,
   );
 }
 

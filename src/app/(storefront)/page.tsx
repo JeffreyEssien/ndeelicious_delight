@@ -23,7 +23,7 @@ export default async function Home() {
     getStoreCarousel(),
   ]);
   const home = content.home;
-  const featured = products.filter((product) => product.featured);
+  const featured = products.filter((product) => product.featured).slice(0, 4);
   const gallery = products.flatMap((product) => product.images ?? []).slice(0, 4);
   const review = reviews[0];
   return (

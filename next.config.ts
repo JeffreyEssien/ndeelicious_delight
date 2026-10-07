@@ -12,6 +12,7 @@ function productImagePatterns() {
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  distDir: process.env.NDEE_BROWSER_FIXTURES === "true" ? ".next-fixtures" : ".next",
   async headers() {
     return [
       {

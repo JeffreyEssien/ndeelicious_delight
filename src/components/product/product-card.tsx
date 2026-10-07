@@ -6,6 +6,7 @@ import type { Product } from "@/types";
 import { useMoney } from "@/components/providers";
 import { useCart } from "@/components/providers";
 import { Badge } from "@/components/ui/primitives";
+import { productStartingPrice, preparationLabel } from "@/features/catalog/pricing";
 import { Icon } from "@/components/ui/icons";
 import {
   getDefaultPurchasableVariant,
@@ -44,7 +45,11 @@ export function ProductCard({ product, eager = false }: { product: Product; eage
           <Link href={`/product/${product.slug}`}>
             <h3>{product.name}</h3>
           </Link>
-          <p>{formatMoney(product.price)}</p>
+          <p>
+            {getPurchasableVariants(product).length > 1 ? "From " : ""}
+            {formatMoney(productStartingPrice(product))}
+          </p>
+          <small>{preparationLabel(product)}</small>
         </div>
         {unavailable ? null : defaultVariant && hasUnambiguousVariant ? (
           <button

@@ -1,3 +1,4 @@
+import { leadTimeLabel } from "@/features/cakes/lead-time";
 import { getCustomerEmailText } from "@/lib/customer-text";
 import { calculateCakeQuote } from "@/features/cakes/pricing";
 import { CommerceError } from "@/features/checkout/pricing";
@@ -46,8 +47,11 @@ export async function POST(request: Request) {
     }
     const service = createServiceClient();
     const configuration = await getCakeConfiguration(service);
+    const cakeType = configuration.cakeTypes.find((type) => type.id === parsed.data.cakeTypeId && type.active);
+    if (!cakeType) throw new CommerceError("INVALID_CAKE_TYPE", "Choose an available cake type.");
     const quote = calculateCakeQuote(parsed.data, configuration.options, {
-      leadTimeHours: configuration.leadTimeHours,
+      cakeType,
+      timezone: configuration.timezone,
     });
     const customerEmail = parsed.data.email.toLowerCase();
     const { data: customer, error: customerError } = await service
@@ -76,7 +80,14 @@ export async function POST(request: Request) {
       customer_name: parsed.data.customerName,
       email: customerEmail,
       phone: parsed.data.phone,
-      configuration: parsed.data,
+      configuration: {
+        ...parsed.data,
+        cakeType: cakeType.name,
+        minimumLeadTime: leadTimeLabel(cakeType),
+        bakeryTimezone: configuration.timezone,
+      },
+      cake_type_id: cakeType.id,
+      lead_time_snapshot: { ...cakeType, timezone: configuration.timezone },
       requested_date: parsed.data.deliveryDate,
       estimated_total: quote.estimatedTotal,
       status: quote.quoteRequired ? "QUOTE_REQUIRED" : "DRAFT",

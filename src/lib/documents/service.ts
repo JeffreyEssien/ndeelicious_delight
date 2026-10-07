@@ -241,6 +241,12 @@ export async function issueCakeQuote(
       presentation_snapshot: {
         notes: [
           `Requested fulfilment date: ${cake.requested_date}`,
+          ...(configuration.cakeType
+            ? [
+                `Cake type: ${configuration.cakeType}`,
+                `Minimum lead time at submission: ${configuration.minimumLeadTime}`,
+              ]
+            : []),
           ...(cake.customer_note ? [`Customer note: ${cake.customer_note}`] : []),
           "Final design details remain subject to written approval and availability.",
         ],

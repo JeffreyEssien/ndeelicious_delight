@@ -147,13 +147,14 @@ export async function getMarketingExport(client?: SupabaseClient): Promise<Marke
 
 export async function getCakeConfiguration(client?: SupabaseClient): Promise<CakeConfigurationData> {
   const db = client ?? createServiceClient();
-  const [{ data, error }, business] = await Promise.all([
+  const [{ data, error }, business, types] = await Promise.all([
     db
       .from("custom_cake_options")
       .select("id,type,name,description,price_adjustment,quote_required,active,sort_order")
       .order("type")
       .order("sort_order"),
     getBusinessSettings(db),
+    db.from("cake_types").select("*").order("sort_order"),
   ]);
   if (error) throw error;
   const options = (data ?? []).map(
@@ -168,5 +169,21 @@ export async function getCakeConfiguration(client?: SupabaseClient): Promise<Cak
       sortOrder: row.sort_order,
     }),
   );
-  return { options, leadTimeHours: Number(business.cakeLeadHours) };
+  if (types.error) throw types.error;
+  return {
+    options,
+    timezone: business.timezone,
+    cakeTypes: (types.data ?? []).map((row) => ({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      description: row.description,
+      leadTimeValue: Number(row.lead_time_value),
+      leadTimeUnit: row.lead_time_unit,
+      active: row.active,
+      sortOrder: row.sort_order,
+      image: row.image ?? "",
+      customerNotice: row.customer_notice ?? "",
+    })),
+  };
 }

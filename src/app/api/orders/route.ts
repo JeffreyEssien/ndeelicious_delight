@@ -105,6 +105,7 @@ export async function POST(request: Request) {
       .from("orders")
       .insert({
         order_number: number,
+        preparation_ready_at: quote.preparationReadyAt,
         customer_id: customerRow.id,
         customer_name: customer.name,
         email: customerEmail,
@@ -137,7 +138,10 @@ export async function POST(request: Request) {
         unit_price: line.unitPrice,
         quantity: line.quantity,
         final_price: line.lineTotal,
-        product_snapshot: line,
+        product_snapshot: {
+          ...line,
+          preparationHours: products.find((product) => product.id === line.productId)?.preparationHours ?? 0,
+        },
       })),
     );
     if (itemsError) throw itemsError;
