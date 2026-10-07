@@ -6,6 +6,7 @@ const cakeType = {
   name: "Birthday Cake",
   slug: "birthday-cake",
   description: "",
+  basePrice: 2500,
   leadTimeValue: 3,
   leadTimeUnit: "days" as const,
   active: true,
@@ -50,8 +51,8 @@ const options = [
 ];
 describe("cake pricing", () => {
   it("calculates all database adjustments", () => {
-    const configurationPrice = calculateCakeConfigurationPrice(cake, options).total;
-    expect(configurationPrice).toBe(5550000);
+    const configurationPrice = calculateCakeConfigurationPrice(cake, options, cakeType).total;
+    expect(configurationPrice).toBe(5552500);
     expect(
       calculateCakeQuote(cake, options, {
         cakeType,
@@ -78,4 +79,11 @@ describe("cake pricing", () => {
       }),
     ).toThrow(/preparation/);
   });
+});
+
+it("rejects unavailable or mismatched option IDs and missing base prices", () => {
+  expect(() => calculateCakeConfigurationPrice({ ...cake, optionIds: { size: "wrong" } }, options, cakeType)).toThrow(
+    "unavailable",
+  );
+  expect(() => calculateCakeConfigurationPrice(cake, options, { ...cakeType, basePrice: null })).toThrow("base price");
 });

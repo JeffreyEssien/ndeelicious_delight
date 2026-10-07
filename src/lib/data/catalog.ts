@@ -13,6 +13,7 @@ type ProductRow = {
   sku: string | null;
   shopping_mode: Product["shoppingMode"];
   preparation_hours: number;
+  tax_class: Product["taxClass"];
   base_price: number;
   discount_price: number | null;
   status: Product["status"];
@@ -30,6 +31,7 @@ type ProductRow = {
     name: string;
     sku: string | null;
     price_adjustment: number;
+    pack_quantity: number | null;
     stock_quantity: number;
     active: boolean;
   }[];
@@ -60,6 +62,7 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
       name: variant.name,
       sku: variant.sku ?? undefined,
       priceAdjustment: variant.price_adjustment,
+      packQuantity: variant.pack_quantity ?? null,
       stockQuantity: variant.stock_quantity,
       active: variant.active,
     }));
@@ -68,6 +71,7 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
     categoryId: relation?.id,
     shoppingMode: row.shopping_mode,
     preparationHours: row.preparation_hours,
+    taxClass: row.tax_class ?? "REQUIRES_REVIEW",
     slug: row.slug,
     name: row.name,
     shortDescription: row.short_description,
@@ -96,9 +100,9 @@ async function loadProducts(options: { includeInactive?: boolean; client?: Supab
   let query = supabase
     .from("products")
     .select(`
-      id,slug,name,short_description,description,sku,shopping_mode,preparation_hours,base_price,discount_price,status,featured,
+      id,slug,name,short_description,description,sku,shopping_mode,preparation_hours,tax_class,base_price,discount_price,status,featured,
       track_inventory,stock_quantity,low_stock_threshold,ingredients,allergens,storage_instructions,preparation_instructions,
-      categories(id,slug),product_variants(id,name,sku,price_adjustment,stock_quantity,active),
+      categories(id,slug),product_variants(id,name,sku,price_adjustment,pack_quantity,stock_quantity,active),
       product_images(id,url,alt_text,sort_order,storage_path)
     `)
     .order("created_at", { ascending: false });
@@ -129,7 +133,9 @@ async function loadDeliveryZones(client?: SupabaseClient, includeInactive = fals
   const supabase = client ?? (await createClient());
   let query = supabase
     .from("delivery_zones")
-    .select("id,name,fee,minimum_order,estimated_time,active")
+    .select(
+      "id,name,fee,minimum_order,estimated_time,active,postal_code_prefixes,free_delivery_threshold,customer_note,same_day_eligible,sort_order",
+    )
     .order("sort_order");
   if (!includeInactive) query = query.eq("active", true);
   const { data, error } = await query;
@@ -141,6 +147,11 @@ async function loadDeliveryZones(client?: SupabaseClient, includeInactive = fals
     minimumOrder: zone.minimum_order,
     estimate: zone.estimated_time ?? "Awaiting a delivery estimate",
     active: zone.active,
+    postalCodePrefixes: (zone.postal_code_prefixes ?? []) as string[],
+    freeDeliveryThreshold: zone.free_delivery_threshold as number | null,
+    customerNote: String(zone.customer_note ?? ""),
+    sameDayEligible: Boolean(zone.same_day_eligible),
+    sortOrder: Number(zone.sort_order ?? 0),
   }));
 }
 

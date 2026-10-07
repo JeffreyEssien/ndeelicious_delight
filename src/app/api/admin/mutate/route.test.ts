@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   transitionAdminOrderStatus: vi.fn(),
   saveOrderInternalNote: vi.fn(),
   upsert: vi.fn(),
+  rpc: vi.fn(),
   readAuditState: vi.fn(),
   recordAudit: vi.fn(),
   update: vi.fn(),
@@ -18,6 +19,7 @@ vi.mock("@/lib/auth/admin-request", () => ({
     Promise.resolve({
       ok: true,
       db: {
+        rpc: mocks.rpc,
         from: () => ({
           upsert: mocks.upsert,
           update: (value: unknown) => {
@@ -57,6 +59,7 @@ describe("POST /api/admin/mutate inventory operations", () => {
     mocks.transitionAdminOrderStatus.mockResolvedValue(undefined);
     mocks.saveOrderInternalNote.mockResolvedValue(undefined);
     mocks.upsert.mockResolvedValue({ error: null });
+    mocks.rpc.mockResolvedValue({ error: null });
     mocks.readAuditState.mockResolvedValue({ value: "snapshot" });
     mocks.recordAudit.mockResolvedValue(undefined);
     mocks.eq.mockResolvedValue({ error: null });
@@ -149,7 +152,12 @@ describe("POST /api/admin/mutate inventory operations", () => {
         action: "delivery-zones",
         zones: [
           {
-            id: "new-area",
+            id: "11111111-1111-4111-8111-111111111111",
+            postalCodePrefixes: ["B3H"],
+            freeDeliveryThreshold: null,
+            customerNote: "",
+            sameDayEligible: false,
+            sortOrder: 0,
             name: "Halifax",
             fee: 1_500,
             minimumOrder: 5_000,
@@ -161,9 +169,9 @@ describe("POST /api/admin/mutate inventory operations", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mocks.upsert).toHaveBeenCalledWith([expect.objectContaining({ minimum_order: 5_000, sort_order: 0 })]);
-    const payload = await response.json();
-    expect(payload.savedIds["new-area"]).toBe(mocks.upsert.mock.calls[0][0][0].id);
+    expect(mocks.rpc).toHaveBeenCalledWith("save_delivery_areas", {
+      p_areas: [expect.objectContaining({ minimumOrder: 5_000, sortOrder: 0, postalCodePrefixes: ["B3H"] })],
+    });
   });
 
   it("saves coupon eligibility and limits in one database write", async () => {
@@ -265,6 +273,7 @@ describe("POST /api/admin/mutate inventory operations", () => {
             name: "Wedding Cake",
             slug: "wedding-cake",
             description: "",
+            basePrice: 2500,
             leadTimeValue: 4,
             leadTimeUnit: "weeks",
             active: true,
@@ -276,9 +285,12 @@ describe("POST /api/admin/mutate inventory operations", () => {
       }),
     );
     expect(response.status).toBe(200);
-    expect(mocks.upsert).toHaveBeenCalledWith([
-      expect.objectContaining({ lead_time_value: 4, lead_time_unit: "weeks", customer_notice: "Allow four weeks." }),
-    ]);
+    expect(mocks.rpc).toHaveBeenCalledWith("save_cake_configuration", {
+      p_types: [
+        expect.objectContaining({ leadTimeValue: 4, leadTimeUnit: "weeks", customerNotice: "Allow four weeks." }),
+      ],
+      p_assignments: null,
+    });
     expect(mocks.recordAudit).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),

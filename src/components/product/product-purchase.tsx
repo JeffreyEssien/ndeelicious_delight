@@ -3,10 +3,11 @@ import { useCustomerText } from "@/components/customer-text-provider";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Product } from "@/types";
-import { useCart, useMoney } from "@/components/providers";
+import { useCart, useMoney, useBusinessSettings } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 import { getDefaultPurchasableVariant, isVariantPurchasable } from "@/features/catalog/availability";
 import { variantPrice, preparationLabel } from "@/features/catalog/pricing";
+import { earliestFulfilment } from "@/features/fulfilment/schedule";
 import { trackCommerceEvent } from "@/lib/analytics/client";
 export function ProductPurchase({ product }: { product: Product }) {
   const t = useCustomerText("product purchase");
@@ -20,6 +21,15 @@ export function ProductPurchase({ product }: { product: Product }) {
   );
   const [quantity, setQuantity] = useState(1);
   const cart = useCart();
+  const business = useBusinessSettings();
+  let availabilityLabel = "Enter your postal code at checkout to confirm delivery availability.";
+  if (business.pickupEnabled) {
+    try {
+      availabilityLabel = `Earliest pickup: ${earliestFulfilment({ mode: "pickup", schedule: business.fulfilmentSchedule ?? null, preparationHours: product.preparationHours ?? 0 }).label}`;
+    } catch (reason) {
+      availabilityLabel = reason instanceof Error ? reason.message : "Schedule setup is required.";
+    }
+  }
   const formatMoney = useMoney();
   const selected = product.variants.find((v) => v.id === variant);
   useEffect(() => {
@@ -43,7 +53,7 @@ export function ProductPurchase({ product }: { product: Product }) {
                 disabled={!isVariantPurchasable(product, v)}
                 onChange={() => setVariant(v.id)}
               />
-              <span>{v.name}</span>
+              <span>{v.packQuantity ? `Pack of ${v.packQuantity}` : v.name}</span>
               <b>{formatMoney(variantPrice(product, v))}</b>
             </label>
           ))}
@@ -52,6 +62,7 @@ export function ProductPurchase({ product }: { product: Product }) {
         <strong>{formatMoney(variantPrice(product, selected))}</strong> · {preparationLabel(product)}
         {selected.sku && <small> · SKU {selected.sku}</small>}
       </p>
+      <p className="stock-note">{availabilityLabel}</p>
       <div className="purchase-row">
         <div className="quantity large">
           <button

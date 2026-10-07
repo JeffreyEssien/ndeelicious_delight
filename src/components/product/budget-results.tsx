@@ -7,6 +7,7 @@ import {
   purchasableBudgetOptions,
   cakeRecommendations,
   cakeRecommendationHref,
+  cakeBudgetState,
 } from "@/features/budget/recommendations";
 import { preparationLabel, shoppingMode } from "@/features/catalog/pricing";
 import { leadTimeLabel } from "@/features/cakes/lead-time";
@@ -47,13 +48,17 @@ export function BudgetResults({
         .filter((option) => option.price > maximum)
         .sort((a, b) => a.price - b.price)
         .slice(0, 3);
-  const cakeIdeas = useMemo(
-    () => cakeRecommendations(configuration.options, maximum, 2),
-    [configuration.options, maximum],
+  const cakes = useMemo(
+    () =>
+      cakeRecommendations({
+        cakeTypes: configuration.cakeTypes,
+        options: configuration.options,
+        relationships: configuration.relationships ?? [],
+        maximum,
+        limit: 6,
+      }),
+    [configuration, maximum],
   );
-  const cakes = configuration.cakeTypes
-    .filter((type) => type.active)
-    .flatMap((type) => cakeIdeas.map((cake) => ({ type, cake })));
   const visibleMatches =
     segment === "Ready now"
       ? matches.filter(({ product }) => shoppingMode(product) === "READY_TO_ORDER" && !product.preparationHours)
@@ -105,33 +110,56 @@ export function BudgetResults({
             </article>
           ))}
         {segment !== "Ready now" &&
-          cakes.map(({ type, cake }) => (
-            <article key={`${type.id}-${cake.id}`}>
-              {type.image && (
+          cakes.map((cake) => (
+            <article key={cake.id}>
+              {cake.cakeType.image && (
                 <div className="budget-match-photo">
-                  <Image src={type.image} alt={type.name} fill sizes="88px" unoptimized />
+                  <Image src={cake.cakeType.image} alt={cake.cakeType.name} fill sizes="88px" unoptimized />
                 </div>
               )}
               <div className="budget-match-info">
-                <h3>{type.name}</h3>
+                <h3>{cake.cakeType.name}</h3>
                 <p>
-                  {cake.selections.size.name} · {cake.selections.flavour.name}
+                  {cake.selections.size?.name} · {cake.selections.flavour?.name}
                 </p>
                 <div className="budget-match-action">
-                  <strong>{money(cake.total)}</strong>
-                  <Link
-                    className="button button-secondary"
-                    href={`${cakeRecommendationHref(cake)}&cakeTypeId=${type.id}`}
-                  >
+                  <strong>
+                    {cake.pricingMode !== "EXACT_PRICE" ? "From " : ""}
+                    {money(cake.total)}
+                  </strong>
+                  <Link className="button button-secondary" href={cakeRecommendationHref(cake)}>
                     Customize
                   </Link>
                 </div>
-                <small>Starting configuration · Minimum lead time: {leadTimeLabel(type)}</small>
+                <small>
+                  {cake.pricingMode === "EXACT_PRICE" ? "Starting configuration" : "Final design requires a quote"} ·
+                  Minimum lead time: {leadTimeLabel(cake.cakeType)}
+                </small>
               </div>
             </article>
           ))}
       </div>
-      {count === 0 && <p>No options fit this budget. Try a larger budget or another section.</p>}
+      {count === 0 && (
+        <p>
+          {
+            {
+              AVAILABLE: "No options fit this section. Try another section.",
+              UNAVAILABLE: "Custom cakes are currently unavailable.",
+              SETUP_REQUIRED: "Cake price setup is required. Contact the bakery for a quote.",
+              INCOMPLETE: "Cake choices are being configured. Contact the bakery for a quote.",
+              QUOTE_REQUIRED: "These cakes require a custom quote. Contact the bakery.",
+              BELOW_BUDGET: "Custom cakes start above this budget. Try a larger budget.",
+            }[
+              cakeBudgetState({
+                cakeTypes: configuration.cakeTypes,
+                options: configuration.options,
+                relationships: configuration.relationships ?? [],
+                maximum,
+              })
+            ]
+          }
+        </p>
+      )}
       {segment !== "Custom cakes" && closest.length > 0 && (
         <>
           <h3>Closest alternatives</h3>

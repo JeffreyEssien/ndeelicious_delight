@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categorySlug, productInputSchema } from "./product";
+import { categorySlug, productInputSchema, productVariantInputSchema } from "./product";
 
 const valid = {
   name: "Almond Croissant",
@@ -51,4 +51,27 @@ describe("productInputSchema", () => {
     expect(result).not.toHaveProperty("sku");
     expect(result.variants[0]).not.toHaveProperty("sku");
   });
+});
+
+it("stores explicit pack quantities and rejects zero, fractional or negative pieces", () => {
+  for (const packQuantity of [0, -1, 1.5])
+    expect(
+      productVariantInputSchema.safeParse({
+        name: "Owner label",
+        packQuantity,
+        priceAdjustment: 0,
+        stockQuantity: 0,
+        active: true,
+      }).success,
+    ).toBe(false);
+  for (const packQuantity of [3, 6, 12])
+    expect(
+      productVariantInputSchema.parse({
+        name: "Owner label",
+        packQuantity,
+        priceAdjustment: 0,
+        stockQuantity: 0,
+        active: true,
+      }).packQuantity,
+    ).toBe(packQuantity);
 });

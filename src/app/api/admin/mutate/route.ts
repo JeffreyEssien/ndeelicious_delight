@@ -1,3 +1,4 @@
+import { deliveryAreasSchema } from "@/features/fulfilment/validation";
 import { z } from "zod";
 import { after } from "next/server";
 import { recordAdminAudit } from "@/lib/audit/admin-audit";
@@ -23,7 +24,14 @@ import {
 
 import { cakeTypesSchema } from "@/validations/cake-type";
 const schema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("cake-types"), cakeTypes: cakeTypesSchema }),
+  z.object({
+    action: z.literal("cake-types"),
+    assignments: z
+      .array(z.object({ cakeTypeId: z.uuid(), optionId: z.uuid() }))
+      .max(10000)
+      .optional(),
+    cakeTypes: cakeTypesSchema,
+  }),
   z.object({
     action: z.literal("product-status"),
     id: z.uuid(),
@@ -110,16 +118,7 @@ const schema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("delivery-zones"),
-    zones: z.array(
-      z.object({
-        id: z.string(),
-        name: z.string().min(2),
-        fee: z.number().int().min(0),
-        estimate: z.string().max(100),
-        minimumOrder: z.number().int().min(0),
-        active: z.boolean(),
-      }),
-    ),
+    zones: deliveryAreasSchema,
   }),
   z.object({
     action: z.literal("settings"),
@@ -324,20 +323,10 @@ export async function POST(request: Request) {
       .update({ status: input.status, updated_at: new Date().toISOString() })
       .eq("id", input.id));
   if (input.action === "cake-types") {
-    ({ error } = await supabase.from("cake_types").upsert(
-      input.cakeTypes.map((type) => ({
-        id: type.id,
-        name: type.name,
-        slug: type.slug,
-        description: type.description,
-        lead_time_value: type.leadTimeValue,
-        lead_time_unit: type.leadTimeUnit,
-        active: type.active,
-        sort_order: type.sortOrder,
-        image: type.image || null,
-        customer_notice: type.customerNotice || null,
-      })),
-    ));
+    ({ error } = await supabase.rpc("save_cake_configuration", {
+      p_types: input.cakeTypes,
+      p_assignments: input.assignments ?? null,
+    }));
   }
   if (input.action === "cake-options") {
     const current = await supabase.from("custom_cake_options").select("id");
@@ -399,18 +388,10 @@ export async function POST(request: Request) {
     savedIds = Object.fromEntries(input.coupons.map((item, index) => [item.id, values[index].id]));
   }
   if (input.action === "delivery-zones") {
-    const values = input.zones.map((zone, index) => ({
-      id: z.uuid().safeParse(zone.id).success ? zone.id : crypto.randomUUID(),
-      name: zone.name.trim(),
-      fee: zone.fee,
-      minimum_order: zone.minimumOrder,
-      estimated_time: zone.estimate.trim() || null,
-      active: zone.active,
-      sort_order: index,
-      updated_at: new Date().toISOString(),
-    }));
-    if (values.length) ({ error } = await supabase.from("delivery_zones").upsert(values));
-    savedIds = Object.fromEntries(input.zones.map((item, index) => [item.id, values[index].id]));
+    const areas = deliveryAreasSchema.safeParse(input.zones.map((zone, index) => ({ ...zone, sortOrder: index })));
+    if (!areas.success)
+      return Response.json({ error: areas.error.issues[0]?.message ?? "Check delivery areas." }, { status: 400 });
+    ({ error } = await supabase.rpc("save_delivery_areas", { p_areas: areas.data }));
   }
   if (input.action === "settings")
     if (input.key === "business") {

@@ -1,6 +1,15 @@
 import { z } from "zod";
 export const cakeConfigurationSchema = z.object({
   cakeTypeId: z.uuid(),
+  optionIds: z
+    .object({
+      occasion: z.uuid().optional(),
+      size: z.uuid().optional(),
+      flavour: z.uuid().optional(),
+      filling: z.uuid().optional(),
+      design: z.uuid().optional(),
+    })
+    .optional(),
   occasion: z.string().min(1),
   size: z.string().min(1),
   flavour: z.string().min(1),

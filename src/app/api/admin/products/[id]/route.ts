@@ -6,7 +6,13 @@ import { productRow } from "@/lib/data/product-write";
 import { categorySlug, productInputSchema } from "@/validations/product";
 
 type Context = { params: Promise<{ id: string }> };
-type SourceVariant = { name: string; price_adjustment: number; stock_quantity: number; active: boolean };
+type SourceVariant = {
+  pack_quantity?: number | null;
+  name: string;
+  price_adjustment: number;
+  stock_quantity: number;
+  active: boolean;
+};
 type SourceImage = { url: string; alt_text: string; sort_order: number; storage_path: string | null };
 
 export async function PATCH(request: Request, context: Context) {
@@ -55,6 +61,7 @@ export async function PATCH(request: Request, context: Context) {
       product_id: id,
       name: variant.name,
       price_adjustment: variant.priceAdjustment,
+      pack_quantity: variant.packQuantity,
       stock_quantity: variant.stockQuantity,
       active: variant.active,
       updated_at: new Date().toISOString(),
@@ -119,7 +126,7 @@ export async function POST(request: Request, context: Context) {
   const { data: source, error: sourceError } = await db
     .from("products")
     .select(
-      "*,product_variants(name,price_adjustment,stock_quantity,active),product_images(url,alt_text,sort_order,storage_path)",
+      "*,product_variants(name,price_adjustment,pack_quantity,stock_quantity,active),product_images(url,alt_text,sort_order,storage_path)",
     )
     .eq("id", id)
     .single();
@@ -141,6 +148,7 @@ export async function POST(request: Request, context: Context) {
       featured: false,
       track_inventory: source.track_inventory,
       shopping_mode: source.shopping_mode,
+      tax_class: source.tax_class,
       preparation_hours: source.preparation_hours,
       stock_quantity: source.stock_quantity,
       low_stock_threshold: source.low_stock_threshold,
@@ -160,6 +168,7 @@ export async function POST(request: Request, context: Context) {
         product_id: copy.id,
         name: variant.name,
         price_adjustment: variant.price_adjustment,
+        pack_quantity: variant.pack_quantity ?? null,
         stock_quantity: variant.stock_quantity,
         active: variant.active,
       })),

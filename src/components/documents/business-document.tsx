@@ -7,6 +7,8 @@ import type { BusinessSettings } from "@/types/content";
 import { PrintDocumentButton } from "./print-document-button";
 
 export type DocumentLine = {
+  packQuantity?: number | null;
+  tax?: import("@/features/tax/types").TaxLineSnapshot | null;
   id: string;
   name: string;
   detail: string;

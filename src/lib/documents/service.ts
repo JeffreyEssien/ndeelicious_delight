@@ -89,7 +89,7 @@ export async function issueOrderDocument(
   const { data: order, error } = await db
     .from("orders")
     .select(
-      "id,order_number,customer_name,email,phone,status,fulfilment,delivery_address_snapshot,subtotal,discount_total,delivery_fee,tax_total,grand_total,created_at,customer_note,order_items(id,product_name,variant_name,sku,unit_price,quantity,final_price),payments(status,amount,refunded_amount,paid_at,created_at,provider_payload)",
+      "id,order_number,customer_name,email,phone,status,fulfilment,delivery_address_snapshot,subtotal,discount_total,delivery_fee,tax_total,tax_rate_bps,tax_snapshot,grand_total,created_at,customer_note,order_items(id,product_name,variant_name,sku,unit_price,quantity,final_price,product_snapshot),payments(status,amount,refunded_amount,paid_at,created_at,provider_payload)",
     )
     .eq("order_number", orderNumber)
     .maybeSingle();
@@ -121,7 +121,7 @@ export async function issueOrderDocument(
     state: kind === "RECEIPT" ? "PAID" : "ISSUED",
     issued_at: issuedAt,
     due_at: dueAt,
-    business_snapshot: business,
+    business_snapshot: { ...business, taxLabel: "HST", taxRateBps: order.tax_rate_bps ?? business.taxRateBps },
     customer_snapshot: {
       name: order.customer_name,
       email: order.email,
@@ -136,12 +136,15 @@ export async function issueOrderDocument(
       quantity: line.quantity,
       unitPrice: line.unit_price,
       total: line.final_price,
+      packQuantity: line.product_snapshot?.packQuantity ?? null,
+      tax: line.product_snapshot?.tax ?? null,
     })),
     totals_snapshot: {
       subtotal: order.subtotal,
       discount: order.discount_total,
       delivery: order.delivery_fee,
       tax: order.tax_total,
+      taxSnapshot: order.tax_snapshot ?? null,
       total: order.grand_total,
       paid,
       refunded,

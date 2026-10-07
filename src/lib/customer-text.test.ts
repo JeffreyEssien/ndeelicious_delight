@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { customerText, defaultCustomerText, mergeCustomerText } from "@/content/customer-text";
 import { escapeHtml, emailFrame } from "@/lib/email/mailer";
 vi.mock("@/lib/data/settings", () => ({
-  getStorefrontContent: async () => ({ customerText: { emails: { "Made with care.": "Baked for you.", "Hello {name},": "Welcome {name}!" } } }),
+  getStorefrontContent: async () => ({
+    customerText: { emails: { "Made with care.": "Baked for you.", "Hello {name},": "Welcome {name}!" } },
+  }),
   getBusinessSettings: async () => ({ businessName: "Owner's bakery" }),
 }));
 import { getCustomerEmailText } from "./customer-text";

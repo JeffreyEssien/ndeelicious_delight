@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const canadianPostalCode = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
+import { normalizeCanadianPostalCode } from "@/features/fulfilment/postal-code";
 
 export const customerSchema = z.object({
   name: z.string().trim().min(2, "Tell us who the order is for."),
@@ -15,12 +15,16 @@ export const deliverySchema = z.discriminatedUnion("fulfilment", [
   z.object({ fulfilment: z.literal("pickup") }),
   z.object({
     fulfilment: z.literal("delivery"),
-    zoneId: z.string().min(1),
+    zoneId: z.string().optional(),
     street: z.string().trim().min(5),
     addressLine2: z.string().trim().max(120).optional(),
     city: z.string().trim().min(2),
-    province: z.string().trim().length(2, "Choose a province or territory."),
-    postalCode: z.string().trim().regex(canadianPostalCode, "Enter a valid Canadian postal code."),
+    province: z.literal("NS").default("NS"),
+    postalCode: z
+      .string()
+      .trim()
+      .transform(normalizeCanadianPostalCode)
+      .pipe(z.string("Enter a valid Canadian postal code.")),
     country: z.literal("CA"),
     notes: z.string().max(500).optional(),
   }),

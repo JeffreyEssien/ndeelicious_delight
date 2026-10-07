@@ -22,7 +22,7 @@
     "admin:bootstrap": "node scripts/bootstrap-admin.mjs",
     "db:seed": "node scripts/seed-catalog.mjs",
     "start": "next start",
-    "test:db:local": "node scripts/test-cake-type-migrations.mjs"
+    "test:db:local": "node scripts/test-cake-type-migrations.mjs && node scripts/test-commerce-migrations.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

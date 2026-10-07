@@ -17,11 +17,11 @@ describe("checkout validation", () => {
         delivery: {
           fulfilment: "delivery",
           zoneId: "11111111-1111-4111-8111-111111111111",
-          street: "100 Queen Street West",
+          street: "100 Queen Street",
           addressLine2: "Unit 4",
-          city: "Toronto",
-          province: "ON",
-          postalCode: "M5H 2N2",
+          city: "Halifax",
+          province: "NS",
+          postalCode: "B3H 2Y5",
           country: "CA",
         },
         cart,
@@ -33,7 +33,7 @@ describe("checkout validation", () => {
     expect(
       checkoutSchema.safeParse({
         customer,
-        delivery: { fulfilment: "delivery", zoneId: "", province: "ON", postalCode: "10001" },
+        delivery: { fulfilment: "delivery", zoneId: "", province: "NS", postalCode: "10001" },
         cart,
       }).success,
     ).toBe(false);

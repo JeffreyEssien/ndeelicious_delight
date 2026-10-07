@@ -86,12 +86,12 @@ function fitText(
   return size;
 }
 
-function loadImage(source: string) {
+function loadImage(source: string, label = "product image") {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = "anonymous";
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("The product image could not be loaded for export."));
+    image.onerror = () => reject(new Error(`The ${label} could not be loaded for export.`));
     image.src = source;
   });
 }
@@ -111,7 +111,7 @@ async function renderPost(
   const [{ width, height }, productImage, logo] = await Promise.all([
     Promise.resolve(marketingFormats[social.format]),
     loadImage(exportImage),
-    social.showLogo ? loadImage(social.logoUrl) : Promise.resolve(null),
+    social.showLogo ? loadImage(social.logoUrl, "business logo") : Promise.resolve(null),
   ]);
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Your browser could not create the social image.");
@@ -397,6 +397,13 @@ export function SocialPostGenerator({
           >
             Copy caption
           </Button>
+          {social.showLogo && (
+            <Input
+              label="Business logo URL"
+              value={social.logoUrl}
+              onChange={(e) => update({ logoUrl: e.target.value })}
+            />
+          )}
           <div className="social-download-actions">
             <Button disabled={busy || !product} onClick={() => product && download([product])}>
               Download this post

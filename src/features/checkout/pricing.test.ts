@@ -118,8 +118,9 @@ describe("calculateOrderQuote", () => {
       taxEnabled: true,
       taxRateBps: 1_300,
       taxDelivery: true,
+      deliveryTaxMode: "SEPARATE_TAXABLE_SERVICE",
     });
-    expect(quote.taxTotal).toBe(Math.round(((quote.subtotal + 2_000) * 1_300) / 10_000));
+    expect(quote.taxTotal).toBe(Math.round(((quote.subtotal + 2_000) * 1_400) / 10_000));
     expect(quote.grandTotal).toBe(quote.subtotal + quote.deliveryFee + quote.taxTotal);
   });
   it("rejects an invalid configured tax rate", () => {

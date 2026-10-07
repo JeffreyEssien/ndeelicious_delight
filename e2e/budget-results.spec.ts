@@ -2,9 +2,14 @@ import { expect, test } from "@playwright/test";
 
 test.skip(process.env.NDEE_BROWSER_FIXTURES !== "true", "Requires the isolated fixture server.");
 
+test.beforeEach(async ({ request }) => {
+  const response = await request.post("http://127.0.0.1:4545/__fixtures/reset");
+  expect(response.ok()).toBe(true);
+});
+
 for (const width of [320, 360, 375, 390, 430]) {
   test(`budget result journey at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 812 });
+    await page.setViewportSize({ width, height: width === 390 ? 844 : width === 430 ? 932 : 812 });
     await page.route("**/api/analytics/events", (route) => route.fulfill({ status: 204 }));
     await page.goto("/shop");
     const filters = page.getByRole("button", { name: "Filters & budget", exact: true });
@@ -41,6 +46,18 @@ for (const width of [320, 360, 375, 390, 430]) {
       await results.getByRole("button", { name, exact: true }).click();
       await checkLayout();
     }
+    await results.getByRole("button", { name: "Custom cakes", exact: true }).click();
+    const renderedCount = await results.locator("article").count();
+    await expect(results.getByRole("status")).toHaveText(`${renderedCount} options found`);
+    await results.getByRole("link", { name: "Customize", exact: true }).first().click();
+    await expect(page).toHaveURL(/cakeTypeId=/);
+    await expect(page.locator(".choice-grid .selected")).toHaveCount(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await expect(page.locator(".choice-grid .selected")).toHaveCount(1);
+    await page.goBack();
+    await expect(results).toBeVisible();
+    await results.getByRole("button", { name: "All", exact: true }).click();
     const view = results.getByRole("link", { name: "View", exact: true }).first();
     await view.click();
     await expect(page).toHaveURL(/\/product\//);

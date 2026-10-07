@@ -26,6 +26,9 @@ test("owner configuration immediately drives cake rules and pack visibility", as
     await card.getByLabel("URL slug").fill(slug);
     await card.getByLabel("Lead time", { exact: true }).fill(value);
     await card.getByLabel("Lead-time unit").selectOption("weeks");
+    await card.getByLabel("Base price (CAD)").fill("2");
+    await card.getByLabel("Tax classification").selectOption("FULL_CAKE");
+    for (const checkbox of await card.locator("fieldset input[type=checkbox]").all()) await checkbox.check();
     await card.getByLabel("Active", { exact: true }).check();
   }
   await editor.getByRole("button", { name: "Save cake types" }).click();

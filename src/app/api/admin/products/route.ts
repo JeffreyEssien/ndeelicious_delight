@@ -39,6 +39,7 @@ export async function POST(request: Request) {
       product_id: product.id,
       name: variant.name,
       price_adjustment: variant.priceAdjustment,
+      pack_quantity: variant.packQuantity,
       stock_quantity: variant.stockQuantity,
       active: variant.active,
     })),

@@ -10,6 +10,8 @@ export const cakeTypeSchema = z
       .max(120)
       .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
     description: z.string().trim().max(1000),
+    taxClass: z.enum(["FULL_CAKE", "WEDDING_CAKE", "STANDARD_TAXABLE", "REQUIRES_REVIEW"]).default("REQUIRES_REVIEW"),
+    basePrice: z.number().int().min(0).max(1000000000).nullable().default(null),
     leadTimeValue: z.number().finite().min(0).max(8760),
     leadTimeUnit: z.enum(["hours", "days", "weeks"]),
     active: z.boolean(),
@@ -18,6 +20,8 @@ export const cakeTypeSchema = z
     customerNotice: z.string().trim().max(1000),
   })
   .superRefine((value, ctx) => {
+    if (value.active && value.basePrice == null)
+      ctx.addIssue({ code: "custom", path: ["basePrice"], message: "Active cake types require a base price." });
     if (value.active && value.leadTimeValue <= 0)
       ctx.addIssue({
         code: "custom",
@@ -25,7 +29,10 @@ export const cakeTypeSchema = z
         message: "Active cake types require a positive lead time.",
       });
   });
-export type CakeType = z.infer<typeof cakeTypeSchema>;
+export type CakeType = Omit<z.infer<typeof cakeTypeSchema>, "basePrice" | "taxClass"> & {
+  basePrice?: number | null;
+  taxClass?: "FULL_CAKE" | "WEDDING_CAKE" | "STANDARD_TAXABLE" | "REQUIRES_REVIEW";
+};
 
 export const cakeTypesSchema = z
   .array(cakeTypeSchema)
