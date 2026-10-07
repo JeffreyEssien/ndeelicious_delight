@@ -8,7 +8,9 @@ import { Icon } from "@/components/ui/icons";
 import { Input, Textarea } from "@/components/ui/primitives";
 import { calculateCakeConfigurationPrice } from "@/features/cakes/pricing";
 import { trackCommerceEvent } from "@/lib/analytics/client";
+import { earliestCakeDate, leadTimeLabel } from "@/features/cakes/lead-time";
 const initial: CakeConfiguration = {
+  cakeTypeId: "",
   occasion: "",
   size: "",
   flavour: "",
@@ -41,13 +43,15 @@ export function CakeBuilder({
   budgetPreset,
 }: {
   configuration: CakeConfigurationData;
-  initialSelection?: Partial<Pick<CakeConfiguration, "occasion" | "size" | "flavour" | "filling" | "design">>;
+  initialSelection?: Partial<
+    Pick<CakeConfiguration, "cakeTypeId" | "occasion" | "size" | "flavour" | "filling" | "design">
+  >;
   budgetPreset?: { title: string; body: string };
 }) {
   const t = useCustomerText("cake builder");
 
   const formatMoney = useMoney();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(-1);
   const [config, setConfig] = useState(initial);
   const [ready, setReady] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -61,13 +65,15 @@ export function CakeBuilder({
       const stored = saved ? { ...JSON.parse(saved), referenceName: "" } : {};
       const validPreset = Object.fromEntries(
         Object.entries(initialSelection ?? {}).filter(([type, name]) =>
-          configuration.options.some((option) => option.active && option.type === type && option.name === name),
+          type === "cakeTypeId"
+            ? configuration.cakeTypes.some((item) => item.active && item.id === name)
+            : configuration.options.some((option) => option.active && option.type === type && option.name === name),
         ),
       );
       setConfig({ ...initial, ...stored, ...validPreset });
     } catch {}
     setReady(true);
-  }, [configuration.options, initialSelection]);
+  }, [configuration.options, configuration.cakeTypes, initialSelection]);
   useEffect(() => {
     trackCommerceEvent("CAKE_BUILDER_STARTED");
   }, []);
@@ -95,12 +101,18 @@ export function CakeBuilder({
     config.design,
     config.colours,
   ].filter(Boolean).length;
-  const minDate = new Date(Date.now() + configuration.leadTimeHours * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const selectedType = configuration.cakeTypes.find((type) => type.id === config.cakeTypeId && type.active);
+  const leadNotice = selectedType ? `Minimum lead time: ${leadTimeLabel(selectedType)}` : "Choose a cake type";
+  const minDate = selectedType ? earliestCakeDate(selectedType, configuration.timezone) : "";
   function choose(key: keyof CakeConfiguration, value: string) {
-    setConfig((v) => ({ ...v, [key]: value }));
+    setConfig((v) => ({ ...v, [key]: value, ...(key === "cakeTypeId" ? { deliveryDate: "" } : {}) }));
     setError("");
   }
   function valid() {
+    if (!selectedType) {
+      setError("Choose an available cake type to continue.");
+      return false;
+    }
     const keys: (keyof CakeConfiguration)[] = [
       "occasion",
       "size",
@@ -114,7 +126,7 @@ export function CakeBuilder({
     ];
     if (step === 7) return true;
     if (step === 8 && config.deliveryDate < minDate) {
-      setError(t("Please choose a date at least {value1} hours from now.", { value1: configuration.leadTimeHours }));
+      setError(`${leadNotice}. Earliest date: ${minDate}.`);
       return false;
     }
     const key = keys[step];
@@ -178,7 +190,7 @@ export function CakeBuilder({
           className="button button-secondary"
           onClick={() => {
             setSubmitted(false);
-            setStep(0);
+            setStep(-1);
             setConfig(initial);
             setReferenceFile(null);
             localStorage.removeItem("ndee-cake-v1");
@@ -200,31 +212,58 @@ export function CakeBuilder({
         <div>
           <span>
             {t("Step")}
-            {step + 1} {t("of ")}
-            {steps.length}
+            {step + 2} {t("of ")}
+            {steps.length + 1}
           </span>
-          <b>{t(steps[step])}</b>
+          <b>{step === -1 ? "Cake type" : t(steps[step])}</b>
         </div>
         <div className="progress-track">
-          <span style={{ width: `${(step + 1) * 10}%` }} />
+          <span style={{ width: `${((step + 2) / (steps.length + 1)) * 100}%` }} />
         </div>
         <div className="step-dots">
-          {steps.map((s, i) => (
+          {["Cake type", ...steps].map((s, i) => (
             <button
               type="button"
               key={s}
-              className={i === step ? "active" : i < step ? "done" : ""}
-              onClick={() => i < step && setStep(i)}
-              aria-label={i < step ? t("{stage}, completed", { stage: t(s) }) : t(s)}
+              className={i - 1 === step ? "active" : i - 1 < step ? "done" : ""}
+              onClick={() => i - 1 < step && setStep(i - 1)}
+              aria-label={i - 1 < step ? t("{stage}, completed", { stage: t(s) }) : t(s)}
             >
-              {i < step ? <Icon name="check" /> : i + 1}
+              {i - 1 < step ? <Icon name="check" /> : i + 1}
             </button>
           ))}
         </div>
       </div>
       <div className="builder-layout">
         <div className="builder-stage">
-          <span className="overline">{t(steps[step])}</span>
+          <span className="overline">{step === -1 ? "Cake type" : t(steps[step])}</span>
+          {step === -1 && (
+            <div>
+              <h2>Choose your cake type</h2>
+              <p className="stage-intro">Preparation time depends on the cake you choose.</p>
+              <div className="choice-grid">
+                {configuration.cakeTypes
+                  .filter((type) => type.active)
+                  .map((type) => (
+                    <button
+                      type="button"
+                      key={type.id}
+                      aria-pressed={config.cakeTypeId === type.id}
+                      className={config.cakeTypeId === type.id ? "selected" : ""}
+                      onClick={() => choose("cakeTypeId", type.id)}
+                    >
+                      <b>{type.name}</b>
+                      <small>{type.description}</small>
+                      <strong>Minimum lead time: {leadTimeLabel(type)}</strong>
+                      <small>{type.customerNotice}</small>
+                    </button>
+                  ))}
+              </div>
+              {!configuration.cakeTypes.some((type) => type.active) && (
+                <p>Custom cake types are being prepared. Please contact the bakery.</p>
+              )}
+            </div>
+          )}
           {step === 0 && (
             <Choice
               title={t("What are we celebrating?")}
@@ -319,8 +358,7 @@ export function CakeBuilder({
             <div>
               <h2>{t("When do you need your cake?")}</h2>
               <p className="stage-intro">
-                {t("We need at least")}
-                {configuration.leadTimeHours} {t("hours to make something wonderful.")}
+                {leadNotice}. Earliest date: {minDate} ({configuration.timezone}).
               </p>
               <Input
                 label={t("Collection or delivery date")}
@@ -339,9 +377,12 @@ export function CakeBuilder({
             <div>
               <h2>{t("Everything look delicious?")}</h2>
               <p className="stage-intro">{t("Review your choices before sending them to the bakery.")}</p>
+              <p>
+                {selectedType?.name} · {leadNotice}
+              </p>
               <dl className="review-list">
                 {Object.entries(config)
-                  .filter(([k, v]) => v && k !== "referenceName")
+                  .filter(([k, v]) => v && k !== "referenceName" && k !== "cakeTypeId")
                   .map(([k, v]) => (
                     <div key={k}>
                       <dt>{k.replace(/([A-Z])/g, " $1")}</dt>
@@ -392,7 +433,7 @@ export function CakeBuilder({
             </p>
           )}
           <div className="builder-nav">
-            {step > 0 && (
+            {step >= 0 && (
               <button
                 type="button"
                 className="button button-ghost"
@@ -426,11 +467,15 @@ export function CakeBuilder({
             <span>
               <small>{quote ? t("Starting estimate") : t("Estimated total")}</small>
               <b>{pricing ? formatMoney(pricing) : t("—")}</b>
+              <small>{leadNotice}</small>
             </span>
             <span>
               {selectionCount} {t("selections · View")}
             </span>
           </summary>
+          <p>
+            {selectedType?.name} · {leadNotice}
+          </p>
           <dl>
             {config.size && (
               <div>
@@ -457,6 +502,9 @@ export function CakeBuilder({
           <div className="summary-cake">
             <span>✦</span>
           </div>
+          <p>
+            {selectedType?.name} · {leadNotice}
+          </p>
           <dl>
             {config.size && (
               <div>

@@ -8,6 +8,7 @@ import {
   closestProductsAboveBudget,
   deriveBudgetPresets,
   productsInBudget,
+  purchasableBudgetOptions,
 } from "./recommendations";
 
 const product = (id: string, price: number, status: Product["status"] = "ACTIVE"): Product => ({
@@ -99,5 +100,25 @@ describe("budget recommendations", () => {
     const bands = cakeRecommendationBands(options, 30000);
     expect(bands.map((band) => band.maximum)).toEqual([10000, 20000, 30000]);
     expect(bands.every((band) => band.recommendations.every((cake) => cake.total <= band.maximum))).toBe(true);
+  });
+});
+
+describe("pack budget matching", () => {
+  it("matches only affordable, active, purchasable packs", () => {
+    const packs = {
+      ...product("croissants", 1500),
+      variants: [
+        { id: "3", name: "Pack of 3", priceAdjustment: 0, stockQuantity: 0, active: true },
+        { id: "6", name: "Pack of 6", priceAdjustment: 1200, stockQuantity: 0, active: true },
+        { id: "12", name: "Pack of 12", priceAdjustment: 3500, stockQuantity: 0, active: true },
+        { id: "disabled", name: "Hidden", priceAdjustment: -500, stockQuantity: 0, active: false },
+      ],
+    };
+    const matches = productsInBudget([packs], 3000);
+    expect(purchasableBudgetOptions(matches).map((option) => [option.variant.name, option.price])).toEqual([
+      ["Pack of 3", 1500],
+      ["Pack of 6", 2700],
+    ]);
+    expect(purchasableBudgetOptions([{ ...packs, trackInventory: true }])).toEqual([]);
   });
 });

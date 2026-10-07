@@ -1,6 +1,7 @@
 import type { Product } from "@/types";
 import type { CakeOption, CakeOptionType } from "@/types/content";
-import { isProductPurchasable } from "@/features/catalog/availability";
+import { productStartingPrice, variantPrice } from "@/features/catalog/pricing";
+import { getPurchasableVariants, isProductPurchasable } from "@/features/catalog/availability";
 import { calculateCakeConfigurationPrice } from "@/features/cakes/pricing";
 
 export type BudgetPreset = { maximum: number; productCount: number };
@@ -17,7 +18,7 @@ export type CakeRecommendationBand = {
 const cakeSteps: CakeOptionType[] = ["occasion", "size", "flavour", "filling", "design"];
 
 export function availableProductPrice(product: Product) {
-  return product.discountPrice ?? product.price;
+  return productStartingPrice(product);
 }
 
 function friendlyMaximum(value: number) {
@@ -42,8 +43,21 @@ export function deriveBudgetPresets(products: Product[], maximumPresets = 4): Bu
   }));
 }
 
+export function purchasableBudgetOptions(products: Product[]) {
+  return products
+    .flatMap((product) =>
+      getPurchasableVariants(product).map((variant) => ({ product, variant, price: variantPrice(product, variant) })),
+    )
+    .filter((option) => option.price >= 0);
+}
 export function productsInBudget(products: Product[], maximum: number) {
-  return products.filter(isProductPurchasable).filter((product) => availableProductPrice(product) <= maximum);
+  return products
+    .filter(isProductPurchasable)
+    .map((product) => ({
+      ...product,
+      variants: getPurchasableVariants(product).filter((variant) => variantPrice(product, variant) <= maximum),
+    }))
+    .filter((product) => product.variants.length > 0);
 }
 
 export function closestProductsAboveBudget(products: Product[], maximum: number, limit = 3) {

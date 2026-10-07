@@ -21,7 +21,8 @@
     "check": "npm run quality && npm run test:css && npm run test:regression && npm run test:functional && npm run test:structural",
     "admin:bootstrap": "node scripts/bootstrap-admin.mjs",
     "db:seed": "node scripts/seed-catalog.mjs",
-    "start": "next start"
+    "start": "next start",
+    "test:db:local": "node scripts/test-cake-type-migrations.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -37,6 +38,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@biomejs/biome": "2.5.14",
+    "@electric-sql/pglite": "^0.5.8",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

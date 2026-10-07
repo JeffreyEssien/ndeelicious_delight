@@ -27,7 +27,6 @@ const document = {
     timezone: "America/Toronto",
     openingHours: "",
     currency: "CAD",
-    cakeLeadHours: 48,
     instagramUrl: "",
     deliveryEnabled: true,
     pickupEnabled: true,

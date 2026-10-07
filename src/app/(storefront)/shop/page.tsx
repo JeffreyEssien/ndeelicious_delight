@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ShopPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; maxPrice?: string }>;
+  searchParams: Promise<{ category?: string; maxPrice?: string; mode?: string }>;
 }) {
   const [params, content, cakeConfiguration] = await Promise.all([
     searchParams,
@@ -37,6 +37,7 @@ export default async function ShopPage({
       <section className="site-container catalogue-section">
         <Catalogue
           initialCategory={category}
+          initialMode={params.mode}
           maximumPrice={maximumPrice}
           cakeConfiguration={cakeConfiguration}
           budgetContent={content.shopBudget}

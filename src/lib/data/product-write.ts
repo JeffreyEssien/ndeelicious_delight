@@ -3,6 +3,8 @@ import type { ProductInput } from "@/validations/product";
 export function productRow(input: ProductInput, categoryId: string) {
   return {
     category_id: categoryId,
+    shopping_mode: input.shoppingMode,
+    preparation_hours: input.preparationHours,
     name: input.name,
     slug: input.slug,
     short_description: input.shortDescription,

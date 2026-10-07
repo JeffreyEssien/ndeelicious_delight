@@ -140,6 +140,8 @@ export async function POST(request: Request, context: Context) {
       status: "DRAFT",
       featured: false,
       track_inventory: source.track_inventory,
+      shopping_mode: source.shopping_mode,
+      preparation_hours: source.preparation_hours,
       stock_quantity: source.stock_quantity,
       low_stock_threshold: source.low_stock_threshold,
       ingredients: source.ingredients,

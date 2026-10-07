@@ -1,16 +1,16 @@
 "use client";
+import { useSearchParams } from "next/navigation";
 import { useCustomerText } from "@/components/customer-text-provider";
 
-import Link from "next/link";
 import { type FormEvent, useMemo, useState } from "react";
 import { useBusinessSettings, useMoney, useProducts } from "@/components/providers";
+import { BudgetResults } from "./budget-results";
+import { shoppingMode } from "@/features/catalog/pricing";
 import { ProductGrid } from "./product-grid";
 import { Icon } from "@/components/ui/icons";
 import { Button, EmptyState, Input, Pagination } from "@/components/ui/primitives";
 import {
   availableProductPrice,
-  cakeRecommendationBands,
-  cakeRecommendationHref,
   closestProductsAboveBudget,
   deriveBudgetPresets,
   productsInBudget,
@@ -26,43 +26,47 @@ export function Catalogue({
   maximumPrice,
   cakeConfiguration,
   budgetContent,
+  initialMode,
 }: {
   initialCategory?: Category;
+  initialMode?: string;
   maximumPrice?: number;
   cakeConfiguration: CakeConfigurationData;
   budgetContent: StorefrontContent["shopBudget"];
 }) {
   const t = useCustomerText("catalogue");
 
+  const params = useSearchParams();
+  const urlBudget = Number(params.get("maxPrice"));
+  const startingBudget =
+    maximumPrice ?? (Number.isFinite(urlBudget) && urlBudget > 0 ? Math.round(urlBudget * 100) : undefined);
   const products = useProducts();
   const money = useMoney();
   const business = useBusinessSettings();
   const [category, setCategory] = useState<Category | "ALL">(initialCategory ?? "ALL");
+  const [mode, setMode] = useState(initialMode ?? params.get("mode") ?? "ALL");
   const [available, setAvailable] = useState(false);
   const [sort, setSort] = useState<Sort>("featured");
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState(false);
   const [page, setPage] = useState(1);
-  const [budget, setBudget] = useState<number | undefined>(maximumPrice);
-  const [budgetInput, setBudgetInput] = useState(maximumPrice ? String(maximumPrice / 100) : "");
+  const [budget, setBudget] = useState<number | undefined>(startingBudget);
+  const [budgetInput, setBudgetInput] = useState(startingBudget ? String(startingBudget / 100) : "");
   const [budgetError, setBudgetError] = useState("");
   const perPage = 6;
   const presets = useMemo(() => deriveBudgetPresets(products), [products]);
-  const cakeBands = useMemo(
-    () => (budget ? cakeRecommendationBands(cakeConfiguration.options, budget, 3, 12) : []),
-    [budget, cakeConfiguration.options],
-  );
   const filteredProducts = useMemo(
     () =>
       products.filter(
         (product) =>
           (category === "ALL" || product.category === category) &&
+          (mode === "ALL" || shoppingMode(product) === mode) &&
           (!available || isProductPurchasable(product)) &&
           `${product.name} ${product.shortDescription} ${product.description} ${product.category}`
             .toLowerCase()
             .includes(query.toLowerCase()),
       ),
-    [category, available, query, products],
+    [category, mode, available, query, products],
   );
   const items = useMemo(
     () =>
@@ -84,6 +88,13 @@ export function Catalogue({
   const visible = items.slice((page - 1) * perPage, page * perPage);
   const reset = () => setPage(1);
 
+  function rememberBudget(value: number | undefined) {
+    const url = new URL(window.location.href);
+    if (value === undefined) url.searchParams.delete("maxPrice");
+    else url.searchParams.set("maxPrice", String(value / 100));
+    window.history.replaceState(null, "", url);
+  }
+
   function applyBudget(event: FormEvent) {
     event.preventDefault();
     const next = Math.round(Number(budgetInput) * 100);
@@ -92,12 +103,43 @@ export function Catalogue({
       return;
     }
     setBudget(next);
+    rememberBudget(next);
+    setFilters(false);
     setBudgetError("");
     reset();
   }
 
   return (
     <>
+      <fieldset className="shopping-modes" aria-label="Shop by preparation">
+        {[
+          ["ALL", "All treats"],
+          ["READY_TO_ORDER", "Ready to Order"],
+          ["MADE_TO_ORDER", "Made to Order"],
+          ["READY_TO_BAKE", "Ready to Bake"],
+        ].map(([value, label]) => (
+          <button
+            type="button"
+            key={value}
+            aria-pressed={mode === value}
+            onClick={() => {
+              setMode(value);
+              const url = new URL(window.location.href);
+              url.searchParams.set("mode", value);
+              window.history.replaceState(null, "", url);
+              reset();
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </fieldset>
+      {mode === "READY_TO_BAKE" && (
+        <p className="shopping-mode-benefit">
+          Fresh from your oven, without the prep. Prepared by Ndeelicious for baking at home, with storage and
+          preparation instructions on each product.
+        </p>
+      )}
       <div className="catalogue-tools">
         <div className="catalogue-search">
           <Icon name="search" />
@@ -130,7 +172,7 @@ export function Catalogue({
           </select>
         </label>
       </div>
-      <div className="catalogue-layout">
+      <div className={`catalogue-layout ${budget !== undefined ? "budget-active" : ""}`}>
         <aside className={`filters shop-filter-sidebar ${filters ? "is-open" : ""}`}>
           <div className="mobile-only panel-head">
             <h3>{t("Filters & budget")}</h3>
@@ -169,6 +211,7 @@ export function Catalogue({
                   key={preset.maximum}
                   onClick={() => {
                     setBudget(preset.maximum);
+                    rememberBudget(preset.maximum);
                     setBudgetInput(String(preset.maximum / 100));
                     setBudgetError("");
                     reset();
@@ -184,6 +227,7 @@ export function Catalogue({
                 className="text-button sidebar-budget-clear"
                 onClick={() => {
                   setBudget(undefined);
+                  rememberBudget(undefined);
                   setBudgetInput("");
                   reset();
                 }}
@@ -225,7 +269,7 @@ export function Catalogue({
                   reset();
                 }}
               />
-              <span>{t("Available now")}</span>
+              <span>{t("Available to order")}</span>
             </label>
           </fieldset>
           <button type="button" className="button button-primary mobile-only" onClick={() => setFilters(false)}>
@@ -234,91 +278,66 @@ export function Catalogue({
           </button>
         </aside>
         <div className="catalogue-results">
-          <p className="result-count">
-            {items.length} {items.length === 1 ? t("treat") : t("treats")}
-            {budget !== undefined ? t(" within {value1}", { value1: money(budget) }) : ""}
-          </p>
-          {items.length ? (
-            <>
-              <ProductGrid items={visible} />
-              <Pagination page={page} pages={Math.ceil(items.length / perPage)} onChange={setPage} />
-            </>
-          ) : (
-            <EmptyState
-              title={t("Nothing matched that search")}
-              body={
-                closest.length
-                  ? `${budgetContent.closestPrefix} ${money(availableProductPrice(closest[0]))}.`
-                  : "Try a broader search, another budget, or clear your filters."
-              }
-              action={
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  onClick={() => {
-                    if (closest.length) {
-                      const next = availableProductPrice(closest.at(-1) ?? closest[0]);
-                      setBudget(next);
-                      setBudgetInput(String(next / 100));
-                    } else {
-                      setQuery("");
-                      setCategory("ALL");
-                      setAvailable(false);
-                      setBudget(undefined);
-                      setBudgetInput("");
-                    }
-                    reset();
-                  }}
-                >
-                  {closest.length ? budgetContent.raiseBudgetLabel : "Clear filters"}
-                </button>
-              }
+          {budget !== undefined ? (
+            <BudgetResults
+              products={filteredProducts}
+              sort={sort}
+              maximum={budget}
+              configuration={cakeConfiguration}
+              clear={() => {
+                setBudget(undefined);
+                rememberBudget(undefined);
+                setBudgetInput("");
+                reset();
+              }}
             />
-          )}
-          {budget && (
-            <section className="catalogue-cake-budget" aria-labelledby={"cake-budget-results-title"}>
-              <div className="section-title-row">
-                <div>
-                  <span className="overline">{budgetContent.cakesEyebrow}</span>
-                  <h2 id="cake-budget-results-title">{t("Cake ideas across your budget")}</h2>
-                  <p>{t("Explore simpler and more detailed builds without spending your whole budget.")}</p>
-                </div>
-              </div>
-              {cakeBands.length ? (
-                cakeBands.map((band) => (
-                  <section className="cake-budget-band" key={band.maximum}>
-                    <header>
-                      <h3>
-                        {t("Ideas up to ")}
-                        {money(band.maximum)}
-                      </h3>
-                      <span>
-                        {band.recommendations.length} {t("combinations")}
-                      </span>
-                    </header>
-                    <div className="cake-budget-scroll">
-                      {band.recommendations.map((cake) => (
-                        <article key={`${band.maximum}-${cake.id}`}>
-                          <strong>{money(cake.total)}</strong>
-                          <h4>
-                            {cake.selections.size.name} {cake.selections.flavour.name} {t("cake")}
-                          </h4>
-                          <p>
-                            {cake.selections.filling.name} · {cake.selections.design.name}
-                          </p>
-                          <Link className="button button-secondary" href={cakeRecommendationHref(cake)}>
-                            {budgetContent.customizeLabel}
-                          </Link>
-                        </article>
-                      ))}
-                    </div>
-                  </section>
-                ))
+          ) : (
+            <>
+              <p className="result-count">
+                {items.length} {items.length === 1 ? t("treat") : t("treats")}
+                {budget !== undefined ? t(" within {value1}", { value1: money(budget) }) : ""}
+              </p>
+              {items.length ? (
+                <>
+                  <ProductGrid items={visible} />
+                  <Pagination page={page} pages={Math.ceil(items.length / perPage)} onChange={setPage} />
+                </>
               ) : (
-                <p className="budget-empty">{budgetContent.emptyCakes}</p>
+                <EmptyState
+                  title={t("Nothing matched that search")}
+                  body={
+                    closest.length
+                      ? `${budgetContent.closestPrefix} ${money(availableProductPrice(closest[0]))}.`
+                      : "Try a broader search, another budget, or clear your filters."
+                  }
+                  action={
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => {
+                        if (closest.length) {
+                          const next = availableProductPrice(closest.at(-1) ?? closest[0]);
+                          setBudget(next);
+                          rememberBudget(next);
+                          setFilters(false);
+                          setBudgetInput(String(next / 100));
+                        } else {
+                          setQuery("");
+                          setCategory("ALL");
+                          setAvailable(false);
+                          setBudget(undefined);
+                          rememberBudget(undefined);
+                          setBudgetInput("");
+                        }
+                        reset();
+                      }}
+                    >
+                      {closest.length ? budgetContent.raiseBudgetLabel : "Clear filters"}
+                    </button>
+                  }
+                />
               )}
-              <p className="budget-disclaimer">{budgetContent.disclaimer}</p>
-            </section>
+            </>
           )}
         </div>
       </div>

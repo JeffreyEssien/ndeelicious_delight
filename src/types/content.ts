@@ -29,7 +29,8 @@ export type CakeOption = {
 
 export type CakeConfigurationData = {
   options: CakeOption[];
-  leadTimeHours: number;
+  cakeTypes: import("@/validations/cake-type").CakeType[];
+  timezone: string;
 };
 
 export type PublicReview = {

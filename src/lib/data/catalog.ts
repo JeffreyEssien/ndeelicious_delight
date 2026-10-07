@@ -11,6 +11,8 @@ type ProductRow = {
   short_description: string;
   description: string;
   sku: string | null;
+  shopping_mode: Product["shoppingMode"];
+  preparation_hours: number;
   base_price: number;
   discount_price: number | null;
   status: Product["status"];
@@ -64,6 +66,8 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
   return {
     id: row.id,
     categoryId: relation?.id,
+    shoppingMode: row.shopping_mode,
+    preparationHours: row.preparation_hours,
     slug: row.slug,
     name: row.name,
     shortDescription: row.short_description,
@@ -92,7 +96,7 @@ async function loadProducts(options: { includeInactive?: boolean; client?: Supab
   let query = supabase
     .from("products")
     .select(`
-      id,slug,name,short_description,description,sku,base_price,discount_price,status,featured,
+      id,slug,name,short_description,description,sku,shopping_mode,preparation_hours,base_price,discount_price,status,featured,
       track_inventory,stock_quantity,low_stock_threshold,ingredients,allergens,storage_instructions,preparation_instructions,
       categories(id,slug),product_variants(id,name,sku,price_adjustment,stock_quantity,active),
       product_images(id,url,alt_text,sort_order,storage_path)

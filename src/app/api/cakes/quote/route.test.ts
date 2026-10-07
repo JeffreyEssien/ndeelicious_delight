@@ -41,7 +41,21 @@ vi.mock("@/lib/email/mailer", async (importOriginal) => ({
 vi.mock("@/lib/data/settings", () => ({
   getCakeConfiguration: () =>
     Promise.resolve({
-      leadTimeHours: 72,
+      timezone: "America/Halifax",
+      cakeTypes: [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          name: "Birthday Cake",
+          slug: "birthday-cake",
+          description: "",
+          leadTimeValue: 3,
+          leadTimeUnit: "days",
+          active: true,
+          sortOrder: 0,
+          image: "",
+          customerNotice: "",
+        },
+      ],
       options: [
         {
           id: "o",
@@ -100,6 +114,7 @@ vi.mock("@/lib/data/settings", () => ({
 import { POST } from "./route";
 
 const validCake = {
+  cakeTypeId: "11111111-1111-4111-8111-111111111111",
   occasion: "Birthday",
   size: "6 inch",
   flavour: "Vanilla bean",
@@ -186,5 +201,39 @@ describe("POST /api/cakes/quote", () => {
     expect(response.status).toBe(400);
     expect(mocks.customerUpsert).not.toHaveBeenCalled();
     expect(mocks.imageUpload).not.toHaveBeenCalled();
+  });
+  it("rejects missing or unavailable cake types before writing", async () => {
+    for (const cakeTypeId of [undefined, "22222222-2222-4222-8222-222222222222"]) {
+      const response = await POST(
+        new Request("http://localhost/api/cakes/quote", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ...validCake, cakeTypeId }),
+        }),
+      );
+      expect(response.status).toBe(400);
+    }
+    expect(mocks.customerUpsert).not.toHaveBeenCalled();
+    expect(mocks.cakeInsert).not.toHaveBeenCalled();
+  });
+  it("persists the selected type and rule rather than trusting a client snapshot", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/cakes/quote", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...validCake, lead_time_snapshot: { leadTimeValue: 0 } }),
+      }),
+    );
+    expect(response.status).toBe(201);
+    expect(mocks.cakeInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cake_type_id: validCake.cakeTypeId,
+        lead_time_snapshot: expect.objectContaining({
+          leadTimeValue: 3,
+          leadTimeUnit: "days",
+          timezone: "America/Halifax",
+        }),
+      }),
+    );
   });
 });

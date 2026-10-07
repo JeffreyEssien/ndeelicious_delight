@@ -4,6 +4,8 @@ export type ProductStatus = "ACTIVE" | "OUT_OF_STOCK" | "DRAFT" | "ARCHIVED";
 export type Product = {
   id: string;
   categoryId?: string;
+  shoppingMode?: "READY_TO_ORDER" | "MADE_TO_ORDER" | "READY_TO_BAKE";
+  preparationHours?: number;
   slug: string;
   name: string;
   shortDescription: string;
@@ -56,6 +58,7 @@ export type DeliveryZone = {
 };
 
 export type CakeConfiguration = {
+  cakeTypeId: string;
   occasion: string;
   size: string;
   flavour: string;

@@ -21,7 +21,9 @@ import {
   marketingExportSchema,
 } from "@/validations/settings";
 
+import { cakeTypesSchema } from "@/validations/cake-type";
 const schema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("cake-types"), cakeTypes: cakeTypesSchema }),
   z.object({
     action: z.literal("product-status"),
     id: z.uuid(),
@@ -198,6 +200,13 @@ function auditDescriptor(input: AdminMutation): {
         entityId: input.id,
         target: { type: "cake-order", id: input.id },
       };
+    case "cake-types":
+      return {
+        action: "CAKE_TYPES_CHANGED",
+        entityType: "cake_types",
+        entityId: "all",
+        target: { type: "cake-types" },
+      };
     case "cake-options":
       return {
         action: "CAKE_OPTIONS_CHANGED",
@@ -314,6 +323,22 @@ export async function POST(request: Request) {
       .from("custom_cake_orders")
       .update({ status: input.status, updated_at: new Date().toISOString() })
       .eq("id", input.id));
+  if (input.action === "cake-types") {
+    ({ error } = await supabase.from("cake_types").upsert(
+      input.cakeTypes.map((type) => ({
+        id: type.id,
+        name: type.name,
+        slug: type.slug,
+        description: type.description,
+        lead_time_value: type.leadTimeValue,
+        lead_time_unit: type.leadTimeUnit,
+        active: type.active,
+        sort_order: type.sortOrder,
+        image: type.image || null,
+        customer_notice: type.customerNotice || null,
+      })),
+    ));
+  }
   if (input.action === "cake-options") {
     const current = await supabase.from("custom_cake_options").select("id");
     if (current.error) error = current.error;

@@ -16,7 +16,6 @@ const business = {
   timezone: "America/Toronto",
   openingHours: "Monday to Friday",
   currency: "CAD",
-  cakeLeadHours: 48,
   instagramUrl: "https://instagram.com/ndeelicious",
   deliveryEnabled: true,
   pickupEnabled: true,

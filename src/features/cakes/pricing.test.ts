@@ -1,7 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { calculateCakeConfigurationPrice, calculateCakeQuote } from "./pricing";
 import type { CakeConfiguration } from "@/types";
+const cakeType = {
+  id: "11111111-1111-4111-8111-111111111111",
+  name: "Birthday Cake",
+  slug: "birthday-cake",
+  description: "",
+  leadTimeValue: 3,
+  leadTimeUnit: "days" as const,
+  active: true,
+  sortOrder: 0,
+  image: "",
+  customerNotice: "",
+};
 const cake: CakeConfiguration = {
+  cakeTypeId: cakeType.id,
   occasion: "Birthday",
   size: "8 inch",
   flavour: "Dark chocolate",
@@ -39,21 +52,29 @@ describe("cake pricing", () => {
   it("calculates all database adjustments", () => {
     const configurationPrice = calculateCakeConfigurationPrice(cake, options).total;
     expect(configurationPrice).toBe(5550000);
-    expect(calculateCakeQuote(cake, options, { now: new Date("2026-09-15T10:00:00Z") }).estimatedTotal).toBe(
-      configurationPrice,
-    );
+    expect(
+      calculateCakeQuote(cake, options, {
+        cakeType,
+        timezone: "America/Halifax",
+        now: new Date("2026-09-15T10:00:00Z"),
+      }).estimatedTotal,
+    ).toBe(configurationPrice);
   });
   it("routes database-marked designs to quote review", () => {
     expect(
-      calculateCakeQuote({ ...cake, design: "Floral garden" }, options, { now: new Date("2026-09-15T10:00:00Z") })
-        .quoteRequired,
+      calculateCakeQuote({ ...cake, design: "Floral garden" }, options, {
+        cakeType,
+        timezone: "America/Halifax",
+        now: new Date("2026-09-15T10:00:00Z"),
+      }).quoteRequired,
     ).toBe(true);
   });
   it("enforces the configured preparation lead time", () => {
     expect(() =>
       calculateCakeQuote({ ...cake, deliveryDate: "2026-09-16" }, options, {
         now: new Date("2026-09-15T10:00:00Z"),
-        leadTimeHours: 72,
+        cakeType,
+        timezone: "America/Halifax",
       }),
     ).toThrow(/preparation/);
   });

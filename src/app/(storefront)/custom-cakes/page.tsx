@@ -18,8 +18,6 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const t = await getCustomerText("Page: custom-cakes");
-
   const [content, configuration, params] = await Promise.all([
     getStorefrontContent(),
     getCakeConfiguration(),
@@ -43,10 +41,7 @@ export default async function Page({
           <h1>
             <ContentLines text={hero.headline} />
           </h1>
-          <p>
-            {hero.supportingText} {t("Most cakes need at least ")}
-            {configuration.leadTimeHours} {t("hours.")}
-          </p>
+          <p>{hero.supportingText} Choose a cake type to see its preparation time.</p>
         </div>
         <Image src={hero.image ?? ""} alt={hero.imageAlt ?? ""} fill priority sizes={"100vw"} />
       </section>
@@ -56,6 +51,7 @@ export default async function Page({
           initialSelection={
             params.recommended === "1"
               ? {
+                  cakeTypeId: typeof params.cakeTypeId === "string" ? params.cakeTypeId : undefined,
                   occasion: recommendedValue("occasion"),
                   size: recommendedValue("size"),
                   flavour: recommendedValue("flavour"),

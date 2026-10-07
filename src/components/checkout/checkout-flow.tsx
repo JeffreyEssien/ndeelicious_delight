@@ -276,6 +276,10 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
           <div className="checkout-panel">
             <span className="overline">{t("Fulfilment")}</span>
             <h1>{t("How should we get it to you?")}</h1>
+            <p>
+              Minimum preparation time: {Math.max(0, ...resolved.map((line) => line.p.preparationHours ?? 0))} hours.
+              The bakery will confirm your collection or delivery window.
+            </p>
             {business.deliveryEnabled && !deliveryZones.length && (
               <p>{t("Delivery is currently unavailable. You can collect your order from the bakery.")}</p>
             )}

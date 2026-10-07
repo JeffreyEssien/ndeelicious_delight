@@ -1,4 +1,5 @@
 "use client";
+import { CakeTypesEditor } from "./cake-types-editor";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminCakeRequest, AdminCategory, AdminCoupon, AdminReview } from "@/lib/data/admin";
@@ -182,7 +183,7 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
             {selected.configuration.occasion} cake for {selected.customerName}
           </h2>
           <dl>
-            {["size", "flavour", "filling", "design", "colours"].map((key) => (
+            {["cakeType", "minimumLeadTime", "size", "flavour", "filling", "design", "colours"].map((key) => (
               <div key={key}>
                 <dt>{key}</dt>
                 <dd>{selected.configuration[key] || "—"}</dd>
@@ -458,10 +459,17 @@ export function CakeWorkspace({
           className={view === "options" ? "active" : ""}
           onClick={() => setView("options")}
         >
-          Cake builder options <span>{configuration.options.filter((option) => option.active).length}</span>
+          Configuration <span>{configuration.options.filter((option) => option.active).length}</span>
         </button>
       </div>
-      {view === "requests" ? <CakeRequests initial={requests} /> : <CakeConfigurationEditor initial={configuration} />}
+      {view === "requests" ? (
+        <CakeRequests initial={requests} />
+      ) : (
+        <>
+          <CakeTypesEditor initial={configuration.cakeTypes} />
+          <CakeConfigurationEditor initial={configuration} />
+        </>
+      )}
     </div>
   );
 }

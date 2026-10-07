@@ -23,11 +23,6 @@ export const businessSettingsSchema = z.object({
   currency: text(3)
     .length(3)
     .transform((value) => value.toUpperCase()),
-  cakeLeadHours: z
-    .number()
-    .int()
-    .min(1)
-    .max(24 * 30),
   instagramUrl: z.union([z.literal(""), z.url().max(500)]),
   deliveryEnabled: z.boolean(),
   pickupEnabled: z.boolean(),
