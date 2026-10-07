@@ -44,5 +44,9 @@ yarn-error.log*
 next-env.d.ts
 
 /.next-fixtures/
+<<<<<<< HEAD
 
 /.commerce-backups/
+=======
+.commerce-backups/
+>>>>>>> 735ead7 (where we are8)
