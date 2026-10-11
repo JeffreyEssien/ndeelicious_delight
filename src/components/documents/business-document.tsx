@@ -1,4 +1,5 @@
 "use client";
+import { documentLogoUrl } from "@/lib/documents/branding";
 import { useState } from "react";
 import { documentMeaning, documentTotals } from "@/lib/documents/presentation";
 import { useCustomerText } from "@/components/customer-text-provider";
@@ -77,7 +78,7 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
             // biome-ignore lint/performance/noImgElement: stored document branding may use a historical local image.
             <img
               className="document-logo"
-              src={props.logoUrl}
+              src={documentLogoUrl(props.logoUrl)}
               alt={props.business.businessName}
               onError={() => setLogoFailed(true)}
             />

@@ -20,6 +20,20 @@ export function PaymentEntry({ sessionId }: { sessionId: string }) {
       setBusy(false);
     }
   }
+  const valid = /^cs_[A-Za-z0-9_]+$/.test(sessionId);
+  if (!valid)
+    return (
+      <section className="payment-entry" aria-label="Secure payment">
+        <h1>This payment link is invalid</h1>
+        <p role="alert">
+          Reopen your invoice and use its Pay now button. If you still cannot continue, contact the bakery for a new
+          payment link.
+        </p>
+        <a className="button button-secondary" href="/contact">
+          Contact the bakery
+        </a>
+      </section>
+    );
   return (
     <section className="payment-entry" aria-label="Secure payment">
       <span className="overline">Secure payment</span>
@@ -27,12 +41,7 @@ export function PaymentEntry({ sessionId }: { sessionId: string }) {
       <p>
         Continue to Stripe to pay securely. We’ll check your order and renew an expired checkout before you continue.
       </p>
-      <button
-        type="button"
-        className="button button-primary"
-        disabled={busy || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)}
-        onClick={pay}
-      >
+      <button type="button" className="button button-primary" disabled={busy} onClick={pay}>
         {busy ? "Preparing secure checkout…" : "Continue to payment"}
       </button>
       {error && (

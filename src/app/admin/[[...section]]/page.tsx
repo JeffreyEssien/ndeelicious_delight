@@ -11,8 +11,8 @@ export default async function Page({ params }: { params: Promise<{ section?: str
   const data = await getAdminData(session.db, {
     section: selectedSection,
     includeAnalytics: selectedSection === "analytics",
-    skipHistory: !["dashboard", "customers"].includes(selectedSection),
-    recentLimit: selectedSection === "customers" ? 100 : 5,
+    skipHistory: selectedSection !== "dashboard",
+    recentLimit: 5,
   });
   return (
     <AdminPortal

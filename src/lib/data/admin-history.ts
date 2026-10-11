@@ -15,7 +15,6 @@ export const historyCategories = {
   },
   cakes: {
     NEEDS_QUOTE: "Needs quote",
-    QUOTE_SENT: "Quote sent",
     AWAITING_APPROVAL: "Awaiting approval",
     TO_PREPARE: "Approved / to prepare",
     PREPARING: "Preparing",

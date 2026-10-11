@@ -39,7 +39,7 @@ export function HistoryWorkspace<T>({
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
   const [selected, setSelected] = useState<Pick<HistoryRow, "id" | "number">>();
-  const [detail, setDetail] = useState<T>();
+  const [detail, setDetail] = useState<{ identifier: string; record: T }>();
   const [detailError, setDetailError] = useState("");
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailRevision, setDetailRevision] = useState(0);
@@ -54,6 +54,8 @@ export function HistoryWorkspace<T>({
         ...Object.fromEntries([...params].filter(([key]) => key in defaults || key === "asOf")),
       };
       const identifier = params.get("detail");
+      setDetail(undefined);
+      setDetailError("");
       setSelected(identifier ? { id: identifier, number: identifier } : undefined);
       setSelection({});
       setFilters(restored);
@@ -128,7 +130,9 @@ export function HistoryWorkspace<T>({
       .then(async (response) => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error ?? "Details could not be loaded.");
-        if (!controller.signal.aborted) setDetail(result);
+        if (kind === "orders" ? result.id !== identifier : result.id !== selected.id)
+          throw new Error("The returned record does not match your selection. Retry.");
+        if (!controller.signal.aborted) setDetail({ identifier, record: result });
       })
       .catch((reason) => {
         if (!controller.signal.aborted) setDetailError(reason.message);
@@ -177,6 +181,7 @@ export function HistoryWorkspace<T>({
   const lastPage = Math.max(1, Math.ceil((page?.total ?? 0) / Number(filters.size)));
   return (
     <div className="history-workspace">
+      <p className="muted">Category badges show all-time totals. Filters below narrow the matching results.</p>
       <nav className="history-categories" aria-label={kind === "orders" ? "Order categories" : "Request categories"}>
         {Object.entries(historyCategories[kind]).map(([key, title]) => (
           <button
@@ -461,7 +466,9 @@ export function HistoryWorkspace<T>({
           <Button variant="secondary" onClick={closeDetail}>
             Back to {kind === "orders" ? "orders" : "requests"}
           </Button>
-          {detail && renderDetail(detail, closeDetail, refresh)}
+          {detail && detail.identifier === (kind === "orders" ? selected.number : selected.id) && (
+            <div key={`${kind}:${detail.identifier}`}>{renderDetail(detail.record, closeDetail, refresh)}</div>
+          )}
           {!detail && detailLoading && <p role="status">Loading details…</p>}
           {detailError && (
             <div role="alert">

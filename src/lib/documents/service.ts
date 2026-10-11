@@ -204,6 +204,7 @@ export async function issueCakeQuote(
   db: SupabaseClient,
   cakeId: string,
   createdBy?: string,
+  reviewed?: { quotedTotal: number; revision?: number },
 ): Promise<PersistedDocument> {
   const { data: cake, error } = await db
     .from("custom_cake_orders")
@@ -215,7 +216,10 @@ export async function issueCakeQuote(
   if (error) throw error;
   if (!cake?.quoted_total) throw new Error("QUOTE_NOT_READY");
   if (cake.order_id) throw new Error("QUOTE_ALREADY_CONVERTED");
+  if (reviewed && cake.quoted_total !== reviewed.quotedTotal) throw new Error("Quote amount changed. Preview again.");
   const { revision, previous } = await nextRevision(db, "QUOTE", "cake_order_id", cake.id);
+  if (reviewed?.revision !== undefined && revision !== reviewed.revision + 1)
+    throw new Error("Quote revision changed. Preview again.");
   const { business, branding } = await brandSnapshot(db);
   const issuedAt = new Date();
   const validUntil = new Date(issuedAt.getTime() + 7 * 86400000).toISOString();

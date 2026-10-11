@@ -20,11 +20,17 @@ jobs:
     steps:
       - name: Run notification dispatcher
         env:
-          SITE_URL: ${{ secrets.PRODUCTION_SITE_URL }}
+          SITE_URL: ${{ secrets.PRODUCTION_SITE_URL || vars.PRODUCTION_SITE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          test -n "$SITE_URL"
-          test -n "$CRON_SECRET"
+          if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::Configure PRODUCTION_SITE_URL (production environment variable or secret) and CRON_SECRET (production environment secret matching the deployed app)."
+            exit 1
+          fi
+          case "$SITE_URL" in
+            https://*) ;;
+            *) echo "::error::PRODUCTION_SITE_URL must use HTTPS."; exit 1 ;;
+          esac
           curl --fail-with-body --silent --show-error \
             --retry 2 \
             --retry-all-errors \

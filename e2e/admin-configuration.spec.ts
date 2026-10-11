@@ -15,8 +15,9 @@ test("owner configuration immediately drives cake rules and pack visibility", as
   await page.request.post("http://127.0.0.1:4545/__fixtures/reset");
   await page.request.post("http://127.0.0.1:4545/__fixtures/reset-cake-types");
   await page.goto("/admin/custom-cakes");
-  await page.getByRole("tab", { name: /Configuration/ }).click();
+  await page.getByRole("tab", { name: /My cakes & options/ }).click();
   test.setTimeout(60000);
+  await page.getByText("Edit shared sizes, flavours and extras", { exact: true }).click();
   await page.getByRole("button", { name: "Add option", exact: true }).click();
   const options = page.locator(".cake-option-list article");
   await options.last().getByLabel("Option name").fill("Fixture special occasion");
@@ -29,7 +30,8 @@ test("owner configuration immediately drives cake rules and pack visibility", as
   await page.getByRole("button", { name: "Save options", exact: true }).click();
   await expect(page.getByText("All options are saved.", { exact: true })).toBeVisible();
   await page.reload();
-  await page.getByRole("tab", { name: /Configuration/ }).click();
+  await page.getByRole("tab", { name: /My cakes & options/ }).click();
+  await page.getByText("Edit shared sizes, flavours and extras", { exact: true }).click();
   await expect(options.first().getByLabel("Option name")).toHaveValue(secondName);
   const editor = page.locator(".cake-types-editor");
   for (const [name, slug, value] of [
@@ -48,11 +50,12 @@ test("owner configuration immediately drives cake rules and pack visibility", as
     await expect(card.getByText("Photo selected. Save your cake to apply it.")).toBeVisible();
     await card.getByText("Advanced settings", { exact: true }).click();
     await card.getByLabel("URL slug").fill(slug);
-    await card.getByLabel("Lead time", { exact: true }).fill(value);
-    await card.getByLabel("Lead-time unit").selectOption("weeks");
+    await card.getByLabel("Preparation time", { exact: true }).fill(value);
+    await card.getByLabel("Time unit").selectOption("weeks");
     await card.getByLabel("Starting price (CAD)").fill("2");
+    await card.getByText(/Tax settings/).click();
     await card.getByLabel("Tax classification").selectOption("FULL_CAKE");
-    await card.getByText("Choose sizes, flavours and other options", { exact: true }).click();
+    await card.getByText("Customer choices · sizes, flavours and extras", { exact: true }).click();
     for (const checkbox of await card.locator("fieldset input[type=checkbox]").all()) await checkbox.check();
     await card.getByLabel("Published (available to customers)", { exact: true }).check();
   }
@@ -64,14 +67,14 @@ test("owner configuration immediately drives cake rules and pack visibility", as
   await expect(page.getByRole("button", { name: /Wedding Cake.*Minimum lead time: 3 weeks/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Birthday Cake.*Minimum lead time: 1 week/ })).toBeVisible();
   await page.goto("/admin/custom-cakes");
-  await page.getByRole("tab", { name: /Configuration/ }).click();
+  await page.getByRole("tab", { name: /My cakes & options/ }).click();
   await editor
     .locator(".cake-type-card")
     .first()
     .evaluate((element) => {
       (element as HTMLDetailsElement).open = true;
     });
-  await editor.locator("article").first().getByLabel("Lead time", { exact: true }).fill("4");
+  await editor.locator("article").first().getByLabel("Preparation time", { exact: true }).fill("4");
   await editor.getByRole("button", { name: "Save cake types" }).click();
   await expect(editor.getByRole("status")).toHaveText("Saved");
   await page.goto("/custom-cakes");

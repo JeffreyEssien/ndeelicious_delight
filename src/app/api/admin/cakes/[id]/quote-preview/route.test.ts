@@ -8,7 +8,16 @@ const request = (amount: number) =>
   new Request("http://localhost/preview", { method: "POST", body: JSON.stringify({ quotedTotal: amount }) });
 beforeEach(() => {
   vi.resetAllMocks();
-  mocks.auth.mockResolvedValue({ ok: true, db: {} });
+  vi.stubEnv("ADMIN_AUTH_SECRET", "test-secret-with-more-than-32-characters");
+  const query = {
+    select: () => query,
+    eq: () => query,
+    order: () => query,
+    limit: () => query,
+    single: async () => ({ data: { updated_at: "2026-10-11" } }),
+    maybeSingle: async () => ({ data: { revision: 3 } }),
+  };
+  mocks.auth.mockResolvedValue({ ok: true, db: { from: () => query } });
   mocks.preview.mockResolvedValue({ status: "DRAFT — NOT SENT", total: 25000 });
 });
 describe("quote preview", () => {

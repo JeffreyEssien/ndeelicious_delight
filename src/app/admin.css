@@ -3889,9 +3889,6 @@ html[data-theme] .admin-sidebar {
   }
 }
 @media (max-width: 480px) {
-  .history-filters {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .history-list article {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -4409,4 +4406,59 @@ html[data-theme] .admin-sidebar {
     margin-left: 0;
     padding-top: 4px;
   }
+}
+
+.customer-workspace,
+.inventory-bulk {
+  padding: 1rem;
+}
+.customer-workspace {
+  display: grid;
+  gap: 1rem;
+}
+.customer-workspace .history-filters {
+  padding: 0;
+}
+.customer-workspace p,
+.inventory-bulk p {
+  margin: 0.65rem 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.inventory-bulk > summary {
+  font-size: 15px;
+  font-weight: 700;
+}
+.inventory-bulk > .field,
+.inventory-bulk > .button {
+  margin-top: 0.75rem;
+}
+.inventory-bulk small {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 768px) {
+  .customer-workspace .customers-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  .customer-workspace .customers-table td:nth-child(1),
+  .customer-workspace .customers-table td:nth-child(2),
+  .customer-workspace .customers-table td:nth-child(5) {
+    grid-column: 1 / -1;
+  }
+  .customer-workspace .customers-table td {
+    padding: 0;
+    min-width: 0;
+  }
+}
+
+.cake-types-editor,
+.cake-workspace > details.admin-card {
+  padding: 1rem;
+}
+.cake-types-editor > p {
+  margin: 0.5rem 0 1rem;
+  font-size: 14px;
+  line-height: 1.5;
 }

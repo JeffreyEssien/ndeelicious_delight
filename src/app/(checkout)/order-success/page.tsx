@@ -9,6 +9,7 @@ export default async function Page({
   const [params, content] = await Promise.all([searchParams, getStorefrontContent()]);
   return (
     <PaymentResult
+      key={params.session_id ?? ""}
       sessionId={params.session_id ?? ""}
       cancelled={params.cancelled === "1"}
       content={content.orderSuccess}

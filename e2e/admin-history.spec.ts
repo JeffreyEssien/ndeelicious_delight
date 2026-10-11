@@ -86,7 +86,12 @@ test("history pagination, full-history query, detail fetch, URL restoration and 
     const kind = url.pathname.split("/")[4];
     if (url.pathname.split("/").length > 5) {
       detailRequests++;
-      await route.fulfill({ json: kind === "orders" ? { ...order, status: orderStage } : request });
+      await route.fulfill({
+        json:
+          kind === "orders"
+            ? { ...order, id: decodeURIComponent(url.pathname.split("/").at(-1) ?? ""), status: orderStage }
+            : request,
+      });
       return;
     }
     queries.push(url);
@@ -129,20 +134,23 @@ test("history pagination, full-history query, detail fetch, URL restoration and 
   await page.route("**/api/admin/cakes/*/quote-preview", (route) => {
     const { quotedTotal } = route.request().postDataJSON();
     return route.fulfill({
-      json: cakeQuoteContent(
-        {
-          request_number: request.requestNumber,
-          customer_name: request.customerName,
-          email: request.email,
-          phone: request.phone,
-          configuration: request.configuration,
-          requested_date: request.requestedDate,
-          customer_note: request.customerNote,
-        },
-        business,
-        quotedTotal,
-        { accentColor: "#792f49" },
-      ),
+      json: {
+        approvalToken: "fixture-approval",
+        ...cakeQuoteContent(
+          {
+            request_number: request.requestNumber,
+            customer_name: request.customerName,
+            email: request.email,
+            phone: request.phone,
+            configuration: request.configuration,
+            requested_date: request.requestedDate,
+            customer_note: request.customerNote,
+          },
+          business,
+          quotedTotal,
+          { accentColor: "#792f49" },
+        ),
+      },
     });
   });
   await page.route("**/api/admin/orders/bulk", (route) => {

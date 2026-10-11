@@ -1,3 +1,4 @@
+import { documentLogoUrl } from "./branding";
 import PDFDocument from "pdfkit";
 import { create } from "fontkit";
 import { readFileSync } from "node:fs";
@@ -27,9 +28,34 @@ function validateText(value: string) {
   }
   return value;
 }
-function localLogo(url?: string) {
+async function localLogo(url?: string) {
+  const normalized = documentLogoUrl(url);
+  if (normalized.startsWith("https://")) {
+    try {
+      const response = await fetch(normalized, { redirect: "error", signal: AbortSignal.timeout(5000) });
+      if (!response.ok || !/^image\/(png|jpeg)(;|$)/i.test(response.headers.get("content-type") ?? ""))
+        throw new Error("Unsupported logo");
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("Missing logo");
+      const chunks: Buffer[] = [];
+      let length = 0;
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        length += chunk.value.length;
+        if (length > 2 * 1024 * 1024) {
+          await reader.cancel();
+          throw new Error("Logo too large");
+        }
+        chunks.push(Buffer.from(chunk.value));
+      }
+      return Buffer.concat(chunks);
+    } catch {
+      /* Match the HTML image-error fallback. */
+    }
+  }
   const root = resolve(process.cwd(), "public");
-  for (const candidate of [url, "/brand-logo.jpg"]) {
+  for (const candidate of [normalized, "/brand-logo.jpg"]) {
     if (!candidate?.startsWith("/")) continue;
     try {
       const path = resolve(root, `.${decodeURIComponent(new URL(candidate, "https://local.invalid").pathname)}`);
@@ -58,7 +84,7 @@ export async function renderPaginatedDocumentPdf(document: DocumentDTO): Promise
   const accent = /^#[a-f\d]{6}$/i.test(document.accentColor || "") ? (document.accentColor as string) : "#792f49";
   const t = customerText(document.customerText ?? {}, "business document");
   const money = (value: number) => formatMoney(value, document.business.currency, document.business.locale);
-  const logo = localLogo(document.logoUrl);
+  const logo = await localLogo(document.logoUrl);
   let y: number = margin;
   const font = (bold = false, size = 10) => pdf.font(bold ? "bold" : "regular").fontSize(size);
   const write = (

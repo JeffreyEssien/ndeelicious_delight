@@ -1,4 +1,5 @@
 "use client";
+import { CustomerWorkspace } from "./customer-workspace";
 import { InventoryWorkspace } from "./inventory-workspace";
 import { HistoryWorkspace } from "./history-workspace";
 import { deliveryAreasSchema } from "@/features/fulfilment/validation";
@@ -6,7 +7,7 @@ import { FulfilmentSettings } from "./fulfilment-settings";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, type FormEvent, useEffect, useState } from "react";
 import type {
   AdminAuditLog,
   AdminCakeRequest,
@@ -107,7 +108,6 @@ async function mutate(body: unknown) {
 export function AdminPortal({
   section = "dashboard",
   initialProducts,
-  initialOrders,
   initialZones,
   initialCakes,
   initialCoupons,
@@ -125,7 +125,6 @@ export function AdminPortal({
   siteUrl,
 }: Props) {
   const [products, setProducts] = useState(initialProducts);
-  const [orders, setOrders] = useState(initialOrders);
   const [zones, setZones] = useState(initialZones);
   const [editor, setEditor] = useState<Product | null>();
   const [query, setQuery] = useState("");
@@ -135,7 +134,6 @@ export function AdminPortal({
   const router = useRouter();
   const { theme, setTheme } = useStoreTheme();
   useEffect(() => setProducts(initialProducts), [initialProducts]);
-  useEffect(() => setOrders(initialOrders), [initialOrders]);
   useEffect(() => setZones(initialZones), [initialZones]);
   async function productStatus(id: string, value: ProductStatus) {
     const before = products;
@@ -240,7 +238,7 @@ export function AdminPortal({
         />
       )}
       {section === "inventory" && <InventoryWorkspace onEdit={setEditor} />}
-      {section === "customers" && <Customers orders={orders} />}
+      {section === "customers" && <CustomerWorkspace />}
       {section === "coupons" && <Coupons initial={initialCoupons} products={products} categories={initialCategories} />}
       {section === "reviews" && <Reviews initial={initialReviews} />}
       {section === "content" && <ContentSettings initial={initialContent} />}
@@ -1066,63 +1064,6 @@ function Products({
     </>
   );
 }
-function Customers({ orders }: { orders: AdminOrder[] }) {
-  const money = useMoney();
-  const business = useBusinessSettings();
-  const customers = useMemo(
-    () =>
-      Object.values(
-        orders.reduce<Record<string, { name: string; email: string; orders: number; spent: number; last: string }>>(
-          (all, order) => {
-            const key = order.email.toLowerCase();
-            const current = all[key] ?? {
-              name: order.customer,
-              email: order.email,
-              orders: 0,
-              spent: 0,
-              last: order.date,
-            };
-            current.orders += 1;
-            current.spent += order.total;
-            if (order.date > current.last) current.last = order.date;
-            all[key] = current;
-            return all;
-          },
-          {},
-        ),
-      ),
-    [orders],
-  );
-  return (
-    <div className="admin-card table-scroll mobile-card-table customers-table">
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>Customer</th>
-            <th>Contact</th>
-            <th>Orders</th>
-            <th>Total spent</th>
-            <th>Last order</th>
-          </tr>
-        </thead>
-        <tbody>
-          {customers.map((customer) => (
-            <tr key={customer.email}>
-              <td>
-                <b>{customer.name}</b>
-              </td>
-              <td>{customer.email}</td>
-              <td>{customer.orders}</td>
-              <td>{money(customer.spent)}</td>
-              <td>{formatDate(customer.last, business.locale, business.timezone)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 function DeliveryZones({
   zones,
   setZones,

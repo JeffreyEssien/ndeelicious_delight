@@ -1,4 +1,5 @@
 "use client";
+import { InventoryBulk } from "./inventory-bulk";
 import { useCallback, useEffect, useState } from "react";
 import type { Product } from "@/types";
 import { Button, EmptyState, Input, Select } from "@/components/ui/primitives";
@@ -180,6 +181,7 @@ export function InventoryWorkspace({ onEdit }: { onEdit: (product: Product) => v
           </button>
         ))}
       </nav>
+      <InventoryBulk onSaved={refresh} />
       <Input
         label="Search stock"
         placeholder="Product, variant, SKU or category"

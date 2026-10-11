@@ -38,9 +38,18 @@ export function CakeRequests({
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<BusinessDocumentData>();
   const [previewedAmount, setPreviewedAmount] = useState<number>();
+  const [approvalToken, setApprovalToken] = useState<string>();
   const [saveState, setSaveState] = useState<"idle" | "changed" | "saving" | "queued" | "error">("idle");
   const notify = useToast();
   useUnsavedChanges(saveState === "changed" || saveState === "error");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: every request identity needs its own quote approval and draft.
+  useEffect(() => {
+    setAmount(selected?.quotedTotal ? String(selected.quotedTotal / 100) : "");
+    setPreview(undefined);
+    setPreviewedAmount(undefined);
+    setApprovalToken(undefined);
+    setSaveState("idle");
+  }, [selected?.id, selected?.quotedTotal]);
   useEffect(() => {
     setItems(initial);
     setSelected((current) => initial.find((item) => item.id === current?.id) ?? initial[0]);
@@ -66,6 +75,7 @@ export function CakeRequests({
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error);
       setPreview(payload);
+      setApprovalToken(payload.approvalToken);
       setPreviewedAmount(Math.round(Number(amount) * 100));
     } catch (error) {
       notify(error instanceof Error ? error.message : "Quote preview could not be loaded. Retry.");
@@ -74,13 +84,13 @@ export function CakeRequests({
     }
   }
   async function save() {
-    if (busy) return;
+    if (busy || !approvalToken || previewedAmount !== Math.round(Number(amount) * 100)) return;
     setBusy(true);
     setSaveState("saving");
     const selectedId = selected.id;
     const quotedTotal = Math.round(Number(amount) * 100);
     try {
-      const response = await mutate({ action: "cake-quote", id: selectedId, quotedTotal });
+      const response = await mutate({ action: "cake-quote", id: selectedId, quotedTotal, approvalToken });
       const payload = await response.json().catch(() => null);
       setBusy(false);
       if (response.ok) {
@@ -662,8 +672,7 @@ export function CakeWorkspace({
             if (confirmSectionChange()) setView("options");
           }}
         >
-          My cakes & options (Configuration){" "}
-          <span>{configuration.options.filter((option) => option.active).length}</span>
+          My cakes & options <span>{configuration.options.filter((option) => option.active).length}</span>
         </button>
       </div>
       {view === "requests" ? (
@@ -680,7 +689,11 @@ export function CakeWorkspace({
             options={configuration.options}
             relationships={configuration.relationships ?? []}
           />
-          <CakeConfigurationEditor initial={configuration} />
+          <details className="admin-card">
+            <summary>Edit shared sizes, flavours and extras</summary>
+            <p>Manage the choices available across your cakes. Assign these choices to each cake above.</p>
+            <CakeConfigurationEditor initial={configuration} />
+          </details>
         </>
       )}
     </div>

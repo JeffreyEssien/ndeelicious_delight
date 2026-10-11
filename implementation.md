@@ -1869,3 +1869,9 @@ If the answer is no, the feature is incomplete.
 ## Owner wording controls — 6 October 2026
 
 Customer interface and email wording is now managed in Admin → Content, with screen selection, search and placeholder support. Existing page, business, product and cake-option editors remain the sources for their content. Footer labels, checkout/quote copy, tracking/review states, public document/PDF labels, page titles and customer notifications use saved settings with fallback defaults. See [verification and usage](docs/customer-wording.md). Production launch checks remain separate.
+
+## Admin recheck remediation — 11 October 2026
+
+The delta fixes for the audit of a6e698f cover order/cake record isolation, signed quote previews, bounded payment polling, invalid payment-link recovery, customer aggregation over full history, inventory CSV/bulk updates, cake-editor disclosures, consistent document branding and unconditional isolated CI checks. Migration 0040 is applied to the configured Supabase project.
+
+See [the remediation report](docs/admin-delta-remediation.md) for validation and remaining external work. Scheduled workflow configuration, an identified staging deployment, real Stripe/mail testing and representative production-scale performance are not claimed complete. `.env.local` contains confirmation comments for the deployed URL and cron secret; GitHub production configuration must match the deployed app.

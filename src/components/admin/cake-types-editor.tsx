@@ -15,7 +15,7 @@ export function CakeTypesEditor({
 }) {
   const [assignments, setAssignments] = useState(relationships);
   const [types, setTypes] = useState(initial);
-  const [expandedCake, setExpandedCake] = useState(initial[0]?.id ?? "");
+  const [expandedCake, setExpandedCake] = useState("");
   const [savedTypes, setSavedTypes] = useState(initial);
   const [savedAssignments, setSavedAssignments] = useState(relationships);
   const [state, setState] = useState("Saved");
@@ -146,25 +146,30 @@ export function CakeTypesEditor({
                   }
                 />
               </label>
-              <label>
-                Tax classification
-                <select
-                  value={type.taxClass ?? "REQUIRES_REVIEW"}
-                  onChange={(e) => update(type.id, { taxClass: e.target.value as CakeType["taxClass"] })}
-                >
-                  <option value="REQUIRES_REVIEW">Setup required</option>
-                  <option value="FULL_CAKE">Eligible full cake (zero rated)</option>
-                  <option value="WEDDING_CAKE">Eligible edible wedding cake (zero rated)</option>
-                  <option value="STANDARD_TAXABLE">Standard taxable</option>
-                </select>
-              </label>
+              <details>
+                <summary>
+                  Tax settings · {type.taxClass === "REQUIRES_REVIEW" ? "Setup required" : "Configured"}
+                </summary>
+                <label>
+                  Tax classification
+                  <select
+                    value={type.taxClass ?? "REQUIRES_REVIEW"}
+                    onChange={(e) => update(type.id, { taxClass: e.target.value as CakeType["taxClass"] })}
+                  >
+                    <option value="REQUIRES_REVIEW">Setup required</option>
+                    <option value="FULL_CAKE">Eligible full cake (zero rated)</option>
+                    <option value="WEDDING_CAKE">Eligible edible wedding cake (zero rated)</option>
+                    <option value="STANDARD_TAXABLE">Standard taxable</option>
+                  </select>
+                </label>
+              </details>
               <p>
                 {type.basePrice == null
                   ? "Setup required: enter the base price and assign choices below."
                   : "Starting price + selected extras = estimated price. Choices requiring a quote are confirmed individually."}
               </p>
               <details className="cake-choice-groups">
-                <summary>Choose sizes, flavours and other options</summary>
+                <summary>Customer choices · sizes, flavours and extras</summary>
                 {["size", "flavour", "filling", "design", "occasion"].map((group) => (
                   <fieldset key={group}>
                     <legend>
@@ -225,7 +230,7 @@ export function CakeTypesEditor({
                 ))}
               </details>
               <label>
-                Lead time
+                Preparation time
                 <input
                   type="number"
                   min={type.active ? "0.01" : "0"}
@@ -236,7 +241,7 @@ export function CakeTypesEditor({
                 />
               </label>
               <label>
-                Lead-time unit
+                Time unit
                 <select
                   value={type.leadTimeUnit}
                   onChange={(e) => update(type.id, { leadTimeUnit: e.target.value as CakeType["leadTimeUnit"] })}
