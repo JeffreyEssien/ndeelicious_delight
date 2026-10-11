@@ -27,3 +27,31 @@ export function productRow(input: ProductInput, categoryId: string) {
     updated_at: new Date().toISOString(),
   };
 }
+
+// Product fields, pack rows and audit records are committed by one database RPC.
+export function productSaveArguments(input: ProductInput, categoryId: string) {
+  return {
+    p_product: productRow(input, categoryId),
+    p_variants: input.variants.map((variant, index) => ({ ...variant, sortOrder: index })),
+    p_images: input.images,
+  };
+}
+
+export function productSaveError(error: { code?: string; message?: string }) {
+  const message = error.message ?? "";
+  if (error.code === "23505" || message.includes("DUPLICATE"))
+    return { status: 409, error: "That product link or published pack size is already in use." };
+  if (message.includes("INVENTORY_CHANGED"))
+    return { status: 409, error: "Stock changed while you were editing. Reload the product before saving." };
+  if (message.includes("STOCK_BELOW_RESERVED") || message.includes("reserved"))
+    return { status: 409, error: "This stock is reserved for pending orders. Keep enough packs to fulfil them." };
+  if (message.includes("OWNERSHIP"))
+    return {
+      status: 400,
+      error: "An option or image does not belong to this product, or the option was retired. Reload and try again.",
+    };
+  if (message.includes("PACK") || message.includes("PRICE"))
+    return { status: 400, error: "Published packs need unique sizes and positive selling prices." };
+  if (message.includes("PRODUCT_NOT_FOUND")) return { status: 404, error: "Product could not be found." };
+  return { status: 500, error: "Product could not be saved. Please try again or contact support." };
+}

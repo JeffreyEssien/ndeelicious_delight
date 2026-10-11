@@ -255,7 +255,13 @@ export async function renderPaginatedDocumentPdf(document: DocumentDTO): Promise
     for (const item of document.lines) {
       const description = lines(item.name, 280, true, 10);
       const detail = lines(
-        [item.detail, (document.showSku ?? true) && item.sku ? `SKU ${item.sku}` : ""].filter(Boolean).join(" · "),
+        [
+          item.detail,
+          item.packQuantity ? `${item.quantity} packs / ${item.quantity * item.packQuantity} pieces` : "",
+          (document.showSku ?? true) && item.sku ? `SKU ${item.sku}` : "",
+        ]
+          .filter(Boolean)
+          .join(" · "),
         280,
         false,
         9,

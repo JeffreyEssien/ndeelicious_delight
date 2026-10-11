@@ -1,4 +1,5 @@
 "use client";
+import { isVariantInventoryTracked } from "@/features/catalog/availability";
 import { InventoryBulk } from "./inventory-bulk";
 import { useCallback, useEffect, useState } from "react";
 import type { Product } from "@/types";
@@ -119,17 +120,26 @@ export function InventoryWorkspace({ onEdit }: { onEdit: (product: Product) => v
   const [revision, setRevision] = useState(0);
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
   const [view, setView] = useState("ATTENTION");
-  const tracked = (p: Product) => p.trackInventory !== false && !["DRAFT", "ARCHIVED"].includes(p.status);
+  const tracked = (p: Product) =>
+    p.variants.some((v) => v.active !== false && isVariantInventoryTracked(p, v)) &&
+    !["DRAFT", "ARCHIVED"].includes(p.status);
   const active = (p: Product) => p.variants.filter((v) => v.active);
   const low = (p: Product) =>
-    tracked(p) && active(p).some((v) => v.stockQuantity > 0 && v.stockQuantity <= p.lowStockThreshold);
-  const out = (p: Product) => tracked(p) && active(p).some((v) => v.stockQuantity === 0);
+    tracked(p) &&
+    active(p).some(
+      (v) => isVariantInventoryTracked(p, v) && v.stockQuantity > 0 && v.stockQuantity <= p.lowStockThreshold,
+    );
+  const out = (p: Product) =>
+    tracked(p) && active(p).some((v) => isVariantInventoryTracked(p, v) && v.stockQuantity === 0);
   const categories: Record<string, { label: string; matches: (p: Product) => boolean }> = {
     ATTENTION: { label: "Needs attention", matches: (p) => low(p) || out(p) },
     LOW: { label: "Low stock", matches: low },
     OUT: { label: "Out of stock", matches: out },
     ALL: { label: "All tracked stock", matches: tracked },
-    UNTRACKED: { label: "Not tracked / made to order", matches: (p) => p.trackInventory === false },
+    UNTRACKED: {
+      label: "Not tracked / made to order",
+      matches: (p) => !p.variants.some((v) => v.active !== false && isVariantInventoryTracked(p, v)),
+    },
     INACTIVE: { label: "Inactive products", matches: (p) => ["DRAFT", "ARCHIVED"].includes(p.status) },
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: revision reloads after an adjustment or explicit retry.
@@ -234,7 +244,7 @@ export function InventoryWorkspace({ onEdit }: { onEdit: (product: Product) => v
               <b>{p.name}</b>
               <span>
                 {active(p).length} available variants ·{" "}
-                {p.trackInventory === false
+                {!p.variants.some((v) => isVariantInventoryTracked(p, v))
                   ? "Made to order"
                   : `${active(p).reduce((sum, v) => sum + v.stockQuantity, 0)} units on hand`}
               </span>
@@ -242,13 +252,17 @@ export function InventoryWorkspace({ onEdit }: { onEdit: (product: Product) => v
             <Button variant="ghost" onClick={() => onEdit(p)}>
               Edit product settings
             </Button>
-            {p.trackInventory === false ? (
+            {!p.variants.some((v) => isVariantInventoryTracked(p, v)) ? (
               <p>This product is made to order. Stock shortages do not apply.</p>
             ) : (
               p.variants.map((v) => (
                 <div key={`${v.id}-${v.stockQuantity}`}>
                   <p>{!v.active && "Inactive variant — hidden from customers"}</p>
-                  <Adjustment product={p} variant={v} onSaved={refresh} />
+                  {isVariantInventoryTracked(p, v) ? (
+                    <Adjustment product={p} variant={v} onSaved={refresh} />
+                  ) : (
+                    <p>{v.name}: prepared to order; stock is not tracked.</p>
+                  )}
                 </div>
               ))
             )}

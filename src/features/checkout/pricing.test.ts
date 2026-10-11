@@ -135,3 +135,54 @@ describe("calculateOrderQuote", () => {
     ).toThrowError(/tax rate needs review/);
   });
 });
+
+it("prices two arbitrary packs canonically with discount, coupon, tax and a 16-piece snapshot", () => {
+  const packProduct = {
+    ...products[1],
+    shoppingMode: "MADE_TO_ORDER" as const,
+    price: 2000,
+    discountPrice: 1000,
+    trackInventory: true,
+    stockQuantity: 0,
+    taxClass: "STANDARD_TAXABLE" as const,
+    preparationHours: 0.75,
+    variants: [
+      {
+        id: "eight",
+        name: "Celebration box",
+        packQuantity: 8,
+        priceAdjustment: 1400,
+        stockQuantity: 0,
+        trackInventory: false,
+      },
+    ],
+  };
+  const quote = calculateOrderQuote({
+    products: [packProduct],
+    cart: [{ productId: packProduct.id, variantId: "eight", quantity: 2 }],
+    fulfilment: "pickup",
+    taxEnabled: true,
+    coupon: { code: "TEN", type: "PERCENTAGE", value: 10, minimumOrder: 0, active: true },
+  });
+  expect(quote.lines[0]).toMatchObject({
+    variantName: "Celebration box",
+    unitPrice: 2400,
+    quantity: 2,
+    packQuantity: 8,
+    totalPieces: 16,
+    lineTotal: 4800,
+    inventoryTracked: false,
+  });
+  expect(quote.subtotal).toBe(4800);
+  expect(quote.discount).toBe(480);
+  expect(quote.taxTotal).toBe(605);
+  expect(quote.grandTotal).toBe(4925);
+  expect(quote.preparationHours).toBe(0.75);
+  expect(() =>
+    calculateOrderQuote({
+      products: [{ ...packProduct, variants: [{ ...packProduct.variants[0], active: false }] }],
+      cart: [{ productId: packProduct.id, variantId: "eight", quantity: 2 }],
+      fulfilment: "pickup",
+    }),
+  ).toThrow(/unavailable/);
+});

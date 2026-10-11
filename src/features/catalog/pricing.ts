@@ -1,10 +1,11 @@
 import type { Product, ProductVariant } from "@/types";
-import { getPurchasableVariants } from "./availability";
+import { getPurchasableVariants, getPublishedVariants } from "./availability";
 export function variantPrice(product: Product, variant: ProductVariant) {
   return (product.discountPrice ?? product.price) + variant.priceAdjustment;
 }
 export function productStartingPrice(product: Product) {
-  const variants = getPurchasableVariants(product);
+  const available = getPurchasableVariants(product);
+  const variants = available.length ? available : getPublishedVariants(product);
   return variants.length
     ? Math.min(...variants.map((variant) => variantPrice(product, variant)))
     : (product.discountPrice ?? product.price);

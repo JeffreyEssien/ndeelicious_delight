@@ -151,6 +151,7 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
                   <b>{line.name}</b>
                   <small>
                     {line.detail}
+                    {line.packQuantity ? ` · ${line.quantity} packs / ${line.quantity * line.packQuantity} pieces` : ""}
                     {(props.showSku ?? true) && line.sku ? t(" · SKU {value1}", { value1: line.sku }) : ""}
                   </small>
                 </td>

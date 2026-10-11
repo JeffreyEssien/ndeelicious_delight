@@ -103,6 +103,9 @@ const products = seedProducts.slice(0, 8).map((p, i) => ({
     id: id(100 + i * 10 + j),
     name: v.name,
     pack_quantity: v.packQuantity ?? null,
+    sort_order: j,
+    track_inventory: null,
+    retired_at: null,
     sku: `FIXTURE-${i}-${j}`,
     price_adjustment: i === 1 ? v.priceAdjustment : Math.round(v.priceAdjustment / 1000),
     stock_quantity: i === 1 ? 0 : v.stockQuantity,
@@ -199,6 +202,58 @@ const server = http.createServer(async (req, res) => {
     });
   if (url.pathname.includes("/rpc/")) {
     const args = body ? JSON.parse(body) : {};
+    if (table === "product_pack_availability") {
+      respond(
+        200,
+        Object.fromEntries(
+          tables.product_variants.filter((v) => args.p_ids.includes(v.product_id)).map((v) => [v.id, v.stock_quantity]),
+        ),
+      );
+      return;
+    }
+    if (table === "admin_save_product") {
+      const productId = args.p_id ?? id(1000 + tables.products.length);
+      let product = tables.products.find((p) => p.id === productId);
+      if (!product) {
+        product = { id: productId };
+        tables.products.push(product);
+      }
+      Object.assign(product, args.p_product);
+      product.categories = tables.categories.find((c) => c.id === product.category_id);
+      const ids = new Set(args.p_variants.map((v) => v.id));
+      for (const v of tables.product_variants)
+        if (v.product_id === productId && !ids.has(v.id)) {
+          v.active = false;
+          v.retired_at = new Date().toISOString();
+        }
+      for (const v of args.p_variants) {
+        const data = {
+          id: v.id ?? id(2000 + tables.product_variants.length),
+          product_id: productId,
+          name: v.name,
+          pack_quantity: v.packQuantity,
+          price_adjustment: v.priceAdjustment,
+          stock_quantity: v.stockQuantity,
+          active: v.active,
+          sort_order: v.sortOrder,
+          track_inventory: v.trackInventory,
+          retired_at: null,
+        };
+        const existing = tables.product_variants.find((item) => item.id === data.id);
+        if (existing) Object.assign(existing, data);
+        else tables.product_variants.push({ sku: `FIXTURE-PACK-${tables.product_variants.length}`, ...data });
+      }
+      for (const image of args.p_images)
+        Object.assign(
+          tables.product_images.find((i) => i.id === image.id),
+          { alt_text: image.altText, sort_order: image.sortOrder },
+        );
+      tables.product_images = tables.product_images.filter(
+        (i) => i.product_id !== productId || args.p_images.some((image) => image.id === i.id),
+      );
+      respond(200, productId);
+      return;
+    }
     if (table === "admin_dashboard_summary") {
       respond(200, {
         netRevenue: 0,

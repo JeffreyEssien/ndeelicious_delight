@@ -1,119 +1,33 @@
-import { recordAdminAudit } from "@/lib/audit/admin-audit";
-import { readAdminAuditState } from "@/lib/audit/admin-audit-state";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 import { invalidateStorefrontCache } from "@/lib/cache/storefront";
-import { productRow } from "@/lib/data/product-write";
+import { productSaveArguments, productSaveError } from "@/lib/data/product-write";
 import { categorySlug, productInputSchema } from "@/validations/product";
 
 type Context = { params: Promise<{ id: string }> };
-type SourceVariant = {
-  pack_quantity?: number | null;
-  name: string;
-  price_adjustment: number;
-  stock_quantity: number;
-  active: boolean;
-};
-type SourceImage = { url: string; alt_text: string; sort_order: number; storage_path: string | null };
 
 export async function PATCH(request: Request, context: Context) {
   const auth = await requireAdminRequest(request);
   if (!auth.ok) return auth.response;
   const parsed = productInputSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) {
+  if (!parsed.success)
     return Response.json({ error: parsed.error.issues[0]?.message ?? "Check the product details." }, { status: 400 });
-  }
   const { id } = await context.params;
-  const { db } = auth;
-  let previousValue: unknown;
-  try {
-    previousValue = await readAdminAuditState(db, { type: "product", id });
-  } catch {
-    return Response.json({ error: "The current product could not be verified for auditing." }, { status: 500 });
-  }
-  const [{ data: category }, { data: existingVariants }, { data: existingImages }] = await Promise.all([
-    db.from("categories").select("id").eq("slug", categorySlug(parsed.data.category)).single(),
-    db.from("product_variants").select("id").eq("product_id", id),
-    db.from("product_images").select("id").eq("product_id", id),
-  ]);
+  const { data: category } = await auth.db
+    .from("categories")
+    .select("id")
+    .eq("slug", categorySlug(parsed.data.category))
+    .single();
   if (!category) return Response.json({ error: "Product category is missing." }, { status: 400 });
-
-  const variantIds = new Set((existingVariants ?? []).map((variant) => variant.id));
-  const imageIds = new Set((existingImages ?? []).map((image) => image.id));
-  if (parsed.data.variants.some((variant) => variant.id && !variantIds.has(variant.id))) {
-    return Response.json({ error: "A variant does not belong to this product." }, { status: 400 });
+  const { error } = await auth.db.rpc("admin_save_product", {
+    p_id: id,
+    ...productSaveArguments(parsed.data, category.id),
+    p_admin_id: auth.admin.id,
+    p_session_id: auth.sessionId,
+  });
+  if (error) {
+    const result = productSaveError(error);
+    return Response.json({ error: result.error }, { status: result.status });
   }
-  if (parsed.data.images.some((image) => !imageIds.has(image.id))) {
-    return Response.json({ error: "An image does not belong to this product." }, { status: 400 });
-  }
-
-  const { error: productError } = await db.from("products").update(productRow(parsed.data, category.id)).eq("id", id);
-  if (productError) {
-    const duplicate = productError.code === "23505";
-    return Response.json(
-      { error: duplicate ? "That slug or SKU is already in use." : "Product could not be updated." },
-      { status: duplicate ? 409 : 500 },
-    );
-  }
-
-  const submittedVariantIds = new Set(parsed.data.variants.flatMap((variant) => (variant.id ? [variant.id] : [])));
-  for (const variant of parsed.data.variants) {
-    const values = {
-      product_id: id,
-      name: variant.name,
-      price_adjustment: variant.priceAdjustment,
-      pack_quantity: variant.packQuantity,
-      stock_quantity: variant.stockQuantity,
-      active: variant.active,
-      updated_at: new Date().toISOString(),
-    };
-    const result = variant.id
-      ? await db.from("product_variants").update(values).eq("id", variant.id).eq("product_id", id)
-      : await db.from("product_variants").insert(values);
-    if (result.error) return Response.json({ error: "A product variant could not be updated." }, { status: 500 });
-  }
-  for (const variantId of variantIds) {
-    if (!submittedVariantIds.has(variantId)) {
-      const { error } = await db
-        .from("product_variants")
-        .update({ active: false })
-        .eq("id", variantId)
-        .eq("product_id", id);
-      if (error) return Response.json({ error: "A removed variant could not be archived." }, { status: 500 });
-    }
-  }
-
-  const submittedImageIds = new Set(parsed.data.images.map((image) => image.id));
-  for (const image of parsed.data.images) {
-    const { error } = await db
-      .from("product_images")
-      .update({ alt_text: image.altText, sort_order: image.sortOrder })
-      .eq("id", image.id)
-      .eq("product_id", id);
-    if (error) return Response.json({ error: "Product image ordering could not be updated." }, { status: 500 });
-  }
-  for (const imageId of imageIds) {
-    if (!submittedImageIds.has(imageId)) {
-      const { error } = await db.from("product_images").delete().eq("id", imageId).eq("product_id", id);
-      if (error) return Response.json({ error: "A product image could not be removed." }, { status: 500 });
-    }
-  }
-
-  try {
-    const newValue = await readAdminAuditState(db, { type: "product", id });
-    await recordAdminAudit(db, auth, {
-      action: "PRODUCT_UPDATED",
-      entityType: "product",
-      entityId: id,
-      previousValue,
-      newValue,
-    });
-  } catch {
-    return Response.json(
-      { error: "The product was saved, but its audit record could not be verified." },
-      { status: 500 },
-    );
-  }
-
   invalidateStorefrontCache();
   return Response.json({ ok: true, id });
 }
@@ -121,91 +35,16 @@ export async function PATCH(request: Request, context: Context) {
 export async function POST(request: Request, context: Context) {
   const auth = await requireAdminRequest(request);
   if (!auth.ok) return auth.response;
-  const { id } = await context.params;
-  const { db } = auth;
-  const { data: source, error: sourceError } = await db
-    .from("products")
-    .select(
-      "*,product_variants(name,price_adjustment,pack_quantity,stock_quantity,active),product_images(url,alt_text,sort_order,storage_path)",
-    )
-    .eq("id", id)
-    .single();
-  if (sourceError || !source) return Response.json({ error: "Product could not be found." }, { status: 404 });
-
-  const suffix = Date.now().toString(36);
-  const { data: copy, error } = await db
-    .from("products")
-    .insert({
-      category_id: source.category_id,
-      name: `${source.name.slice(0, 142)} (Copy)`,
-      slug: `${source.slug.slice(0, 165)}-copy-${suffix}`,
-      short_description: source.short_description,
-      description: source.description,
-      base_price: source.base_price,
-      discount_price: source.discount_price,
-      sku: null,
-      status: "DRAFT",
-      featured: false,
-      track_inventory: source.track_inventory,
-      shopping_mode: source.shopping_mode,
-      tax_class: source.tax_class,
-      preparation_hours: source.preparation_hours,
-      stock_quantity: source.stock_quantity,
-      low_stock_threshold: source.low_stock_threshold,
-      ingredients: source.ingredients,
-      allergens: source.allergens,
-      storage_instructions: source.storage_instructions,
-      preparation_instructions: source.preparation_instructions,
-    })
-    .select("id")
-    .single();
-  if (error || !copy) return Response.json({ error: "Product could not be duplicated." }, { status: 500 });
-
-  const variants = (source.product_variants ?? []) as SourceVariant[];
-  if (variants.length) {
-    const { error: variantError } = await db.from("product_variants").insert(
-      variants.map((variant) => ({
-        product_id: copy.id,
-        name: variant.name,
-        price_adjustment: variant.price_adjustment,
-        pack_quantity: variant.pack_quantity ?? null,
-        stock_quantity: variant.stock_quantity,
-        active: variant.active,
-      })),
-    );
-    if (variantError)
-      return Response.json({ error: "The product copy was created without its variants." }, { status: 500 });
-  }
-  const images = (source.product_images ?? []) as SourceImage[];
-  if (images.length) {
-    const { error: imageError } = await db.from("product_images").insert(
-      images.map((image) => ({
-        product_id: copy.id,
-        url: image.url,
-        alt_text: image.alt_text,
-        sort_order: image.sort_order,
-        storage_path: image.storage_path,
-      })),
-    );
-    if (imageError)
-      return Response.json({ error: "The product copy was created without its images." }, { status: 500 });
-  }
-  try {
-    const newValue = await readAdminAuditState(db, { type: "product", id: copy.id });
-    await recordAdminAudit(db, auth, {
-      action: "PRODUCT_DUPLICATED",
-      entityType: "product",
-      entityId: copy.id,
-      previousValue: null,
-      newValue,
-      metadata: { sourceProductId: id },
-    });
-  } catch {
-    return Response.json(
-      { error: "The product copy was saved, but its audit record could not be verified." },
-      { status: 500 },
-    );
+  const { id: sourceId } = await context.params;
+  const { data: id, error } = await auth.db.rpc("admin_duplicate_product", {
+    p_source_id: sourceId,
+    p_admin_id: auth.admin.id,
+    p_session_id: auth.sessionId,
+  });
+  if (error) {
+    const result = productSaveError(error);
+    return Response.json({ error: result.error }, { status: result.status });
   }
   invalidateStorefrontCache();
-  return Response.json({ ok: true, id: copy.id }, { status: 201 });
+  return Response.json({ ok: true, id }, { status: 201 });
 }

@@ -105,6 +105,7 @@ export type AdminOrder = Order & {
     quantity: number;
     discount: number;
     finalPrice: number;
+    packQuantity?: number | null;
     configuration?: Record<string, string>;
   }>;
   events: Array<{
@@ -309,6 +310,7 @@ function mapOrderRows(orderResult: Pick<Awaited<ReturnType<typeof fetchOrderRows
       quantity: item.quantity,
       discount: item.discount,
       finalPrice: item.final_price,
+      packQuantity: item.product_snapshot?.packQuantity as number | null | undefined,
       configuration: item.product_snapshot?.configuration as Record<string, string> | undefined,
     })),
     events: (row.order_events ?? [])

@@ -1,104 +1,79 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const mocks = vi.hoisted(() => ({
-  categorySingle: vi.fn(),
-  productSingle: vi.fn(),
-  productInsert: vi.fn(),
-  variantInsert: vi.fn(),
-  productDelete: vi.fn(),
-  readAuditState: vi.fn(),
-  recordAudit: vi.fn(),
-}));
-
-vi.mock("@/lib/audit/admin-audit-state", () => ({ readAdminAuditState: mocks.readAuditState }));
-vi.mock("@/lib/audit/admin-audit", () => ({ recordAdminAudit: mocks.recordAudit }));
-
-const db = {
-  from(table: string) {
-    if (table === "categories") {
-      return { select: () => ({ eq: () => ({ single: mocks.categorySingle }) }) };
-    }
-    if (table === "products") {
-      return {
-        insert: (value: unknown) => {
-          mocks.productInsert(value);
-          return { select: () => ({ single: mocks.productSingle }) };
-        },
-        delete: () => ({ eq: mocks.productDelete }),
-      };
-    }
-    if (table === "product_variants") return { insert: mocks.variantInsert };
-    throw new Error(`Unexpected table: ${table}`);
-  },
-};
-
+const mocks = vi.hoisted(() => ({ category: vi.fn(), rpc: vi.fn() }));
+vi.mock("@/lib/cache/storefront", () => ({ invalidateStorefrontCache: vi.fn() }));
 vi.mock("@/lib/auth/admin-request", () => ({
-  requireAdminRequest: () => Promise.resolve({ ok: true, db, admin: { id: "admin-id" }, sessionId: "session-id" }),
+  requireAdminRequest: async () => ({
+    ok: true,
+    db: {
+      from: () => ({ select: () => ({ eq: () => ({ single: mocks.category }) }) }),
+      rpc: mocks.rpc,
+    },
+    admin: { id: "admin-id" },
+    sessionId: "session-id",
+  }),
 }));
-
 import { POST } from "./route";
-
-const validProduct = {
-  name: "Almond Croissant",
-  slug: "almond-croissant",
-  shortDescription: "A crisp almond pastry.",
-  description: "Laminated pastry filled with almond cream.",
+import { PATCH, POST as duplicate } from "./[id]/route";
+const valid = {
+  name: "Made to Order Cupcakes",
+  slug: "made-to-order-cupcakes",
+  shortDescription: "Prepared just for you.",
+  description: "Fresh cupcakes in any size pack.",
   category: "PASTRIES",
-  price: 450_000,
-  discountPrice: null,
-  status: "DRAFT",
+  price: 1500,
+  discountPrice: 1000,
+  status: "ACTIVE",
   featured: false,
+  shoppingMode: "MADE_TO_ORDER",
   trackInventory: true,
   lowStockThreshold: 3,
-  ingredients: "Flour, butter, almonds",
-  allergens: ["Wheat", "Milk", "Nuts"],
-  storageInstructions: "Keep cool.",
-  preparationInstructions: "Serve at room temperature.",
-  variants: [{ name: "Single", priceAdjustment: 0, stockQuantity: 12, active: true }],
+  ingredients: "",
+  allergens: [],
+  storageInstructions: "",
+  preparationInstructions: "",
+  variants: [
+    { name: "Box of 8", packQuantity: 8, priceAdjustment: 1400, stockQuantity: 0, active: true, trackInventory: false },
+  ],
   images: [],
 };
-
-describe("POST /api/admin/products", () => {
+const request = (data = valid) =>
+  new Request("http://localhost/api/admin/products", { method: "POST", body: JSON.stringify(data) });
+describe("atomic product endpoints", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.categorySingle.mockResolvedValue({ data: { id: "category-id" }, error: null });
-    mocks.productSingle.mockResolvedValue({ data: { id: "product-id" }, error: null });
-    mocks.variantInsert.mockResolvedValue({ error: null });
-    mocks.readAuditState.mockResolvedValue({ id: "product-id", name: "Almond Croissant" });
-    mocks.recordAudit.mockResolvedValue(undefined);
+    mocks.category.mockResolvedValue({ data: { id: "category-id" } });
+    mocks.rpc.mockResolvedValue({ data: "product-id", error: null });
   });
-
-  it("creates a complete product and its variants", async () => {
-    const response = await POST(
-      new Request("http://localhost/api/admin/products", { method: "POST", body: JSON.stringify(validProduct) }),
-    );
-
+  it("creates packs and prices with one atomic operation", async () => {
+    const response = await POST(request());
     expect(response.status).toBe(201);
-    await expect(response.json()).resolves.toEqual({ ok: true, id: "product-id" });
-    expect(mocks.productInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "Almond Croissant", category_id: "category-id", base_price: 450_000 }),
-    );
-    expect(mocks.variantInsert).toHaveBeenCalledWith([expect.not.objectContaining({ sku: expect.anything() })]);
-    expect(mocks.recordAudit).toHaveBeenCalledWith(
-      db,
-      expect.objectContaining({ sessionId: "session-id" }),
-      expect.objectContaining({ action: "PRODUCT_CREATED", entityId: "product-id", previousValue: null }),
-    );
-  });
-
-  it("rejects an active product without an active variant", async () => {
-    const response = await POST(
-      new Request("http://localhost/api/admin/products", {
-        method: "POST",
-        body: JSON.stringify({
-          ...validProduct,
-          status: "ACTIVE",
-          variants: [{ ...validProduct.variants[0], active: false }],
-        }),
+    expect(await response.json()).toEqual({ ok: true, id: "product-id" });
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith(
+      "admin_save_product",
+      expect.objectContaining({
+        p_id: null,
+        p_admin_id: "admin-id",
+        p_variants: [
+          expect.objectContaining({ packQuantity: 8, priceAdjustment: 1400, trackInventory: false, sortOrder: 0 }),
+        ],
       }),
     );
-
-    expect(response.status).toBe(400);
-    expect(mocks.productInsert).not.toHaveBeenCalled();
+  });
+  it("uses the same save path for edits and atomic duplication", async () => {
+    expect((await PATCH(request(), { params: Promise.resolve({ id: "product-id" }) })).status).toBe(200);
+    expect(mocks.rpc.mock.calls[0][1].p_id).toBe("product-id");
+    expect((await duplicate(request(), { params: Promise.resolve({ id: "product-id" }) })).status).toBe(201);
+    expect(mocks.rpc.mock.calls[1][0]).toBe("admin_duplicate_product");
+  });
+  it("rejects invalid publication before touching the database", async () => {
+    expect((await POST(request({ ...valid, variants: [] }))).status).toBe(400);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it("returns a conflict when inventory changes, without a partial-save fallback", async () => {
+    mocks.rpc.mockResolvedValue({ error: { message: "INVENTORY_CHANGED" } });
+    const response = await POST(request());
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toMatch(/Reload/);
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
 });

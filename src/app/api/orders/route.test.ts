@@ -163,6 +163,62 @@ describe("POST /api/orders", () => {
     expect(mocks.customerResult).not.toHaveBeenCalled();
   });
 
+  it("persists 2 packs / 16 pieces at the server’s discounted pack price", async () => {
+    const previous = {
+      shoppingMode: product.shoppingMode,
+      discountPrice: product.discountPrice,
+      variants: product.variants,
+      trackInventory: product.trackInventory,
+      price: product.price,
+    };
+    Object.assign(product, {
+      shoppingMode: "MADE_TO_ORDER",
+      price: 2000,
+      discountPrice: 1000,
+      trackInventory: true,
+      variants: [
+        {
+          id: "variant-id",
+          name: "Celebration box",
+          packQuantity: 8,
+          priceAdjustment: 1400,
+          stockQuantity: 0,
+          trackInventory: false,
+        },
+      ],
+    });
+    try {
+      const response = await POST(
+        new Request("http://localhost/api/orders", {
+          method: "POST",
+          body: JSON.stringify({
+            customer: { name: "Pack Buyer", email: "buyer@example.com", phone: "08012345678" },
+            delivery: { fulfilment: "pickup" },
+            cart: [{ productId: "product-id", variantId: "variant-id", quantity: 2, unitPrice: 1 }],
+          }),
+        }),
+      );
+      expect(response.status).toBe(201);
+      expect(mocks.itemInsert).toHaveBeenCalledWith([
+        expect.objectContaining({
+          unit_price: 2400,
+          quantity: 2,
+          final_price: 4800,
+          product_snapshot: expect.objectContaining({
+            variantName: "Celebration box",
+            packQuantity: 8,
+            totalPieces: 16,
+            quantity: 2,
+            inventoryTracked: false,
+          }),
+        }),
+      ]);
+      expect(mocks.createStripeCheckout).toHaveBeenCalledWith(expect.objectContaining({ amount: 4800 }));
+    } finally {
+      Object.assign(product, previous);
+    }
+  });
+
   it("creates an order and a server-owned Stripe Checkout session", async () => {
     const response = await POST(
       new Request("http://localhost/api/orders", {

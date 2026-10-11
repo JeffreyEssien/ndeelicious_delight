@@ -1912,6 +1912,24 @@ html[data-theme] .admin-sidebar {
 }
 .product-editor {
   width: min(96vw, 760px);
+  height: 100dvh;
+  max-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.product-editor > div {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-bottom: 12px;
+}
+.product-editor .drawer-actions {
+  flex-wrap: wrap;
+}
+.pack-editor-summary > button {
+  flex-shrink: 0;
 }
 .product-editor-section {
   display: grid;

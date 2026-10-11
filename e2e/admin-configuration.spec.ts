@@ -88,10 +88,10 @@ test("owner configuration immediately drives cake rules and pack visibility", as
   const drawer = page.getByRole("dialog", { name: "Edit Classic Butter Croissant" });
   await expect(drawer.getByLabel("Shopping mode")).toHaveValue("MADE_TO_ORDER");
   await drawer
-    .locator(".variant-editor")
-    .filter({ has: page.locator('input[value="Pack of 12"]') })
-    .getByLabel("Active", { exact: true })
-    .uncheck();
+    .locator(".pack-editor-card")
+    .filter({ hasText: "Pack of 12" })
+    .getByRole("button", { name: "Disable", exact: true })
+    .click();
   await drawer.getByRole("button", { name: /Save/ }).last().click();
   await expect(drawer).not.toBeVisible();
   await page.goto("/product/classic-butter-croissant");

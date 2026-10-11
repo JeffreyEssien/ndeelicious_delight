@@ -49,3 +49,66 @@ describe("catalog availability", () => {
     ).toMatchObject({ id: "one" });
   });
 });
+
+it("orders arbitrary made-to-order packs and applies each pack’s inventory policy", async () => {
+  const { getPublishedVariants, variantQuantityLimit } = await import("./availability");
+  const packs = product({
+    shoppingMode: "MADE_TO_ORDER",
+    trackInventory: true,
+    variants: [
+      { id: "legacy", name: "Legacy", priceAdjustment: 0, stockQuantity: 10, active: true },
+      {
+        id: "eight",
+        name: "Box of 8",
+        packQuantity: 8,
+        priceAdjustment: 1400,
+        stockQuantity: 2,
+        trackInventory: true,
+        sortOrder: 2,
+      },
+      {
+        id: "five",
+        name: "Box of 5",
+        packQuantity: 5,
+        priceAdjustment: 900,
+        stockQuantity: 0,
+        trackInventory: false,
+        sortOrder: 1,
+      },
+      {
+        id: "sold",
+        name: "Pack of 15",
+        packQuantity: 15,
+        priceAdjustment: 3000,
+        stockQuantity: 0,
+        trackInventory: true,
+        sortOrder: 3,
+      },
+      { id: "disabled", name: "Pack of 3", packQuantity: 3, priceAdjustment: 200, stockQuantity: 8, active: false },
+      {
+        id: "retired",
+        name: "Pack of 7",
+        packQuantity: 7,
+        priceAdjustment: 200,
+        stockQuantity: 8,
+        retiredAt: "2026-10-11",
+      },
+    ],
+  });
+  expect(getPublishedVariants(packs).map((v) => v.id)).toEqual(["five", "eight", "sold"]);
+  expect(getPurchasableVariants(packs).map((v) => v.id)).toEqual(["five", "eight"]);
+  expect(variantQuantityLimit(packs, packs.variants[1])).toBe(2);
+  expect(variantQuantityLimit(packs, packs.variants[2])).toBe(50);
+  expect(variantQuantityLimit(packs, packs.variants[3])).toBe(0);
+});
+
+it("keeps real pack prices on sold-out cards", async () => {
+  const { productStartingPrice } = await import("./pricing");
+  const soldOut = product({
+    shoppingMode: "MADE_TO_ORDER",
+    price: 9999,
+    variants: [{ id: "eight", name: "Box of 8", packQuantity: 8, priceAdjustment: -7599, stockQuantity: 0 }],
+  });
+  expect(isProductPurchasable(soldOut)).toBe(false);
+  expect(productStartingPrice(soldOut)).toBe(2400);
+});

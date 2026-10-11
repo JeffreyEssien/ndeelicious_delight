@@ -42,6 +42,9 @@ export type ProductImage = {
   storagePath?: string;
 };
 export type ProductVariant = {
+  retiredAt?: string | null;
+  sortOrder?: number;
+  trackInventory?: boolean | null;
   packQuantity?: number | null;
   id: string;
   name: string;

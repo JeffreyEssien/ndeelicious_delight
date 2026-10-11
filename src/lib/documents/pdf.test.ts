@@ -63,6 +63,31 @@ async function extract(input: DocumentDTO) {
   return { buffer, pages, text: pages.join(" "), links };
 }
 describe("commercial PDF rendering", () => {
+  it("retains pack counts, pieces and the saved coupon/tax totals in exported documents", async () => {
+    const packed = {
+      ...document,
+      lines: [
+        {
+          id: "pack",
+          name: "Cupcakes",
+          detail: "Celebration box",
+          quantity: 2,
+          packQuantity: 8,
+          unitPrice: 2400,
+          total: 4800,
+        },
+      ],
+      subtotal: 4800,
+      discount: 480,
+      tax: 605,
+      total: 4925,
+      paid: 4925,
+    };
+    const result = await extract(packed);
+    expect(result.text).toContain("2 packs / 16 pieces");
+    expect(result.text).toContain("$49.25");
+    expect(documentTextLines(packed).join(" ")).toContain("2 packs / 16 pieces");
+  });
   it("preserves configured wording and Canadian financial totals", async () => {
     const result = await extract({
       ...document,

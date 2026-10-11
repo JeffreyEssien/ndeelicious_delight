@@ -9,8 +9,11 @@ const optionalText = (maximum: number) => z.string().trim().max(maximum).optiona
 export const productVariantInputSchema = z.object({
   id: z.uuid().optional(),
   name: z.string().trim().min(1, "Each variant needs a name.").max(100),
-  packQuantity: z.number().int().positive().max(1000000).nullable().default(null),
-  priceAdjustment: z.number().int().min(-100_000_000).max(100_000_000),
+  sortOrder: z.number().int().min(0).max(10000).default(0),
+  trackInventory: z.boolean().nullable().default(null),
+  expectedStockQuantity: z.number().int().min(0).optional(),
+  packQuantity: z.number().int().positive().max(2_147_483_647).nullable().default(null),
+  priceAdjustment: z.number().int().min(-1_000_000_000).max(1_000_000_000),
   stockQuantity: z.number().int().min(0).max(1_000_000),
   active: z.boolean().default(true),
 });
@@ -51,19 +54,44 @@ export const productInputSchema = z
     allergens: z.array(z.string().trim().min(1).max(100)).max(30),
     storageInstructions: optionalText(2_000),
     preparationInstructions: optionalText(2_000),
-    variants: z.array(productVariantInputSchema).min(1, "Add at least one variant.").max(50),
+    variants: z.array(productVariantInputSchema).max(100),
     images: z.array(productImageInputSchema).max(12),
   })
   .superRefine((product, context) => {
-    if (
-      product.variants.some(
-        (variant) => variant.active && (product.discountPrice ?? product.price) + variant.priceAdjustment < 0,
-      )
-    ) {
+    const base = product.discountPrice ?? product.price;
+    if (product.shoppingMode !== "MADE_TO_ORDER" && !product.variants.length)
+      context.addIssue({ code: "custom", path: ["variants"], message: "Add at least one variant." });
+    const ids = product.variants.flatMap((v) => (v.id ? [v.id] : []));
+    if (new Set(ids).size !== ids.length)
       context.addIssue({
         code: "custom",
         path: ["variants"],
-        message: "Active variants must have a nonnegative final price.",
+        message: "An option was included more than once. Reload before saving.",
+      });
+    const sizes = new Set<number>();
+    if (product.shoppingMode === "MADE_TO_ORDER")
+      product.variants.forEach((variant, index) => {
+        if (!variant.active) return;
+        if (!variant.packQuantity || base + variant.priceAdjustment <= 0)
+          context.addIssue({
+            code: "custom",
+            path: ["variants", index],
+            message:
+              "Published packs need a positive whole-number size and selling price. Mark incomplete legacy options unavailable until completed.",
+          });
+        if (variant.packQuantity && sizes.has(variant.packQuantity))
+          context.addIssue({
+            code: "custom",
+            path: ["variants", index, "packQuantity"],
+            message: "Each published pack must have a different size.",
+          });
+        if (variant.packQuantity) sizes.add(variant.packQuantity);
+      });
+    if (product.variants.some((variant) => (product.discountPrice ?? product.price) + variant.priceAdjustment < 0)) {
+      context.addIssue({
+        code: "custom",
+        path: ["variants"],
+        message: "Variants must have a nonnegative final price.",
       });
     }
     if (product.discountPrice !== null && product.discountPrice > product.price) {

@@ -5,7 +5,7 @@ import { useCustomerText } from "@/components/customer-text-provider";
 import { type FormEvent, useMemo, useState } from "react";
 import { useBusinessSettings, useMoney, useProducts } from "@/components/providers";
 import { BudgetResults } from "./budget-results";
-import { shoppingMode } from "@/features/catalog/pricing";
+import { shoppingMode, productStartingPrice } from "@/features/catalog/pricing";
 import { ProductGrid } from "./product-grid";
 import { Icon } from "@/components/ui/icons";
 import { Button, EmptyState, Input, Pagination } from "@/components/ui/primitives";
@@ -72,9 +72,9 @@ export function Catalogue({
     () =>
       [...(budget === undefined ? filteredProducts : productsInBudget(filteredProducts, budget))].sort((a, b) =>
         sort === "low"
-          ? a.price - b.price
+          ? productStartingPrice(a) - productStartingPrice(b)
           : sort === "high"
-            ? b.price - a.price
+            ? productStartingPrice(b) - productStartingPrice(a)
             : sort === "newest"
               ? b.id.localeCompare(a.id)
               : Number(!!b.featured) - Number(!!a.featured),

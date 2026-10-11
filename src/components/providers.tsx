@@ -4,7 +4,12 @@ import type { CartLine, DeliveryZone, Product } from "@/types";
 import type { BusinessSettings } from "@/types/content";
 import { formatMoney } from "@/lib/format";
 import type { StoreTheme, ThemeTokens } from "@/lib/theme/tokens";
-import { getDefaultPurchasableVariant, getPurchasableVariants } from "@/features/catalog/availability";
+import {
+  getDefaultPurchasableVariant,
+  getPurchasableVariants,
+  variantQuantityLimit,
+} from "@/features/catalog/availability";
+import { variantPrice } from "@/features/catalog/pricing";
 import { trackCommerceEvent } from "@/lib/analytics/client";
 
 type Toast = { id: number; message: string };
@@ -74,6 +79,10 @@ export function Providers({
       open,
       setOpen,
       add(product, variantId, quantity = 1) {
+        if (product.shoppingMode === "MADE_TO_ORDER" && !variantId) {
+          notify("Choose your pack before adding this product.");
+          return;
+        }
         const purchasable = getPurchasableVariants(product);
         const variant = variantId
           ? purchasable.find((item) => item.id === variantId)
@@ -84,7 +93,7 @@ export function Providers({
           );
           return;
         }
-        const limit = product.trackInventory === false ? 50 : Math.min(50, variant.stockQuantity);
+        const limit = variantQuantityLimit(product, variant);
         if (limit < 1) {
           notify("This option is currently unavailable.");
           return;
@@ -112,7 +121,7 @@ export function Providers({
       update(productId, variantId, quantity) {
         const product = products.find((item) => item.id === productId);
         const variant = product?.variants.find((item) => item.id === variantId);
-        const limit = product?.trackInventory === false ? 50 : Math.min(50, variant?.stockQuantity ?? 0);
+        const limit = product && variant ? variantQuantityLimit(product, variant) : 0;
         setLines((v) =>
           quantity < 1 || limit < 1
             ? v.filter((l) => !(l.productId === productId && l.variantId === variantId))
@@ -134,7 +143,7 @@ export function Providers({
       subtotal: lines.reduce((sum, line) => {
         const p = products.find((x) => x.id === line.productId);
         const v = p?.variants.find((x) => x.id === line.variantId);
-        return sum + (p && v ? p.price + v.priceAdjustment : 0) * line.quantity;
+        return sum + (p && v ? variantPrice(p, v) : 0) * line.quantity;
       }, 0),
     }),
     [lines, open, products, notify],

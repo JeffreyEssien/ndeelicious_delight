@@ -1,5 +1,6 @@
 "use client";
 import { formatPreparationTime } from "@/features/catalog/pricing";
+import { variantPrice } from "@/features/catalog/pricing";
 import { useCustomerText } from "@/components/customer-text-provider";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
@@ -559,9 +560,10 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                 <small>
                   {v.name} {t("· Qty ")}
                   {quantity}
+                  {v.packQuantity ? ` packs / ${quantity * v.packQuantity} pieces` : ""}
                 </small>
               </span>
-              <strong>{money((p.price + v.priceAdjustment) * quantity)}</strong>
+              <strong>{money(variantPrice(p, v) * quantity)}</strong>
             </div>
           ))}
           <dl>

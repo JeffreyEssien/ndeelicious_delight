@@ -6,9 +6,10 @@ import type { Product } from "@/types";
 import { useMoney } from "@/components/providers";
 import { useCart } from "@/components/providers";
 import { Badge } from "@/components/ui/primitives";
-import { productStartingPrice, preparationLabel } from "@/features/catalog/pricing";
+import { productStartingPrice, preparationLabel, variantPrice } from "@/features/catalog/pricing";
 import { Icon } from "@/components/ui/icons";
 import {
+  getPublishedVariants,
   getDefaultPurchasableVariant,
   getPurchasableVariants,
   isProductPurchasable,
@@ -20,6 +21,10 @@ export function ProductCard({ product, eager = false }: { product: Product; eage
   const cart = useCart();
   const unavailable = !isProductPurchasable(product);
   const defaultVariant = getDefaultPurchasableVariant(product);
+  const madeToOrder = product.shoppingMode === "MADE_TO_ORDER";
+  const availableVariants = getPurchasableVariants(product);
+  const priceVariants = availableVariants.length ? availableVariants : getPublishedVariants(product);
+  const hasDifferentPrices = new Set(priceVariants.map((v) => variantPrice(product, v))).size > 1;
   const hasUnambiguousVariant = getPurchasableVariants(product).length === 1;
   return (
     <article className="product-card">
@@ -41,17 +46,21 @@ export function ProductCard({ product, eager = false }: { product: Product; eage
       </Link>
       <div className="product-meta">
         <div>
-          <span>{t(product.category.replaceAll("_", " "))}</span>
+          <span>{madeToOrder ? t("Made to Order") : t(product.category.replaceAll("_", " "))}</span>
           <Link href={`/product/${product.slug}`}>
             <h3>{product.name}</h3>
           </Link>
           <p>
-            {getPurchasableVariants(product).length > 1 ? "From " : ""}
+            {hasDifferentPrices ? "From " : ""}
             {formatMoney(productStartingPrice(product))}
           </p>
           <small>{preparationLabel(product)}</small>
         </div>
-        {unavailable ? null : defaultVariant && hasUnambiguousVariant ? (
+        {madeToOrder ? (
+          <Link className="button button-secondary pack-select-link" href={`/product/${product.slug}`}>
+            {t("Select options")}
+          </Link>
+        ) : unavailable ? null : defaultVariant && hasUnambiguousVariant ? (
           <button
             type="button"
             className="round-add"

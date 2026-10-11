@@ -699,6 +699,7 @@ function OrderDetail({
                 <b>{line.productName}</b>
                 <small>
                   {line.variantName} × {line.quantity}
+                  {line.packQuantity ? ` packs · ${line.quantity * line.packQuantity} pieces` : ""}
                 </small>
                 {line.configuration && (
                   <dl className="purchase-configuration">

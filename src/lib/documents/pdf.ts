@@ -24,7 +24,7 @@ export function documentTextLines(document: DocumentDTO) {
     "",
     ...document.lines.flatMap((line) => [
       `${line.quantity} x ${line.name}${line.sku ? ` [${line.sku}]` : ""}`,
-      `  ${line.detail} - ${money(line.total)}`,
+      `  ${line.detail}${line.packQuantity ? ` · ${line.quantity} packs / ${line.quantity * line.packQuantity} pieces` : ""} - ${money(line.total)}`,
     ]),
     "",
     `Subtotal: ${money(document.subtotal)}`,
