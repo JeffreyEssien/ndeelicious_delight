@@ -80,8 +80,10 @@ test("cake type controls the earliest bakery date", async ({ page }) => {
   await page.getByRole("button", { name: /Wedding Cake/ }).click();
   await expect(page.getByText("Minimum lead time: 3 weeks").first()).toBeVisible();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "What are we celebrating?", exact: true })).toBeVisible();
   for (const name of ["Birthday", "6 inch", "Vanilla", "Buttercream", "Classic finish"]) {
     await page
+      .locator(".builder-stage")
       .getByRole("button", { name: new RegExp(name) })
       .first()
       .click();

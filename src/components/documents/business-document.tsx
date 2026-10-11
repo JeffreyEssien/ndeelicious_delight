@@ -1,4 +1,6 @@
 "use client";
+import { useState } from "react";
+import { documentMeaning, documentTotals } from "@/lib/documents/presentation";
 import { useCustomerText } from "@/components/customer-text-provider";
 import { whatsappUrl } from "@/lib/contact";
 import { BrandLogo } from "@/components/layout/brand-logo";
@@ -50,6 +52,7 @@ export type BusinessDocumentData = {
 
 export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocumentData & { showToolbar?: boolean }) {
   const t = useCustomerText("business document");
+  const [logoFailed, setLogoFailed] = useState(false);
 
   const money = (value: number) => formatMoney(value, props.business.currency, props.business.locale);
   const style = { "--document-accent": props.accentColor ?? "var(--berry)" } as CSSProperties;
@@ -70,7 +73,17 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
       )}
       <article className={`business-document document-${props.design ?? "classic"}`} style={style}>
         <header>
-          <BrandLogo />
+          {props.logoUrl && !logoFailed ? (
+            // biome-ignore lint/performance/noImgElement: stored document branding may use a historical local image.
+            <img
+              className="document-logo"
+              src={props.logoUrl}
+              alt={props.business.businessName}
+              onError={() => setLogoFailed(true)}
+            />
+          ) : (
+            <BrandLogo />
+          )}
           <div>
             <span>{t(props.kind)}</span>
             <h1>{props.number}</h1>
@@ -120,6 +133,7 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
             </div>
           </dl>
         </section>
+        <p className="document-meaning">{t(documentMeaning(props))}</p>
         <table>
           <thead>
             <tr>
@@ -153,55 +167,12 @@ export function BusinessDocument({ showToolbar = true, ...props }: BusinessDocum
             ))}
           </div>
           <dl>
-            <div>
-              <dt>{t("Subtotal")}</dt>
-              <dd>{money(props.subtotal)}</dd>
-            </div>
-            {!!props.discount && (
-              <div>
-                <dt>{t("Discount")}</dt>
-                <dd>−{money(props.discount)}</dd>
+            {documentTotals(props).map((total) => (
+              <div key={total.label} className={total.emphasized ? "document-total" : undefined}>
+                <dt>{t(total.label)}</dt>
+                <dd>{total.value < 0 ? `-${money(-total.value)}` : money(total.value)}</dd>
               </div>
-            )}
-            {!!props.delivery && (
-              <div>
-                <dt>{t("Delivery")}</dt>
-                <dd>{money(props.delivery)}</dd>
-              </div>
-            )}
-            {!!props.tax && (
-              <div>
-                <dt>
-                  {props.business.taxLabel}
-                  {props.business.taxEnabled && props.business.taxRegistrationNumber && props.business.taxRateBps > 0
-                    ? ` (${props.business.taxRateBps / 100}%)`
-                    : ""}
-                </dt>
-                <dd>{money(props.tax)}</dd>
-              </div>
-            )}
-            <div className="document-total">
-              <dt>{t("Total")}</dt>
-              <dd>{money(props.total)}</dd>
-            </div>
-            {(props.showPaymentDetails ?? true) && props.paid !== undefined && (
-              <div>
-                <dt>{t("Paid")}</dt>
-                <dd>{money(props.paid)}</dd>
-              </div>
-            )}
-            {(props.showPaymentDetails ?? true) && !!props.refunded && (
-              <div>
-                <dt>{t("Refunded")}</dt>
-                <dd>−{money(props.refunded)}</dd>
-              </div>
-            )}
-            {props.amountDue !== undefined && props.amountDue > 0 && (
-              <div className="document-total">
-                <dt>{t("Amount due")}</dt>
-                <dd>{money(props.amountDue)}</dd>
-              </div>
-            )}
+            ))}
           </dl>
         </div>
         <footer>

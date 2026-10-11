@@ -33,7 +33,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, []);
   if (path === "/admin/login") return <>{children}</>;
   return (
-    <div className="admin-shell">
+    <div className="admin-shell admin-mode">
       <a className="skip-link" href="#admin-main-content">
         Skip to main content
       </a>

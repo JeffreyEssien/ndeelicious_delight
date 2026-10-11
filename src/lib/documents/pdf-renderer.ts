@@ -1,384 +1,317 @@
-import { customerText } from "@/content/customer-text";
-import { whatsappUrl } from "@/lib/contact";
+import PDFDocument from "pdfkit";
+import { create } from "fontkit";
 import { readFileSync } from "node:fs";
 import { resolve, sep } from "node:path";
+import { customerText } from "@/content/customer-text";
+import { whatsappUrl } from "@/lib/contact";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { DocumentDTO } from "./dto";
+import { documentMeaning, documentPresentation, documentTotals } from "./presentation";
 
-type Logo = { bytes: Buffer; width: number; height: number };
-type Page = { commands: string[]; y: number; link?: string };
-
-const PAGE_WIDTH = 612;
-const PAGE_HEIGHT = 792;
-const MARGIN = 44;
-
-function pdfText(value: string) {
-  return value
-    .replaceAll("\\", "\\\\")
-    .replaceAll("(", "\\(")
-    .replaceAll(")", "\\)")
-    .replaceAll("’", "'")
-    .replaceAll("–", "-")
-    .replaceAll("—", "-")
-    .replaceAll(/[^ -~]/g, "-");
-}
-
-function rgb(hex: string | undefined) {
-  const match = /^#([0-9a-f]{6})$/i.exec(hex ?? "");
-  if (!match) return [0.475, 0.184, 0.286] as const;
-  return [0, 2, 4].map((offset) => Number.parseInt(match[1].slice(offset, offset + 2), 16) / 255) as [
-    number,
-    number,
-    number,
-  ];
-}
-
-function text(
-  page: Page,
-  value: string,
-  x: number,
-  y: number,
-  size = 10,
-  bold = false,
-  color: readonly number[] = [0.13, 0.11, 0.1],
-) {
-  page.commands.push(
-    `${color.map((item) => item.toFixed(3)).join(" ")} rg`,
-    `BT /${bold ? "F2" : "F1"} ${size} Tf 1 0 0 1 ${x} ${y} Tm (${pdfText(value)}) Tj ET`,
-  );
-}
-
-function line(
-  page: Page,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  color: readonly number[] = [0.88, 0.85, 0.82],
-) {
-  page.commands.push(`${color.join(" ")} RG 0.7 w ${x1} ${y1} m ${x2} ${y2} l S`);
-}
-
-function fill(page: Page, x: number, y: number, width: number, height: number, color: readonly number[]) {
-  page.commands.push(`${color.map((item) => item.toFixed(3)).join(" ")} rg ${x} ${y} ${width} ${height} re f`);
-}
-
-function wrap(value: string, maximum: number) {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    if (!current) current = word;
-    else if (`${current} ${word}`.length <= maximum) current += ` ${word}`;
-    else {
-      lines.push(current);
-      current = word;
-    }
+const { pageWidth: width, pageHeight: height, margin } = documentPresentation;
+const right = width - margin;
+const bottom = height - 62;
+const fonts = {
+  regular: readFileSync(resolve(process.cwd(), "public/fonts/NotoSans-Regular.ttf")),
+  bold: readFileSync(resolve(process.cwd(), "public/fonts/NotoSans-Bold.ttf")),
+};
+const glyphFont = create(fonts.regular);
+function validateText(value: string) {
+  for (const character of value) {
+    const point = character.codePointAt(0) ?? 0;
+    if (/\s/.test(character)) continue;
+    if (!("hasGlyphForCodePoint" in glyphFont) || !glyphFont.hasGlyphForCodePoint(point))
+      throw new Error(
+        `PDF font does not support U+${point.toString(16).toUpperCase()}. Use the HTML print view for this document.`,
+      );
   }
-  if (current) lines.push(current);
-  return lines.length ? lines : [""];
+  return value;
 }
-
-function jpegDimensions(bytes: Buffer) {
-  let offset = 2;
-  while (offset + 9 < bytes.length) {
-    if (bytes[offset] !== 0xff) {
-      offset += 1;
-      continue;
-    }
-    const marker = bytes[offset + 1];
-    const length = bytes.readUInt16BE(offset + 2);
-    if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker))
-      return { height: bytes.readUInt16BE(offset + 5), width: bytes.readUInt16BE(offset + 7) };
-    if (length < 2) break;
-    offset += length + 2;
-  }
-  return null;
-}
-
-function localLogo(logoUrl: string | undefined): Logo | undefined {
-  for (const candidate of [logoUrl, "/brand-logo.jpg"]) {
+function localLogo(url?: string) {
+  const root = resolve(process.cwd(), "public");
+  for (const candidate of [url, "/brand-logo.jpg"]) {
     if (!candidate?.startsWith("/")) continue;
     try {
-      const publicRoot = resolve(process.cwd(), "public");
-      const pathname = decodeURIComponent(new URL(candidate, "https://local.invalid").pathname);
-      const file = resolve(publicRoot, `.${pathname}`);
-      if (!file.startsWith(`${publicRoot}${sep}`) || !/\.jpe?g$/i.test(file)) continue;
-      const bytes = readFileSync(file);
-      if (bytes[0] !== 0xff || bytes[1] !== 0xd8) continue;
-      const dimensions = jpegDimensions(bytes);
-      if (dimensions) return { bytes, ...dimensions };
+      const path = resolve(root, `.${decodeURIComponent(new URL(candidate, "https://local.invalid").pathname)}`);
+      if (!path.startsWith(`${root}${sep}`) || !/\.(png|jpe?g)$/i.test(path)) continue;
+      return readFileSync(path);
     } catch {
-      // Try the canonical local brand asset if an older snapshot is unavailable.
+      /* An unavailable historical logo falls back to business identity. */
     }
   }
-  return undefined;
 }
-
-function tableHeader(
-  page: Page,
-  accent: readonly number[],
-  design: DocumentDTO["design"],
-  t: ReturnType<typeof customerText>,
-) {
-  const minimal = design === "minimal";
-  if (!minimal) fill(page, MARGIN, page.y - 5, PAGE_WIDTH - MARGIN * 2, 24, accent);
-  else line(page, MARGIN, page.y - 5, PAGE_WIDTH - MARGIN, page.y - 5, accent);
-  const color = minimal ? accent : [1, 1, 1];
-  text(page, t("DESCRIPTION"), MARGIN + 8, page.y + 3, 8, true, color);
-  text(page, t("QTY"), 367, page.y + 3, 8, true, color);
-  text(page, t("UNIT PRICE"), 420, page.y + 3, 8, true, color);
-  text(page, t("AMOUNT"), 520, page.y + 3, 8, true, color);
-  page.y -= 18;
-}
-
-function header(
-  page: Page,
-  document: DocumentDTO,
-  accent: readonly number[],
-  logo: Logo | undefined,
-  continuation: boolean,
-) {
+export async function renderPaginatedDocumentPdf(document: DocumentDTO): Promise<Buffer> {
+  const pdf = new PDFDocument({
+    size: "LETTER",
+    margins: { top: margin, bottom: margin, left: margin, right: margin },
+    bufferPages: true,
+    info: { Title: `${document.kind} ${document.number}`, Author: document.business.businessName },
+  });
+  const chunks: Buffer[] = [];
+  const output = new Promise<Buffer>((resolveOutput, reject) => {
+    pdf.on("data", (chunk) => chunks.push(chunk));
+    pdf.on("end", () => resolveOutput(Buffer.concat(chunks)));
+    pdf.on("error", reject);
+  });
+  pdf.registerFont("regular", fonts.regular);
+  pdf.registerFont("bold", fonts.bold);
+  const accent = /^#[a-f\d]{6}$/i.test(document.accentColor || "") ? (document.accentColor as string) : "#792f49";
   const t = customerText(document.customerText ?? {}, "business document");
-  const modern = document.design === "modern";
-  fill(page, 0, 0, PAGE_WIDTH, PAGE_HEIGHT, [1, 1, 1]);
-  if (modern) fill(page, 0, PAGE_HEIGHT - 82, PAGE_WIDTH, 82, accent);
-  else if (document.design !== "minimal") fill(page, 0, PAGE_HEIGHT - 8, PAGE_WIDTH, 8, accent);
-  if (logo) {
-    const width = 74;
-    const height = Math.min(42, width * (logo.height / logo.width));
-    page.commands.push(`q ${width} 0 0 ${height} ${MARGIN} ${PAGE_HEIGHT - 66} cm /Im1 Do Q`);
-  } else text(page, document.business.businessName, MARGIN, PAGE_HEIGHT - 52, 15, true, modern ? [1, 1, 1] : accent);
-  text(
-    page,
-    `${t(document.kind).toUpperCase()} ${document.number}`,
-    360,
-    PAGE_HEIGHT - 42,
-    14,
-    true,
-    modern ? [1, 1, 1] : accent,
-  );
-  text(
-    page,
-    continuation ? t("Continued") : t(document.status.replaceAll("_", " ")),
-    360,
-    PAGE_HEIGHT - 59,
-    9,
-    false,
-    modern ? [1, 1, 1] : undefined,
-  );
-  if (!modern) line(page, MARGIN, PAGE_HEIGHT - 78, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 78, accent);
-  page.y = PAGE_HEIGHT - 104;
-}
-
-export function renderPaginatedDocumentPdf(document: DocumentDTO) {
-  const t = customerText(document.customerText ?? {}, "business document");
-  const accent = rgb(document.accentColor);
-  const logo = localLogo(document.logoUrl);
-  const pages: Page[] = [];
-  const addPage = (continuation: boolean) => {
-    const page: Page = { commands: [], y: 0 };
-    header(page, document, accent, logo, continuation);
-    pages.push(page);
-    return page;
-  };
-  let page = addPage(false);
   const money = (value: number) => formatMoney(value, document.business.currency, document.business.locale);
-
-  text(page, t("FROM"), MARGIN, page.y, 8, true, accent);
-  text(page, document.business.businessName, MARGIN, page.y - 17, 11, true);
-  wrap(document.business.address, 43)
-    .slice(0, 2)
-    .forEach((value, index) => {
-      text(page, value, MARGIN, page.y - 33 - index * 12, 9);
-    });
-  text(
-    page,
-    [document.business.contactEmail, document.business.phone].filter(Boolean).join(" · "),
-    MARGIN,
-    page.y - 58,
-    8,
-  );
-  if ((document.showBusinessTaxNumber ?? true) && document.business.taxRegistrationNumber)
-    text(page, `${document.business.taxLabel} no. ${document.business.taxRegistrationNumber}`, MARGIN, page.y - 70, 8);
-  text(page, t("PREPARED FOR"), 322, page.y, 8, true, accent);
-  text(page, document.customer.name, 322, page.y - 17, 11, true);
-  text(page, document.customer.email, 322, page.y - 33, 9);
-  if (document.customer.phone) text(page, document.customer.phone, 322, page.y - 45, 9);
-  if (document.customer.address)
-    wrap(document.customer.address, 42)
-      .slice(0, 2)
-      .forEach((value, index) => {
-        text(page, value, 322, page.y - 58 - index * 11, 8);
-      });
-  page.y -= 92;
-
-  text(
-    page,
-    t("Issued {date}", { date: formatDate(document.issuedAt, document.business.locale, document.business.timezone) }),
-    MARGIN,
-    page.y,
-    9,
-  );
-  if (document.validUntil)
-    text(
-      page,
-      t("Valid until {date}", {
-        date: formatDate(document.validUntil, document.business.locale, document.business.timezone),
-      }),
-      230,
-      page.y,
-      9,
-    );
-  if (document.dueAt)
-    text(
-      page,
-      t("Due {date}", { date: formatDate(document.dueAt, document.business.locale, document.business.timezone) }),
-      390,
-      page.y,
-      9,
-    );
-  page.y -= 38;
-  tableHeader(page, accent, document.design, t);
-
-  for (const item of document.lines) {
-    const details = [item.detail, (document.showSku ?? true) && item.sku ? `SKU ${item.sku}` : ""]
-      .filter(Boolean)
-      .join(" · ");
-    const nameLines = wrap(item.name, 45);
-    const detailLines = wrap(details, 52);
-    const rowHeight = Math.max(44, 20 + (nameLines.length + detailLines.length) * 11);
-    if (page.y - rowHeight < 145) {
-      page = addPage(true);
-      tableHeader(page, accent, document.design, t);
+  const logo = localLogo(document.logoUrl);
+  let y: number = margin;
+  const font = (bold = false, size = 10) => pdf.font(bold ? "bold" : "regular").fontSize(size);
+  const write = (
+    value: string,
+    x: number,
+    at: number,
+    maxWidth: number,
+    bold = false,
+    size = 10,
+    align: "left" | "right" = "left",
+    color = "#282220",
+  ) => {
+    font(bold, size).fillColor(color).text(validateText(value), x, at, { width: maxWidth, align, lineBreak: false });
+  };
+  const lines = (value: string, maxWidth: number, bold = false, size = 10) => {
+    font(bold, size);
+    const result: string[] = [];
+    // Measure glyph widths, including long unbroken addresses, rather than a character-count heuristic.
+    for (const paragraph of value.split(/\r?\n/)) {
+      let current = "";
+      for (const character of paragraph) {
+        if (current && pdf.widthOfString(current + character) > maxWidth) {
+          const space = current.lastIndexOf(" ");
+          if (space > current.length / 2) {
+            result.push(current.slice(0, space));
+            current = current.slice(space + 1) + character;
+          } else {
+            result.push(current);
+            current = character;
+          }
+        } else current += character;
+      }
+      result.push(current);
     }
-    nameLines.forEach((value, index) => {
-      text(page, value, MARGIN + 8, page.y - 15 - index * 11, 10, true);
+    return result;
+  };
+  function header(continued = false) {
+    if (document.design === "modern") pdf.rect(0, 0, width, 7).fill(accent);
+    if (logo) {
+      try {
+        pdf.image(logo, margin, 28, { fit: [104, 46] });
+      } catch {
+        write(document.business.businessName, margin, 34, 255, true, 14);
+      }
+    } else write(document.business.businessName, margin, 34, 255, true, 14);
+    const title = `${t(document.kind).toUpperCase()} ${document.number}`;
+    const titleLines = lines(title, 250, true, 15);
+    titleLines.forEach((line, index) => {
+      write(line, right - 250, 28 + index * 20, 250, true, 15, "right", accent);
     });
-    detailLines.forEach((value, index) => {
-      text(page, value, MARGIN + 8, page.y - 17 - nameLines.length * 11 - index * 10, 8, false, [0.4, 0.37, 0.35]);
-    });
-    text(page, String(item.quantity), 373, page.y - 15, 9);
-    text(page, money(item.unitPrice), 420, page.y - 15, 9);
-    text(page, money(item.total), 514, page.y - 15, 9, true);
-    line(page, MARGIN, page.y - rowHeight, PAGE_WIDTH - MARGIN, page.y - rowHeight);
-    page.y -= rowHeight;
-  }
-
-  const totals: Array<[string, number, boolean]> = [
-    [t("Subtotal"), document.subtotal, false],
-    ...(document.discount ? [[t("Discount"), -document.discount, false] as [string, number, boolean]] : []),
-    ...(document.delivery ? [[t("Delivery"), document.delivery, false] as [string, number, boolean]] : []),
-    ...(document.tax ? [[document.business.taxLabel, document.tax, false] as [string, number, boolean]] : []),
-    [t("Total"), document.total, true],
-    ...((document.showPaymentDetails ?? true) && document.paid !== undefined
-      ? [[t("Paid"), document.paid, false] as [string, number, boolean]]
-      : []),
-    ...((document.showPaymentDetails ?? true) && document.refunded
-      ? [[t("Refunded"), -document.refunded, false] as [string, number, boolean]]
-      : []),
-    ...(document.amountDue ? [[t("Amount due"), document.amountDue, true] as [string, number, boolean]] : []),
-  ];
-  const noteLines = [
-    ...(document.notes ?? []),
-    document.footerMessage || t("Thank you for choosing {business}.", { business: document.business.businessName }),
-  ].flatMap((value) => wrap(value, 72));
-  const required = Math.max(totals.length * 17 + 34, noteLines.length * 12 + 34);
-  if (page.y - required < 70) page = addPage(true);
-  const summaryTop = page.y - 18;
-  text(page, t("NOTES"), MARGIN, summaryTop, 8, true, accent);
-  noteLines.forEach((value, index) => {
-    text(page, value, MARGIN, summaryTop - 17 - index * 12, 9);
-  });
-  totals.forEach(([label, value, bold], index) => {
-    const y = summaryTop - index * 17;
-    text(page, label, 395, y, bold ? 10 : 9, bold);
-    text(
-      page,
-      value < 0 ? `-${money(Math.abs(value))}` : money(value),
-      500,
-      y,
-      bold ? 10 : 9,
-      bold,
-      bold ? accent : undefined,
-    );
-    if (bold) line(page, 390, y + 13, PAGE_WIDTH - MARGIN, y + 13, accent);
-  });
-
-  pages.forEach((current, index) => {
-    line(current, MARGIN, 40, PAGE_WIDTH - MARGIN, 40);
-    text(current, document.business.businessName, MARGIN, 24, 8, false, [0.45, 0.42, 0.4]);
-    const whatsapp = whatsappUrl(document.business.whatsapp);
-    if (whatsapp) {
-      text(current, t("Chat with us on WhatsApp"), 250, 24, 8, true, accent);
-      current.link = whatsapp;
-    }
-    text(
-      current,
-      t("Page {page} of {pages}", { page: index + 1, pages: pages.length }),
-      PAGE_WIDTH - 94,
-      24,
-      8,
+    const titleBottom = 28 + titleLines.length * 20;
+    write(
+      continued ? t("Continued") : t(document.status.replaceAll("_", " ")),
+      right - 250,
+      titleBottom + 4,
+      250,
       false,
-      [0.45, 0.42, 0.4],
+      9,
+      "right",
     );
-  });
-  return buildPdf(pages, logo);
-}
-
-function streamObject(bytes: Buffer) {
-  return Buffer.concat([Buffer.from(`<< /Length ${bytes.length} >>\nstream\n`), bytes, Buffer.from("\nendstream")]);
-}
-
-function buildPdf(pages: Page[], logo: Logo | undefined) {
-  const baseCount = logo ? 5 : 4;
-  const pageNumbers = pages.map((_, index) => baseCount + 1 + index * 2);
-  const objects: Buffer[] = [
-    Buffer.from("<< /Type /Catalog /Pages 2 0 R >>"),
-    Buffer.from(
-      `<< /Type /Pages /Kids [${pageNumbers.map((number) => `${number} 0 R`).join(" ")}] /Count ${pages.length} >>`,
-    ),
-    Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"),
-    Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>"),
-  ];
-  if (logo)
-    objects.push(
-      Buffer.concat([
-        Buffer.from(
-          `<< /Type /XObject /Subtype /Image /Width ${logo.width} /Height ${logo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.bytes.length} >>\nstream\n`,
-        ),
-        logo.bytes,
-        Buffer.from("\nendstream"),
-      ]),
+    y = Math.max(94, titleBottom + 30);
+    pdf
+      .moveTo(margin, y - 10)
+      .lineTo(right, y - 10)
+      .strokeColor("#ded8d4")
+      .lineWidth(0.7)
+      .stroke();
+  }
+  function nextPage(table = false) {
+    pdf.addPage();
+    header(true);
+    if (table) tableHeader();
+  }
+  function ensure(space: number, table = false) {
+    if (y + space > bottom) nextPage(table);
+  }
+  function block(value: string, bold = false, size = 10) {
+    for (const line of lines(value, right - margin, bold, size)) {
+      ensure(size + 8);
+      write(line, margin, y, right - margin, bold, size);
+      y += size + 5;
+    }
+  }
+  function tableHeader() {
+    ensure(34);
+    if (document.design !== "minimal") pdf.rect(margin, y, right - margin, 27).fill("#f4f3f1");
+    for (const [title, x, w, align] of [
+      ["Description", margin + 8, 280, "left"],
+      ["Qty", 340, 32, "right"],
+      ["Unit price", 381, 76, "right"],
+      ["Amount", 465, 95, "right"],
+    ] as const)
+      write(t(title), x, y + 7, w, true, 8, align);
+    y += 34;
+  }
+  try {
+    header();
+    const customer = [
+      t(document.kind === "Quote" ? "Prepared for" : "Bill to"),
+      document.customer.name,
+      document.customer.email,
+      document.customer.phone,
+      document.customer.address,
+    ].filter(Boolean) as string[];
+    const business = [
+      t("From"),
+      document.business.businessName,
+      document.business.address,
+      document.business.contactEmail,
+      document.business.phone,
+      ...((document.showBusinessTaxNumber ?? true) && document.business.taxRegistrationNumber
+        ? [`${document.business.taxLabel} ${t("no. ")}${document.business.taxRegistrationNumber}`]
+        : []),
+    ].filter(Boolean);
+    const partyLines = (values: string[]) =>
+      values.flatMap((value, index) =>
+        lines(value, 245, index === 1, index === 0 ? 8 : 10).map((line) => ({
+          line,
+          bold: index <= 1,
+          size: index === 0 ? 8 : 10,
+        })),
+      );
+    const left = partyLines(business);
+    const rightParty = partyLines(customer);
+    const partyHeight = Math.max(
+      left.reduce((sum, line) => sum + line.size + 5, 0),
+      rightParty.reduce((sum, line) => sum + line.size + 5, 0),
     );
-  pages.forEach((page, index) => {
-    const pageNumber = pageNumbers[index];
-    const contentNumber = pageNumber + 1;
-    const resources = `/Font << /F1 3 0 R /F2 4 0 R >>${logo ? " /XObject << /Im1 5 0 R >>" : ""}`;
-    objects.push(
-      Buffer.from(
-        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << ${resources} >> /Contents ${contentNumber} 0 R ${page.link ? `/Annots [<< /Type /Annot /Subtype /Link /Rect [248 20 370 34] /Border [0 0 0] /A << /S /URI /URI (${pdfText(page.link)}) >> >>]` : ""} >>`,
-      ),
-      streamObject(Buffer.from(page.commands.join("\n"))),
+    if (y + partyHeight < bottom - 40) {
+      const top = y;
+      for (const [party, x] of [
+        [left, margin],
+        [rightParty, 322],
+      ] as const) {
+        let at = top;
+        for (const line of party) {
+          write(line.line, x, at, 245, line.bold, line.size);
+          at += line.size + 5;
+        }
+      }
+      y += partyHeight;
+    } else {
+      for (const value of customer) block(value);
+      y += 12;
+      for (const value of business) block(value);
+    }
+    y += 12;
+    block(
+      `${t("Issued")}: ${formatDate(document.issuedAt, document.business.locale, document.business.timezone)} · ${t("Currency")}: ${document.business.currency}`,
+      false,
+      9,
     );
-  });
-
-  const chunks: Uint8Array[] = [Buffer.from("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n", "binary")];
-  const offsets = [0];
-  objects.forEach((object, index) => {
-    offsets.push(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
-    chunks.push(Buffer.from(`${index + 1} 0 obj\n`), object, Buffer.from("\nendobj\n"));
-  });
-  const xref = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  chunks.push(Buffer.from(`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`));
-  chunks.push(
-    Buffer.from(
-      offsets
-        .slice(1)
-        .map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`)
-        .join(""),
-    ),
-  );
-  chunks.push(Buffer.from(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`));
-  return Buffer.concat(chunks);
+    if (document.validUntil)
+      block(
+        `${t("Valid until")}: ${formatDate(document.validUntil, document.business.locale, document.business.timezone)}`,
+        false,
+        9,
+      );
+    if (document.dueAt)
+      block(
+        `${t("Due")}: ${formatDate(document.dueAt, document.business.locale, document.business.timezone)}`,
+        false,
+        9,
+      );
+    block(t(documentMeaning(document)), false, 9);
+    y += 12;
+    tableHeader();
+    for (const item of document.lines) {
+      const description = lines(item.name, 280, true, 10);
+      const detail = lines(
+        [item.detail, (document.showSku ?? true) && item.sku ? `SKU ${item.sku}` : ""].filter(Boolean).join(" · "),
+        280,
+        false,
+        9,
+      );
+      ensure(Math.min((description.length + detail.length) * 15 + 12, 80), true);
+      let first = true;
+      for (const [value, bold] of [
+        ...description.map((line) => [line, true] as const),
+        ...detail.map((line) => [line, false] as const),
+      ]) {
+        ensure(17, true);
+        write(value, margin + 8, y, 280, bold, bold ? 10 : 9);
+        if (first) {
+          write(String(item.quantity), 340, y, 32, false, 9, "right");
+          write(money(item.unitPrice), 381, y, 76, false, 9, "right");
+          write(money(item.total), 465, y, 95, true, 9, "right");
+          first = false;
+        }
+        y += 15;
+      }
+      y += 8;
+      pdf.moveTo(margin, y).lineTo(right, y).strokeColor("#ded8d4").stroke();
+      y += 10;
+    }
+    const totals = documentTotals(document);
+    ensure(totals.length * 24 + 20);
+    y += 8;
+    for (const total of totals) {
+      ensure(25);
+      if (total.emphasized) pdf.rect(322, y - 4, right - 322, 25).fill("#f4f3f1");
+      write(t(total.label), 330, y, 125, Boolean(total.emphasized), 10);
+      write(
+        total.value < 0 ? `-${money(-total.value)}` : money(total.value),
+        465,
+        y,
+        95,
+        Boolean(total.emphasized),
+        10,
+        "right",
+        total.emphasized ? accent : "#282220",
+      );
+      y += 24;
+    }
+    y += 18;
+    for (const note of document.notes ?? []) {
+      block(note, false, 9);
+      y += 6;
+    }
+    block(
+      document.footerMessage || t("Thank you for choosing {value1}.", { value1: document.business.businessName }),
+      false,
+      9,
+    );
+    const range = pdf.bufferedPageRange();
+    for (let page = 0; page < range.count; page++) {
+      pdf.switchToPage(page);
+      pdf
+        .moveTo(margin, height - 45)
+        .lineTo(right, height - 45)
+        .strokeColor("#ded8d4")
+        .stroke();
+      write(document.business.businessName, margin, height - 33, 210, false, 8);
+      const whatsapp = whatsappUrl(document.business.whatsapp);
+      if (whatsapp) {
+        const value = t("Chat with us on WhatsApp");
+        write(value, 255, height - 33, 200, false, 8);
+        pdf.link(255, height - 33, 150, 12, whatsapp);
+      }
+      write(
+        t("Page {page} of {pages}", { page: page + 1, pages: range.count }),
+        right - 95,
+        height - 33,
+        95,
+        false,
+        8,
+        "right",
+      );
+    }
+    pdf.end();
+  } catch (error) {
+    pdf.destroy();
+    throw error;
+  }
+  return output;
 }

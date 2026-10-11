@@ -95,7 +95,7 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
   };
 }
 
-async function loadProducts(options: { includeInactive?: boolean; client?: SupabaseClient } = {}) {
+async function loadProducts(options: { includeInactive?: boolean; client?: SupabaseClient; ids?: string[] } = {}) {
   const supabase = options.client ?? (await createClient());
   let query = supabase
     .from("products")
@@ -107,6 +107,10 @@ async function loadProducts(options: { includeInactive?: boolean; client?: Supab
     `)
     .order("created_at", { ascending: false });
   if (!options.includeInactive) query = query.in("status", ["ACTIVE", "OUT_OF_STOCK"]);
+  if (options.ids) {
+    if (!options.ids.length) return [];
+    query = query.in("id", options.ids);
+  }
   const { data, error } = await query;
   if (error) throw error;
   return (data as unknown as ProductRow[] | null)?.map((row) => mapProduct(row, options.includeInactive)) ?? [];
@@ -121,7 +125,7 @@ const getCachedProducts = unstable_cache(
   },
 );
 
-export function getProducts(options: { includeInactive?: boolean; client?: SupabaseClient } = {}) {
+export function getProducts(options: { includeInactive?: boolean; client?: SupabaseClient; ids?: string[] } = {}) {
   return options.client || options.includeInactive ? loadProducts(options) : getCachedProducts();
 }
 

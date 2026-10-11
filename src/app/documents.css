@@ -514,3 +514,163 @@
     break-inside: avoid;
   }
 }
+
+/* Commercial documents share Letter proportions and the embedded PDF font. */
+@font-face {
+  font-family: "Noto Sans Document";
+  src: url("/fonts/NotoSans-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Noto Sans Document";
+  src: url("/fonts/NotoSans-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+.business-document {
+  font-family: "Noto Sans Document", sans-serif;
+  border-radius: 4px;
+  padding: 44px;
+  color: #282220;
+}
+.business-document header .brand-logo {
+  max-width: 160px;
+}
+.business-document > header {
+  border-bottom: 1px solid #ded8d4;
+  padding-bottom: 24px;
+}
+.business-document > header h1 {
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+.document-parties {
+  gap: 24px;
+}
+.document-parties p,
+.document-parties b,
+.document-parties dd {
+  overflow-wrap: anywhere;
+}
+.document-meaning {
+  font-size: 11px;
+  color: #6c625e;
+  padding: 12px 0;
+  border-bottom: 1px solid #ded8d4;
+}
+.business-document table {
+  table-layout: fixed;
+  width: 100%;
+}
+.business-document th:first-child {
+  width: 52%;
+}
+.business-document td {
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+.business-document th:not(:first-child),
+.business-document td:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.business-document td small {
+  line-height: 1.6;
+}
+.document-total {
+  background: #f4f3f1;
+  padding: 10px 8px;
+}
+@media (max-width: 600px) {
+  .business-document {
+    padding: 20px 14px;
+  }
+  .business-document th,
+  .business-document td {
+    padding: 10px 5px;
+    font-size: 10px;
+  }
+  .business-document > header {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .business-document > header > div {
+    text-align: left;
+  }
+}
+@media print {
+  @page {
+    size: Letter;
+    margin: 14mm;
+  }
+  .business-document {
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+  .business-document thead {
+    display: table-header-group;
+  }
+  .business-document tr {
+    break-inside: avoid;
+  }
+  .document-summary dl {
+    break-inside: avoid;
+  }
+  .document-meaning {
+    color: #282220;
+  }
+}
+.document-logo {
+  width: 140px;
+  max-width: 45%;
+  height: auto;
+  max-height: 72px;
+  object-fit: contain;
+  object-position: left top;
+}
+.history-detail .business-document-wrap {
+  width: 100%;
+  margin: 1rem 0;
+}
+.history-detail .business-document {
+  padding: 1rem;
+}
+
+.document-editor-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  position: static;
+  backdrop-filter: none;
+}
+.document-editor-actions .button {
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+}
+.document-parties {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.document-parties > * {
+  min-width: 0;
+}
+.document-parties dl div {
+  flex-wrap: wrap;
+}
+@media screen and (max-width: 1100px) {
+  .document-studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .document-editor {
+    position: static;
+    height: auto;
+    overflow: visible;
+    border-right: 0;
+  }
+}
+@media screen and (max-width: 700px) {
+  .document-parties {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

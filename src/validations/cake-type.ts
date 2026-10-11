@@ -22,6 +22,12 @@ export const cakeTypeSchema = z
   .superRefine((value, ctx) => {
     if (value.active && value.basePrice == null)
       ctx.addIssue({ code: "custom", path: ["basePrice"], message: "Active cake types require a base price." });
+    if (value.active && value.taxClass === "REQUIRES_REVIEW")
+      ctx.addIssue({
+        code: "custom",
+        path: ["taxClass"],
+        message: "Confirm tax classification before publishing this cake.",
+      });
     if (value.active && value.leadTimeValue <= 0)
       ctx.addIssue({
         code: "custom",

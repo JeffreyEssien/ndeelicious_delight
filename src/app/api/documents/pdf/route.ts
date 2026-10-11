@@ -17,12 +17,27 @@ export async function GET(request: Request) {
   const business = await getBusinessSettings();
   const dto = persistedDocumentToDTO(document);
   const content = await getStorefrontContent();
-  const pdf = renderDocumentPdf({
-    ...dto,
-    customerText: content.customerText,
-    business: { ...dto.business, whatsapp: business.whatsapp },
-  });
-  return new Response(pdf, {
+  let pdf: Uint8Array;
+  try {
+    pdf = new Uint8Array(
+      await renderDocumentPdf({
+        ...dto,
+        customerText: content.customerText,
+        business: { ...dto.business, whatsapp: business.whatsapp },
+      }),
+    );
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof Error && error.message.startsWith("PDF font does not support")
+            ? error.message
+            : "PDF could not be generated. Use the print view or retry.",
+      },
+      { status: 422 },
+    );
+  }
+  return new Response(new Uint8Array(pdf), {
     headers: {
       "content-type": "application/pdf",
       "content-disposition": `attachment; filename="${document.number}.pdf"`,

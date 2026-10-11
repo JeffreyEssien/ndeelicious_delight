@@ -329,37 +329,11 @@ export async function POST(request: Request) {
     }));
   }
   if (input.action === "cake-options") {
-    const current = await supabase.from("custom_cake_options").select("id");
-    if (current.error) error = current.error;
-    const submittedIds = new Set(
-      input.options.map((option) => option.id).filter((id) => z.uuid().safeParse(id).success),
-    );
-    if (!error) {
-      const removed = (current.data ?? []).map((row) => row.id).filter((id) => !submittedIds.has(id));
-      if (removed.length) {
-        const result = await supabase.from("custom_cake_options").update({ active: false }).in("id", removed);
-        error = result.error;
-      }
-    }
-    if (!error)
-      for (const option of input.options) {
-        const values = {
-          type: option.type,
-          name: option.name,
-          description: option.description || null,
-          price_adjustment: option.priceAdjustment,
-          quote_required: option.quoteRequired,
-          active: option.active,
-          sort_order: option.sortOrder,
-        };
-        const result = z.uuid().safeParse(option.id).success
-          ? await supabase.from("custom_cake_options").update(values).eq("id", option.id)
-          : await supabase.from("custom_cake_options").insert(values);
-        if (result.error) {
-          error = result.error;
-          break;
-        }
-      }
+    const options = input.options.map((option) => ({
+      ...option,
+      id: z.uuid().safeParse(option.id).success ? option.id : crypto.randomUUID(),
+    }));
+    ({ error } = await supabase.rpc("admin_save_cake_options", { p_options: options }));
   }
   if (input.action === "review-status")
     ({ error } = await supabase

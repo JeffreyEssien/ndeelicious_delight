@@ -1,4 +1,6 @@
 "use client";
+import Image from "next/image";
+import { useUnsavedChanges } from "./use-unsaved-changes";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cakeTypesSchema, type CakeType } from "@/validations/cake-type";
@@ -13,14 +15,20 @@ export function CakeTypesEditor({
 }) {
   const [assignments, setAssignments] = useState(relationships);
   const [types, setTypes] = useState(initial);
+  const [savedTypes, setSavedTypes] = useState(initial);
+  const [savedAssignments, setSavedAssignments] = useState(relationships);
   const [state, setState] = useState("Saved");
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
   const router = useRouter();
-  const busy = state === "Saving…";
+  const busy = state === "Saving…" || uploading;
+  useUnsavedChanges(state !== "Saved");
   function update(id: string, patch: Partial<CakeType>) {
     const current = types.find((type) => type.id === id);
     const slugify = (name: string) =>
       name
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase()
         .trim()
         .replace(/[^a-z0-9]+/g, "-")
@@ -39,8 +47,37 @@ export function CakeTypesEditor({
     setTypes(next.map((type, sortOrder) => ({ ...type, sortOrder })));
     setState("Unsaved changes");
   }
+  async function uploadPhoto(id: string, file?: File) {
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.set("file", file);
+      const response = await fetch("/api/admin/cakes/photo", { method: "POST", body: form });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Photo upload failed.");
+      update(id, { image: payload.url });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Photo upload failed. Please retry.");
+    } finally {
+      setUploading(false);
+    }
+  }
   async function save() {
-    const parsed = cakeTypesSchema.safeParse(types);
+    const changedTypes = types.filter((type) => {
+      const previous = savedTypes.find((item) => item.id === type.id);
+      const links = (items: typeof assignments) =>
+        items
+          .filter((link) => link.cakeTypeId === type.id)
+          .map((link) => link.optionId)
+          .sort();
+      return (
+        JSON.stringify(previous) !== JSON.stringify(type) ||
+        JSON.stringify(links(savedAssignments)) !== JSON.stringify(links(assignments))
+      );
+    });
+    const parsed = cakeTypesSchema.safeParse(changedTypes);
     if (!parsed.success) {
       setError(parsed.error.issues[0].message);
       setState("Error");
@@ -52,9 +89,15 @@ export function CakeTypesEditor({
       const response = await fetch("/api/admin/mutate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "cake-types", cakeTypes: parsed.data, assignments }),
+        body: JSON.stringify({
+          action: "cake-types",
+          cakeTypes: parsed.data,
+          assignments: assignments.filter((link) => changedTypes.some((type) => type.id === link.cakeTypeId)),
+        }),
       });
       if (!response.ok) throw new Error((await response.json()).error ?? "Cake types could not be saved.");
+      setSavedTypes(types);
+      setSavedAssignments(assignments);
       setState("Saved");
       router.refresh();
     } catch (reason) {
@@ -64,8 +107,11 @@ export function CakeTypesEditor({
   }
   return (
     <section className="admin-card cake-types-editor">
-      <h2>Cake types &amp; lead times</h2>
-      <p>Set preparation time for every cake type before activating it.</p>
+      <h2>My cakes</h2>
+      <p>
+        Create a draft, choose its available flavours and sizes, then publish when pricing, preparation time and tax
+        setup are confirmed.
+      </p>
       <fieldset disabled={busy} style={{ border: 0, padding: 0 }}>
         {types.map((type, index) => (
           <article className="admin-card form-stack" key={type.id}>
@@ -74,15 +120,7 @@ export function CakeTypesEditor({
               <input value={type.name} onChange={(e) => update(type.id, { name: e.target.value })} />
             </label>
             <label>
-              URL slug
-              <input value={type.slug} onChange={(e) => update(type.id, { slug: e.target.value })} />
-            </label>
-            <label>
-              Description
-              <textarea value={type.description} onChange={(e) => update(type.id, { description: e.target.value })} />
-            </label>
-            <label>
-              Base price (CAD)
+              Starting price (CAD)
               <input
                 type="number"
                 min="0"
@@ -109,29 +147,67 @@ export function CakeTypesEditor({
             <p>
               {type.basePrice == null
                 ? "Setup required: enter the base price and assign choices below."
-                : "Option adjustments are added to this base price."}
+                : "Starting price + selected extras = estimated price. Choices requiring a quote are confirmed individually."}
             </p>
-            <fieldset>
-              <legend>Available choices for this cake type</legend>
-              {options.map((option) => (
-                <label key={option.id}>
-                  <input
-                    type="checkbox"
-                    checked={assignments.some((link) => link.cakeTypeId === type.id && link.optionId === option.id)}
-                    onChange={(e) => {
-                      setAssignments((current) =>
-                        e.target.checked
-                          ? [...current, { cakeTypeId: type.id, optionId: option.id }]
-                          : current.filter((link) => link.cakeTypeId !== type.id || link.optionId !== option.id),
-                      );
+            <details className="cake-choice-groups">
+              <summary>Choose sizes, flavours and other options</summary>
+              {["size", "flavour", "filling", "design", "occasion"].map((group) => (
+                <fieldset key={group}>
+                  <legend>
+                    {
+                      {
+                        size: "Sizes",
+                        flavour: "Flavours",
+                        filling: "Fillings",
+                        design: "Designs",
+                        occasion: "Occasions",
+                      }[group]
+                    }
+                  </legend>
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => {
+                      setAssignments((current) => [
+                        ...current.filter(
+                          (link) =>
+                            link.cakeTypeId !== type.id ||
+                            !options.some((option) => option.id === link.optionId && option.type === group),
+                        ),
+                        ...options
+                          .filter((option) => option.type === group && option.active)
+                          .map((option) => ({ cakeTypeId: type.id, optionId: option.id })),
+                      ]);
                       setState("Unsaved changes");
                     }}
-                  />
-                  {option.type}: {option.name}
-                  {option.active ? "" : " (inactive)"}
-                </label>
+                  >
+                    Use all available {group === "flavour" ? "flavours" : "choices"}
+                  </button>
+                  {options
+                    .filter((option) => option.type === group)
+                    .map((option) => (
+                      <label className="check-row" key={option.id}>
+                        <input
+                          type="checkbox"
+                          checked={assignments.some(
+                            (link) => link.cakeTypeId === type.id && link.optionId === option.id,
+                          )}
+                          onChange={(event) => {
+                            setAssignments((current) =>
+                              event.target.checked
+                                ? [...current, { cakeTypeId: type.id, optionId: option.id }]
+                                : current.filter((link) => link.cakeTypeId !== type.id || link.optionId !== option.id),
+                            );
+                            setState("Unsaved changes");
+                          }}
+                        />
+                        {option.name}
+                        {option.active ? "" : " (unavailable)"}
+                      </label>
+                    ))}
+                </fieldset>
               ))}
-            </fieldset>
+            </details>
             <label>
               Lead time
               <input
@@ -154,24 +230,63 @@ export function CakeTypesEditor({
                 <option value="weeks">Weeks</option>
               </select>
             </label>
+            {type.image && (
+              <Image
+                src={type.image}
+                alt={`${type.name || "Cake"} photo`}
+                width={180}
+                height={120}
+                unoptimized
+                style={{ objectFit: "cover", borderRadius: 8, maxWidth: "100%" }}
+              />
+            )}
             <label>
-              Customer notice
-              <textarea
-                value={type.customerNotice}
-                onChange={(e) => update(type.id, { customerNotice: e.target.value })}
+              Photo
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif"
+                onChange={(e) => {
+                  void uploadPhoto(type.id, e.target.files?.[0]);
+                  e.target.value = "";
+                }}
               />
             </label>
-            <label>
-              Image URL
-              <input value={type.image} onChange={(e) => update(type.id, { image: e.target.value })} />
-            </label>
+            <p>
+              {uploading
+                ? "Uploading photo…"
+                : type.image
+                  ? "Photo selected. Save your cake to apply it."
+                  : "Choose a photo up to 5 MB."}
+            </p>
+            <details>
+              <summary>Advanced settings</summary>{" "}
+              <label>
+                Image URL
+                <input value={type.image} onChange={(e) => update(type.id, { image: e.target.value })} />
+              </label>
+              <label>
+                URL slug
+                <input value={type.slug} onChange={(e) => update(type.id, { slug: e.target.value })} />
+              </label>
+              <label>
+                Description
+                <textarea value={type.description} onChange={(e) => update(type.id, { description: e.target.value })} />
+              </label>
+              <label>
+                Customer notice
+                <textarea
+                  value={type.customerNotice}
+                  onChange={(e) => update(type.id, { customerNotice: e.target.value })}
+                />
+              </label>
+            </details>
             <label>
               <input
                 type="checkbox"
                 checked={type.active}
                 onChange={(e) => update(type.id, { active: e.target.checked })}
               />{" "}
-              Active
+              Published (available to customers)
             </label>
             <div>
               <button type="button" disabled={index === 0} onClick={() => move(index, -1)}>
@@ -205,7 +320,7 @@ export function CakeTypesEditor({
             setState("Unsaved changes");
           }}
         >
-          Add cake type
+          Quick add cake
         </button>
         <button type="button" className="button button-primary" onClick={save}>
           Save cake types

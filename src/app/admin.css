@@ -91,7 +91,7 @@
 }
 .admin-user {
   display: grid;
-  grid-template-columns: 36px 1fr 36px;
+  grid-template-columns: minmax(0, 1fr) 44px;
   align-items: center;
   gap: 10px;
   margin-top: auto;
@@ -3776,4 +3776,373 @@ html[data-theme] .admin-sidebar {
   .coupons-table {
     padding: 12px;
   }
+}
+
+/* Shared operational history workspace. Uses the existing theme tokens. */
+.history-workspace {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.history-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.history-categories button {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+.history-categories button[aria-pressed="true"] {
+  border-color: var(--berry);
+  box-shadow: inset 0 0 0 1px var(--berry);
+}
+.history-categories span {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.history-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+  padding: 1rem;
+}
+.history-filter-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.history-results {
+  padding: 1rem;
+  min-width: 0;
+}
+.history-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.5fr) auto auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--line);
+}
+.history-list article > div {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.history-list small {
+  color: var(--muted);
+}
+.history-list article,
+.history-detail,
+.history-detail dd {
+  overflow-wrap: anywhere;
+}
+.history-total {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.history-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.history-detail {
+  width: min(850px, 100vw);
+  max-width: 100%;
+  padding: 1.25rem;
+}
+.history-detail .order-detail-list > div {
+  min-width: 0;
+}
+.history-detail .button {
+  white-space: normal;
+}
+.history-detail .order-detail-actions,
+.history-detail .cake-request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.history-detail .request-detail {
+  min-width: 0;
+}
+@media (max-width: 1024px) {
+  .history-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .history-list article {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+  .history-total {
+    text-align: left;
+  }
+}
+@media (max-width: 480px) {
+  .history-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .history-list article {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .history-detail {
+    padding: 0.85rem;
+  }
+  .history-detail .order-detail-list > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .history-detail .request-detail dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.inventory-product-group {
+  padding: 1rem;
+  min-width: 0;
+}
+.inventory-product-group summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  cursor: pointer;
+  min-height: 44px;
+  align-items: center;
+  overflow-wrap: anywhere;
+}
+.inventory-product-group summary span {
+  color: var(--muted);
+}
+.inventory-adjustment {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr);
+  align-items: end;
+  gap: 0.85rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--line);
+}
+.inventory-adjustment > div {
+  display: grid;
+  gap: 0.5rem;
+  overflow-wrap: anywhere;
+}
+.inventory-adjustment p {
+  grid-column: 1 / -1;
+}
+@media (max-width: 768px) {
+  .inventory-adjustment {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+@media (max-width: 390px) {
+  .inventory-adjustment {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.history-advanced-filters {
+  grid-column: 1 / -1;
+}
+.history-advanced-filters summary {
+  min-height: 44px;
+  cursor: pointer;
+  padding: 0.75rem 0;
+}
+.history-advanced-filters > div {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+.history-list {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.history-list th {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: left;
+  padding: 0.75rem 0.5rem;
+}
+.history-list th:first-child {
+  width: 30%;
+}
+.history-list td {
+  padding: 1rem 0.5rem;
+  border-top: 1px solid var(--line);
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+.history-list td > b,
+.history-list td > span,
+.history-list td > small {
+  display: block;
+  margin: 0.35rem 0;
+}
+.history-bulk-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.history-bulk-actions ul {
+  flex-basis: 100%;
+}
+.history-detail {
+  transition: none;
+}
+.history-detail > .button:first-child {
+  margin-bottom: 1rem;
+}
+@media (max-width: 1024px) {
+  .history-list,
+  .history-list tbody,
+  .history-list tr,
+  .history-list td {
+    display: block;
+    width: 100%;
+  }
+  .history-list thead {
+    display: none;
+  }
+  .history-list tr {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 0.5rem;
+    border-top: 1px solid var(--line);
+    padding: 0.75rem 0;
+  }
+  .history-list td {
+    border: 0;
+    padding: 0.25rem;
+  }
+  .history-advanced-filters > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .history-list tr,
+  .history-advanced-filters > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media print {
+  body:has(.history-detail) .admin-shell {
+    display: none !important;
+  }
+  .scrim {
+    display: none !important;
+  }
+  .history-detail {
+    position: static;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    padding: 0;
+  }
+  .history-detail > .button,
+  .history-detail .no-print,
+  .history-detail .icon-button {
+    display: none !important;
+  }
+  .history-detail section {
+    break-inside: avoid;
+  }
+}
+
+.history-thumbnail {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+@media (max-width: 480px) {
+  .history-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .history-filters > .field:first-child {
+    grid-column: 1 / -1;
+  }
+  .history-categories {
+    gap: 0.4rem;
+  }
+  .history-categories button {
+    padding: 0.45rem 0.65rem;
+    font-size: 12px;
+  }
+  .history-list tr {
+    gap: 0.35rem;
+  }
+  .history-list td {
+    padding: 0.15rem;
+  }
+}
+
+.needs-attention {
+  color: var(--ink);
+}
+
+/* Keep navigation and the session footer inside short desktop viewports. */
+.admin-sidebar {
+  min-height: 0;
+  overflow: hidden;
+}
+.admin-sidebar nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 8px;
+}
+.admin-brand,
+.admin-user {
+  flex-shrink: 0;
+}
+
+.admin-user > div {
+  min-width: 0;
+}
+.admin-user form button {
+  width: 44px;
+  height: 44px;
+}
+
+.cake-types-editor fieldset,
+.cake-options-panel fieldset,
+.admin-card > fieldset {
+  min-inline-size: 0;
+  max-width: 100%;
+}
+.cake-option-types {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.cake-option-controls {
+  flex-wrap: wrap;
+}
+@media (max-width: 480px) {
+  .cake-option-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.order-lines > div > span {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.order-lines > div > b,
+.order-totals dd {
+  flex-shrink: 0;
+  white-space: nowrap;
 }

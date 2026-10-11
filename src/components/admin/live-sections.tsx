@@ -1,4 +1,8 @@
 "use client";
+import { confirmSectionChange, useUnsavedChanges } from "./use-unsaved-changes";
+import { HistoryWorkspace } from "./history-workspace";
+import { BusinessDocument, type BusinessDocumentData } from "@/components/documents/business-document";
+import { ModalOverlay } from "@/components/ui/modal-overlay";
 import { CakeTypesEditor } from "./cake-types-editor";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -16,7 +20,15 @@ async function mutate(body: unknown) {
   });
 }
 
-export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
+export function CakeRequests({
+  initial,
+  detailOnly = false,
+  onRefresh,
+}: {
+  initial: AdminCakeRequest[];
+  detailOnly?: boolean;
+  onRefresh?: () => Promise<void>;
+}) {
   const router = useRouter();
   const { currency } = useBusinessSettings();
   const [items, setItems] = useState(initial);
@@ -24,87 +36,129 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
   const [amount, setAmount] = useState(selected?.quotedTotal ? String(selected.quotedTotal / 100) : "");
   const [filter, setFilter] = useState("OPEN");
   const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState<BusinessDocumentData>();
+  const [previewedAmount, setPreviewedAmount] = useState<number>();
   const [saveState, setSaveState] = useState<"idle" | "changed" | "saving" | "queued" | "error">("idle");
   const notify = useToast();
+  useUnsavedChanges(saveState === "changed" || saveState === "error");
   useEffect(() => {
     setItems(initial);
     setSelected((current) => initial.find((item) => item.id === current?.id) ?? initial[0]);
   }, [initial]);
   useEffect(() => {
     if (!["PENDING", "SENDING"].includes(selected?.quoteDelivery?.status ?? "")) return;
-    const timer = window.setInterval(() => router.refresh(), 4000);
+    const timer = window.setInterval(() => {
+      if (onRefresh) void onRefresh();
+      else router.refresh();
+    }, 4000);
     return () => window.clearInterval(timer);
-  }, [router, selected?.quoteDelivery?.status]);
+  }, [router, onRefresh, selected?.quoteDelivery?.status]);
   if (!selected) return <EmptyState title="No cake requests" body="New customer requests will appear here." />;
+  async function previewQuote() {
+    if (busy || !Number(amount)) return;
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/admin/cakes/${selected.id}/quote-preview`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ quotedTotal: Math.round(Number(amount) * 100) }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error);
+      setPreview(payload);
+      setPreviewedAmount(Math.round(Number(amount) * 100));
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Quote preview could not be loaded. Retry.");
+    } finally {
+      setBusy(false);
+    }
+  }
   async function save() {
     if (busy) return;
     setBusy(true);
     setSaveState("saving");
     const selectedId = selected.id;
     const quotedTotal = Math.round(Number(amount) * 100);
-    const response = await mutate({ action: "cake-quote", id: selectedId, quotedTotal });
-    const payload = await response.json().catch(() => null);
-    setBusy(false);
-    if (response.ok) {
-      setItems((v) =>
-        v.map((item) =>
-          item.id === selectedId
+    try {
+      const response = await mutate({ action: "cake-quote", id: selectedId, quotedTotal });
+      const payload = await response.json().catch(() => null);
+      setBusy(false);
+      if (response.ok) {
+        setItems((v) =>
+          v.map((item) =>
+            item.id === selectedId
+              ? {
+                  ...item,
+                  quotedTotal,
+                  quoteDelivery: payload?.documentId
+                    ? { documentId: payload.documentId, status: "PENDING", attempts: 0, lastError: null }
+                    : item.quoteDelivery,
+                }
+              : item,
+          ),
+        );
+        setSelected((v) =>
+          v
             ? {
-                ...item,
+                ...v,
                 quotedTotal,
                 quoteDelivery: payload?.documentId
                   ? { documentId: payload.documentId, status: "PENDING", attempts: 0, lastError: null }
-                  : item.quoteDelivery,
+                  : v.quoteDelivery,
               }
-            : item,
-        ),
-      );
-      setSelected((v) =>
-        v
-          ? {
-              ...v,
-              quotedTotal,
-              quoteDelivery: payload?.documentId
-                ? { documentId: payload.documentId, status: "PENDING", attempts: 0, lastError: null }
-                : v.quoteDelivery,
-            }
-          : v,
-      );
-      setSaveState("queued");
-      notify("Quote saved and queued for email.");
-    } else {
+            : v,
+        );
+        setSaveState("queued");
+        notify("Quote saved and queued for email.");
+      } else {
+        setSaveState("error");
+        notify("Quote could not be sent.");
+      }
+    } catch {
       setSaveState("error");
-      notify("Quote could not be sent.");
+      notify("Quote could not be sent. Retry after checking the delivery state.");
+    } finally {
+      setBusy(false);
     }
   }
+
   async function retryQuoteEmail() {
     if (!selected.quoteDelivery || busy) return;
     setBusy(true);
-    const response = await mutate({
-      action: "cake-quote-retry",
-      id: selected.id,
-      documentId: selected.quoteDelivery.documentId,
-    });
-    setBusy(false);
-    if (!response.ok) {
-      notify("Quote email could not be queued again.");
-      return;
+    try {
+      const response = await mutate({
+        action: "cake-quote-retry",
+        id: selected.id,
+        documentId: selected.quoteDelivery.documentId,
+      });
+      if (!response.ok) throw new Error("Quote email could not be queued again.");
+      const quoteDelivery = { ...selected.quoteDelivery, status: "PENDING" as const, lastError: null };
+      setItems((current) => current.map((item) => (item.id === selected.id ? { ...item, quoteDelivery } : item)));
+      setSelected((current) => (current ? { ...current, quoteDelivery } : current));
+      setSaveState("queued");
+      notify("Quote email queued again.");
+      if (onRefresh) await onRefresh();
+    } catch {
+      notify("Quote email could not be queued again. Check its delivery state and retry.");
+    } finally {
+      setBusy(false);
     }
-    const quoteDelivery = { ...selected.quoteDelivery, status: "PENDING" as const, lastError: null };
-    setItems((current) => current.map((item) => (item.id === selected.id ? { ...item, quoteDelivery } : item)));
-    setSelected((current) => (current ? { ...current, quoteDelivery } : current));
-    setSaveState("queued");
-    notify("Quote email queued again.");
   }
   async function changeStatus(status: string) {
-    const response = await mutate({ action: "cake-status", id: selected.id, status });
-    if (!response.ok) {
-      notify("Cake request status could not be updated.");
-      return;
+    if (busy) return;
+    setBusy(true);
+    try {
+      const response = await mutate({ action: "cake-status", id: selected.id, status });
+      if (!response.ok) throw new Error("Status update failed.");
+      setItems((current) => current.map((item) => (item.id === selected.id ? { ...item, status } : item)));
+      setSelected((current) => (current ? { ...current, status } : current));
+      notify("Cake request updated.");
+      if (onRefresh) await onRefresh();
+    } catch {
+      notify("Cake request status could not be updated. Refresh and retry.");
+    } finally {
+      setBusy(false);
     }
-    setItems((current) => current.map((item) => (item.id === selected.id ? { ...item, status } : item)));
-    setSelected((current) => (current ? { ...current, status } : current));
-    notify("Cake request updated.");
   }
   const visible = items.filter((item) =>
     filter === "ALL"
@@ -115,66 +169,116 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
   );
   return (
     <div className="cake-request-workspace">
-      <div className="cake-request-summary">
-        <span>
-          <b>{items.filter((item) => item.status === "QUOTE_REQUIRED").length}</b> need a quote
-        </span>
-        <span>
-          <b>{items.filter((item) => ["CUSTOMER_APPROVED", "CONFIRMED", "PREPARING"].includes(item.status)).length}</b>{" "}
-          being planned
-        </span>
-        <span>
-          <b>{items.filter((item) => item.status === "READY").length}</b> ready
-        </span>
-      </div>
-      <fieldset className="cake-request-filters" aria-label="Filter cake requests">
-        {["OPEN", "QUOTE_REQUIRED", "READY", "ALL"].map((item) => (
-          <button key={item} type="button" className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>
-            {item === "OPEN"
-              ? "Open requests"
-              : item === "QUOTE_REQUIRED"
-                ? "Needs quote"
-                : item === "READY"
-                  ? "Ready"
-                  : "All"}
-          </button>
-        ))}
-      </fieldset>
-      <div className="admin-split cake-request-split">
-        <div className="admin-card request-list">
-          {!visible.length && <p className="admin-empty-copy">No requests match this view.</p>}
-          {visible.map((item) => (
-            <button
-              type="button"
-              className={item.id === selected.id ? "selected" : ""}
-              key={item.id}
-              onClick={() => {
-                setSelected(item);
-                setAmount(item.quotedTotal ? String(item.quotedTotal / 100) : "");
-                setSaveState("idle");
-              }}
-            >
-              <span className="avatar">
-                {item.customerName
-                  .split(" ")
-                  .map((x) => x[0])
-                  .join("")
-                  .slice(0, 2)}
-              </span>
-              <div>
+      {preview && (
+        <ModalOverlay
+          open
+          onClose={() => setPreview(undefined)}
+          className="admin-drawer history-detail"
+          scrimClassName="admin-scrim"
+          ariaLabel="Quotation preview"
+        >
+          <Button variant="secondary" onClick={() => setPreview(undefined)}>
+            Back to request
+          </Button>
+          <BusinessDocument {...preview} showToolbar={false} />
+        </ModalOverlay>
+      )}
+      {detailOnly && selected.communications && selected.communications.length > 0 && (
+        <section className="admin-card">
+          <h3>Communication history</h3>
+          <p>Latest 25 quotation revisions. Delivery status records whether each email was sent.</p>
+          <ol className="order-timeline">
+            {selected.communications.map((message) => (
+              <li key={message.id}>
                 <b>
-                  {item.requestNumber} · {item.customerName}
+                  Quote revision {message.revision} · {message.status.toLowerCase().replaceAll("_", " ")}
                 </b>
-                <small>
-                  {item.configuration.occasion} · {item.configuration.size} · {item.requestedDate}
-                </small>
-              </div>
-              <Badge tone={item.status === "QUOTE_REQUIRED" ? "warning" : "success"}>
-                {item.status.replaceAll("_", " ")}
-              </Badge>
-            </button>
-          ))}
-        </div>
+                <p>
+                  {message.createdAt ? new Date(message.createdAt).toLocaleString() : "Date unavailable"} ·{" "}
+                  {message.attempts} delivery attempts
+                </p>
+                {message.lastError && <p role="status">{message.lastError}</p>}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+      <p className="admin-inline-state">
+        Review request → Prepare quote → Preview → Send → Customer approval → Fulfil order
+      </p>
+      {!detailOnly && (
+        <>
+          <div className="cake-request-summary">
+            <span>
+              <b>{items.filter((item) => item.status === "QUOTE_REQUIRED").length}</b> need a quote
+            </span>
+            <span>
+              <b>
+                {items.filter((item) => ["CUSTOMER_APPROVED", "CONFIRMED", "PREPARING"].includes(item.status)).length}
+              </b>{" "}
+              being planned
+            </span>
+            <span>
+              <b>{items.filter((item) => item.status === "READY").length}</b> ready
+            </span>
+          </div>
+          <fieldset className="cake-request-filters" aria-label="Filter cake requests">
+            {["OPEN", "QUOTE_REQUIRED", "READY", "ALL"].map((item) => (
+              <button
+                key={item}
+                type="button"
+                className={filter === item ? "active" : ""}
+                onClick={() => setFilter(item)}
+              >
+                {item === "OPEN"
+                  ? "Open requests"
+                  : item === "QUOTE_REQUIRED"
+                    ? "Needs quote"
+                    : item === "READY"
+                      ? "Ready"
+                      : "All"}
+              </button>
+            ))}
+          </fieldset>
+        </>
+      )}
+      <div className={detailOnly ? "cake-request-detail-only" : "admin-split cake-request-split"}>
+        {!detailOnly && (
+          <div className="admin-card request-list">
+            {!visible.length && <p className="admin-empty-copy">No requests match this view.</p>}
+            {visible.map((item) => (
+              <button
+                type="button"
+                className={item.id === selected.id ? "selected" : ""}
+                key={item.id}
+                onClick={() => {
+                  setSelected(item);
+                  setAmount(item.quotedTotal ? String(item.quotedTotal / 100) : "");
+                  setSaveState("idle");
+                }}
+              >
+                <span className="avatar">
+                  {item.customerName
+                    .split(" ")
+                    .map((x) => x[0])
+                    .join("")
+                    .slice(0, 2)}
+                </span>
+                <div>
+                  <b>
+                    {item.requestNumber} · {item.customerName}
+                  </b>
+                  <small>
+                    {item.configuration.occasion} · {item.configuration.size} · {item.requestedDate}
+                  </small>
+                </div>
+                <Badge tone={item.status === "QUOTE_REQUIRED" ? "warning" : "success"}>
+                  {item.status.replaceAll("_", " ")}
+                </Badge>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="admin-card request-detail">
           <span className="overline">
             {selected.requestNumber} · {selected.status.replaceAll("_", " ")}
@@ -185,7 +289,19 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
           <dl>
             {["cakeType", "minimumLeadTime", "size", "flavour", "filling", "design", "colours"].map((key) => (
               <div key={key}>
-                <dt>{key}</dt>
+                <dt>
+                  {
+                    {
+                      cakeType: "Cake",
+                      minimumLeadTime: "Preparation time",
+                      size: "Size",
+                      flavour: "Cake flavour",
+                      filling: "Filling",
+                      design: "Design",
+                      colours: "Preferred colours",
+                    }[key]
+                  }
+                </dt>
                 <dd>{selected.configuration[key] || "—"}</dd>
               </div>
             ))}
@@ -200,14 +316,19 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
               <div className="cake-reference-grid">
                 {selected.referenceUrls.map((url) => (
                   // The signed URL is short-lived and only generated inside an authenticated admin page.
-                  // biome-ignore lint/performance/noImgElement: private signed storage URLs are not Next image host allow-listed
-                  <img key={url} src={url} alt="Customer cake inspiration" />
+                  <a key={url} href={url} target="_blank" rel="noreferrer">
+                    {/* biome-ignore lint/performance/noImgElement: private signed URLs should not pass through a public image optimizer. */}
+                    <img src={url} alt="Customer cake inspiration — open full size" />
+                  </a>
                 ))}
               </div>
             </div>
           )}
           <Input
             label={`Quote amount (${currency})`}
+            disabled={busy || Boolean(selected.orderId)}
+            min="0.01"
+            step="0.01"
             type="number"
             value={amount}
             onChange={(e) => {
@@ -221,7 +342,20 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
           {selected.customerNote && <p className="cake-customer-note">“{selected.customerNote}”</p>}
           <div className="cake-request-actions">
             <Button
-              disabled={!Number(amount) || busy || saveState === "idle" || Boolean(selected.orderId)}
+              variant="secondary"
+              disabled={busy || !Number(amount) || Boolean(selected.orderId)}
+              onClick={previewQuote}
+            >
+              Preview quote
+            </Button>
+            <Button
+              disabled={
+                !Number(amount) ||
+                busy ||
+                saveState === "idle" ||
+                Boolean(selected.orderId) ||
+                previewedAmount !== Math.round(Number(amount) * 100)
+              }
               onClick={save}
             >
               {busy ? "Sending…" : selected.quotedTotal ? "Send revised quote" : "Send quote"}
@@ -261,7 +395,19 @@ export function CakeRequests({ initial }: { initial: AdminCakeRequest[] }) {
             </label>
           </div>
           {selected.orderId && (
-            <p className="admin-inline-state">This cake is linked to an order. Update its progress from Orders.</p>
+            <p className="admin-inline-state">
+              This cake is linked to an order.{" "}
+              <a
+                href={
+                  selected.orderNumber
+                    ? `/admin/orders?detail=${encodeURIComponent(selected.orderNumber)}`
+                    : "/admin/orders"
+                }
+              >
+                Manage {selected.orderNumber || "the order"}
+              </a>{" "}
+              to update production and fulfilment.
+            </p>
           )}
           {selected.quoteDelivery && (
             <p className="admin-inline-state" role="status">
@@ -297,10 +443,22 @@ export function CakeConfigurationEditor({ initial }: { initial: CakeConfiguratio
   const [busy, setBusy] = useState(false);
   const [saveState, setSaveState] = useState<"saved" | "unsaved" | "saving" | "failed">("saved");
   const notify = useToast();
+  useUnsavedChanges(saveState !== "saved");
   function update(index: number, values: Partial<CakeOption>) {
     setOptions((current) =>
       current.map((option, itemIndex) => (itemIndex === index ? { ...option, ...values } : option)),
     );
+    setSaveState("unsaved");
+  }
+  function moveChoice(index: number, offset: number) {
+    const positions = options.map((option, i) => (option.type === selectedType ? i : -1)).filter((i) => i >= 0);
+    const destination = positions[positions.indexOf(index) + offset];
+    if (destination === undefined) return;
+    setOptions((current) => {
+      const next = [...current];
+      [next[index], next[destination]] = [next[destination], next[index]];
+      return next;
+    });
     setSaveState("unsaved");
   }
   async function save() {
@@ -310,23 +468,30 @@ export function CakeConfigurationEditor({ initial }: { initial: CakeConfiguratio
       ...option,
       sortOrder: options.filter((item) => item.type === option.type).findIndex((item) => item.id === option.id),
     }));
-    const response = await mutate({ action: "cake-options", options: normalized });
-    setBusy(false);
-    if (response.ok) {
-      setSaveState("saved");
-      notify("Cake configuration saved.");
-      router.refresh();
-    } else {
+    try {
+      const response = await mutate({ action: "cake-options", options: normalized });
+      setBusy(false);
+      if (response.ok) {
+        setSaveState("saved");
+        notify("Cake configuration saved.");
+        router.refresh();
+      } else {
+        setSaveState("failed");
+        const payload = await response.json().catch(() => null);
+        notify(payload?.error ?? "Cake configuration could not be saved.");
+      }
+    } catch {
       setSaveState("failed");
-      const payload = await response.json().catch(() => null);
-      notify(payload?.error ?? "Cake configuration could not be saved.");
+      notify("Options could not be saved. Please retry.");
+    } finally {
+      setBusy(false);
     }
   }
   return (
     <div className="admin-card form-stack">
       <div className="card-head">
         <div>
-          <h2>Cake builder configuration</h2>
+          <h2>Sizes, flavours and cake options</h2>
           <p role="status">
             {saveState === "saved"
               ? "All options are saved."
@@ -341,99 +506,125 @@ export function CakeConfigurationEditor({ initial }: { initial: CakeConfiguratio
           {busy ? "Saving…" : "Save options"}
         </Button>
       </div>
-      <div className="cake-option-types" role="tablist" aria-label="Cake option type">
-        {optionTypes.map((type) => (
-          <button
-            key={type}
-            type="button"
-            role="tab"
-            aria-selected={selectedType === type}
-            className={selectedType === type ? "active" : ""}
-            onClick={() => setSelectedType(type)}
-          >
-            {type.charAt(0).toUpperCase() + type.slice(1)}
-            <span>{options.filter((option) => option.type === type && option.active).length}</span>
-          </button>
-        ))}
-      </div>
-      <div className="cake-option-list">
-        {options.map((option, index) =>
-          option.type === selectedType ? (
-            <article key={option.id}>
-              <div className="cake-option-main">
-                <Input
-                  label="Option name"
-                  value={option.name}
-                  onChange={(event) => update(index, { name: event.target.value })}
-                />
-                <Input
-                  label="Customer description"
-                  value={option.description}
-                  onChange={(event) => update(index, { description: event.target.value })}
-                />
-                <Input
-                  label={`Price adjustment (${currency})`}
-                  type="number"
-                  min="0"
-                  value={option.priceAdjustment / 100}
-                  onChange={(event) => update(index, { priceAdjustment: Math.round(Number(event.target.value) * 100) })}
-                />
-              </div>
-              <div className="cake-option-controls">
-                <label className="check-row">
-                  <input
-                    type="checkbox"
-                    checked={option.active}
-                    onChange={(event) => update(index, { active: event.target.checked })}
+      <fieldset disabled={busy} className="form-stack" style={{ border: 0, padding: 0 }}>
+        <div className="cake-option-types" role="tablist" aria-label="Cake option type">
+          {optionTypes.map((type) => (
+            <button
+              key={type}
+              type="button"
+              role="tab"
+              aria-selected={selectedType === type}
+              className={selectedType === type ? "active" : ""}
+              onClick={() => setSelectedType(type)}
+            >
+              {type.charAt(0).toUpperCase() + type.slice(1)}
+              <span>{options.filter((option) => option.type === type && option.active).length}</span>
+            </button>
+          ))}
+        </div>
+        <div className="cake-option-list">
+          {options.map((option, index) =>
+            option.type === selectedType ? (
+              <article key={option.id}>
+                <div className="cake-option-main">
+                  <Input
+                    label="Option name"
+                    value={option.name}
+                    onChange={(event) => update(index, { name: event.target.value })}
                   />
-                  <span>Available to customers</span>
-                </label>
-                <label className="check-row">
-                  <input
-                    type="checkbox"
-                    checked={option.quoteRequired}
-                    onChange={(event) => update(index, { quoteRequired: event.target.checked })}
+                  <Input
+                    label="Customer description"
+                    value={option.description}
+                    onChange={(event) => update(index, { description: event.target.value })}
                   />
-                  <span>Needs a custom quote</span>
-                </label>
-                <button
-                  type="button"
-                  className="text-button danger-text"
-                  onClick={() => setOptions((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                >
-                  Remove option
-                </button>
-              </div>
-            </article>
-          ) : null,
-        )}
-      </div>
-      <Button
-        variant="secondary"
-        onClick={() =>
-          setOptions((current) => [
-            ...current,
-            {
-              id: `new-${Date.now()}`,
-              type: selectedType,
-              name: "",
-              description: "",
-              priceAdjustment: 0,
-              quoteRequired: false,
-              active: true,
-              sortOrder: current.length,
-            },
-          ])
-        }
-      >
-        Add option
-      </Button>
+                  <Input
+                    label={`Extra charge (${currency})`}
+                    type="number"
+                    min="0"
+                    value={option.priceAdjustment / 100}
+                    onChange={(event) =>
+                      update(index, { priceAdjustment: Math.round(Number(event.target.value) * 100) })
+                    }
+                  />
+                </div>
+                <div className="cake-option-controls">
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={busy || !options.slice(0, index).some((item) => item.type === selectedType)}
+                    onClick={() => moveChoice(index, -1)}
+                  >
+                    Move up
+                  </button>
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={busy || !options.slice(index + 1).some((item) => item.type === selectedType)}
+                    onClick={() => moveChoice(index, 1)}
+                  >
+                    Move down
+                  </button>
+                  <label className="check-row">
+                    <input
+                      type="checkbox"
+                      checked={option.active}
+                      onChange={(event) => update(index, { active: event.target.checked })}
+                    />
+                    <span>Available to customers</span>
+                  </label>
+                  <details>
+                    <summary>Quote rules</summary>{" "}
+                    <label className="check-row">
+                      <input
+                        type="checkbox"
+                        checked={option.quoteRequired}
+                        onChange={(event) => update(index, { quoteRequired: event.target.checked })}
+                      />
+                      <span>Needs a custom quote</span>
+                    </label>
+                  </details>
+                  <button
+                    type="button"
+                    className="text-button danger-text"
+                    onClick={() => {
+                      setOptions((current) => current.filter((_, itemIndex) => itemIndex !== index));
+                      setSaveState("unsaved");
+                    }}
+                  >
+                    Remove option
+                  </button>
+                </div>
+              </article>
+            ) : null,
+          )}
+        </div>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setSaveState("unsaved");
+            setOptions((current) => [
+              ...current,
+              {
+                id: crypto.randomUUID(),
+                type: selectedType,
+                name: "",
+                description: "",
+                priceAdjustment: 0,
+                quoteRequired: false,
+                active: true,
+                sortOrder: current.length,
+              },
+            ]);
+          }}
+        >
+          Add option
+        </Button>
+      </fieldset>
     </div>
   );
 }
 
 export function CakeWorkspace({
-  requests,
   configuration,
 }: {
   requests: AdminCakeRequest[];
@@ -448,22 +639,32 @@ export function CakeWorkspace({
           role="tab"
           aria-selected={view === "requests"}
           className={view === "requests" ? "active" : ""}
-          onClick={() => setView("requests")}
+          onClick={() => {
+            if (confirmSectionChange()) setView("requests");
+          }}
         >
-          Customer requests <span>{requests.filter((item) => item.status === "QUOTE_REQUIRED").length}</span>
+          Customer requests
         </button>
         <button
           type="button"
           role="tab"
           aria-selected={view === "options"}
           className={view === "options" ? "active" : ""}
-          onClick={() => setView("options")}
+          onClick={() => {
+            if (confirmSectionChange()) setView("options");
+          }}
         >
-          Configuration <span>{configuration.options.filter((option) => option.active).length}</span>
+          My cakes & options (Configuration){" "}
+          <span>{configuration.options.filter((option) => option.active).length}</span>
         </button>
       </div>
       {view === "requests" ? (
-        <CakeRequests initial={requests} />
+        <HistoryWorkspace<AdminCakeRequest>
+          kind="cakes"
+          renderDetail={(request, _close, refresh) => (
+            <CakeRequests initial={[request]} detailOnly onRefresh={refresh} />
+          )}
+        />
       ) : (
         <>
           <CakeTypesEditor

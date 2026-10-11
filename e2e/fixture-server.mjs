@@ -199,6 +199,62 @@ const server = http.createServer(async (req, res) => {
     });
   if (url.pathname.includes("/rpc/")) {
     const args = body ? JSON.parse(body) : {};
+    if (table === "admin_dashboard_summary") {
+      respond(200, {
+        netRevenue: 0,
+        paidOrders: 0,
+        averageOrderValue: 0,
+        revenueChange: null,
+        returningCustomers: 0,
+        repeatCustomerRate: 0,
+        lowStockProducts: 0,
+        waitingQuotes: 0,
+        recentOrders: [],
+      });
+      return;
+    }
+    if (table === "admin_save_cake_options") {
+      const ids = new Set(args.p_options.map((option) => option.id));
+      for (const option of tables.custom_cake_options) if (!ids.has(option.id)) option.active = false;
+      for (const option of args.p_options) {
+        const data = {
+          id: option.id,
+          type: option.type,
+          name: option.name,
+          description: option.description,
+          price_adjustment: option.priceAdjustment,
+          quote_required: option.quoteRequired,
+          active: option.active,
+          sort_order: option.sortOrder,
+        };
+        const existing = tables.custom_cake_options.find((item) => item.id === option.id);
+        if (existing) Object.assign(existing, data);
+        else tables.custom_cake_options.push(data);
+      }
+      respond(200, null);
+      return;
+    }
+    if (table === "admin_history_page") {
+      respond(200, {
+        rows: [],
+        total: 0,
+        counts: {},
+        page: args.p_filters?.page || 1,
+        size: args.p_filters?.size || 25,
+        asOf: args.p_filters?.asOf || new Date().toISOString(),
+      });
+      return;
+    }
+    if (table === "admin_inventory_page") {
+      respond(200, {
+        ids: tables.products.map((product) => product.id),
+        total: tables.products.length,
+        counts: { ALL: tables.products.length },
+        page: 1,
+        size: 25,
+      });
+      return;
+    }
     if (table === "consume_public_rate_limit") {
       respond(200, { allowed: true, retry_after: 1 });
       return;
@@ -223,11 +279,13 @@ const server = http.createServer(async (req, res) => {
         if (row) Object.assign(row, values);
         else tables.cake_types.push(values);
       }
-      if (args.p_assignments)
-        tables.cake_type_options = args.p_assignments.map((link) => ({
-          cake_type_id: link.cakeTypeId,
-          option_id: link.optionId,
-        }));
+      if (args.p_assignments) {
+        const ids = new Set(args.p_types.map((type) => type.id));
+        tables.cake_type_options = [
+          ...tables.cake_type_options.filter((link) => !ids.has(link.cake_type_id)),
+          ...args.p_assignments.map((link) => ({ cake_type_id: link.cakeTypeId, option_id: link.optionId })),
+        ];
+      }
     }
     if (table === "save_delivery_areas")
       tables.delivery_zones = args.p_areas.map((area) => ({
@@ -247,12 +305,27 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (table === "products")
-    products.forEach((p) => {
+    tables.products.forEach((p) => {
       p.product_variants = tables.product_variants.filter((v) => v.product_id === p.id);
       p.product_images = tables.product_images.filter((image) => image.product_id === p.id);
     });
   const all = tables[table] ?? [];
   let rows = all.filter(filter);
+  const ordering = url.searchParams.get("order");
+  if (ordering)
+    rows.sort((a, b) => {
+      for (const field of ordering.split(",")) {
+        const [key, direction] = field.split(".");
+        const left = a[key] ?? 0;
+        const right = b[key] ?? 0;
+        const result =
+          typeof left === "number" && typeof right === "number"
+            ? left - right
+            : String(left).localeCompare(String(right));
+        if (result) return direction === "desc" ? -result : result;
+      }
+      return 0;
+    });
   if (req.method === "PATCH") {
     const patch = JSON.parse(body);
     rows.forEach((row) => {

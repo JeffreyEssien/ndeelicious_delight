@@ -4,6 +4,7 @@ import { Providers } from "@/components/providers";
 import { getBusinessSettings, getStoreAppearance, getStoreTheme } from "@/lib/data/settings";
 import { resolveThemeTokens } from "@/lib/theme/tokens";
 import "../admin.css";
+import "../documents.css";
 
 export const metadata: Metadata = { robots: { index: false, follow: false, nocache: true } };
 
