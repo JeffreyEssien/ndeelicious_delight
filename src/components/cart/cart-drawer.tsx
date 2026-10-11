@@ -1,4 +1,5 @@
 "use client";
+import { variantPrice } from "@/features/catalog/pricing";
 import { useCustomerText } from "@/components/customer-text-provider";
 import Image from "next/image";
 import Link from "next/link";
@@ -64,8 +65,11 @@ export function CartDrawer() {
                   <Link href={`/product/${p.slug}`} onClick={() => cart.setOpen(false)}>
                     {p.name}
                   </Link>
-                  <small>{v.name}</small>
-                  <strong>{formatMoney(p.price + v.priceAdjustment)}</strong>
+                  <small>
+                    {v.name}
+                    {v.packQuantity ? ` · ${line.quantity} packs / ${line.quantity * v.packQuantity} pieces` : ""}
+                  </small>
+                  <strong>{formatMoney(variantPrice(p, v))}</strong>
                   <div className="quantity">
                     <button
                       type="button"

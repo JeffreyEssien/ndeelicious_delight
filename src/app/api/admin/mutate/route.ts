@@ -1,3 +1,4 @@
+import { verifyQuoteApproval } from "@/lib/documents/quote-approval";
 import { deliveryAreasSchema } from "@/features/fulfilment/validation";
 import { z } from "zod";
 import { after } from "next/server";
@@ -51,7 +52,12 @@ const schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("order-note"), orderNumber: z.string(), note: z.string().trim().max(2_000) }),
   z.object({ action: z.literal("notification-retry"), orderNumber: z.string() }),
   z.object({ action: z.literal("theme"), theme: z.enum(["berry", "purple", "sunrise"]) }),
-  z.object({ action: z.literal("cake-quote"), id: z.uuid(), quotedTotal: z.number().int().positive() }),
+  z.object({
+    action: z.literal("cake-quote"),
+    id: z.uuid(),
+    quotedTotal: z.number().int().positive(),
+    approvalToken: z.string().max(2048),
+  }),
   z.object({ action: z.literal("cake-quote-retry"), id: z.uuid(), documentId: z.uuid() }),
   z.object({
     action: z.literal("cake-status"),
@@ -257,6 +263,7 @@ export async function POST(request: Request) {
   let savedIds: Record<string, string> | undefined;
   let quoteDeliveryId: string | undefined;
   let quoteDocumentId: string | undefined;
+  let reviewedQuoteRevision: number | undefined;
   if (input.action === "product-status")
     ({ error } = await supabase
       .from("products")
@@ -293,17 +300,39 @@ export async function POST(request: Request) {
     ({ error } = await supabase
       .from("site_settings")
       .upsert({ key: "theme", value: input.theme, updated_at: new Date().toISOString() }, { onConflict: "key" }));
-  if (input.action === "cake-quote")
-    ({ error } = await supabase
-      .from("custom_cake_orders")
-      .update({
-        quoted_total: input.quotedTotal,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", input.id));
+  if (input.action === "cake-quote") {
+    try {
+      const approval = verifyQuoteApproval(input.approvalToken, input.id, input.quotedTotal);
+      reviewedQuoteRevision = approval.revision;
+      const { data: latest, error: revisionError } = await supabase
+        .from("business_documents")
+        .select("revision")
+        .eq("cake_order_id", input.id)
+        .eq("kind", "QUOTE")
+        .order("revision", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (revisionError || (latest?.revision ?? 0) !== approval.revision)
+        throw new Error("Quote revision changed. Preview again.");
+      const result = await supabase
+        .from("custom_cake_orders")
+        .update({ quoted_total: input.quotedTotal, updated_at: new Date().toISOString() })
+        .eq("id", input.id)
+        .eq("updated_at", approval.updatedAt)
+        .is("order_id", null)
+        .select("id")
+        .maybeSingle();
+      if (result.error || !result.data) throw new Error("Request changed. Refresh and preview again.");
+    } catch (reason) {
+      error = { message: reason instanceof Error ? reason.message : "Preview this quote again." };
+    }
+  }
   if (input.action === "cake-quote" && !error) {
     try {
-      const issuedQuote = await issueCakeQuote(supabase, input.id, auth.admin.id);
+      const issuedQuote = await issueCakeQuote(supabase, input.id, auth.admin.id, {
+        quotedTotal: input.quotedTotal,
+        revision: reviewedQuoteRevision,
+      });
       quoteDocumentId = issuedQuote.id;
       quoteDeliveryId = await queueCakeQuoteEmail(supabase, input.id, issuedQuote.id);
     } catch {
@@ -329,37 +358,11 @@ export async function POST(request: Request) {
     }));
   }
   if (input.action === "cake-options") {
-    const current = await supabase.from("custom_cake_options").select("id");
-    if (current.error) error = current.error;
-    const submittedIds = new Set(
-      input.options.map((option) => option.id).filter((id) => z.uuid().safeParse(id).success),
-    );
-    if (!error) {
-      const removed = (current.data ?? []).map((row) => row.id).filter((id) => !submittedIds.has(id));
-      if (removed.length) {
-        const result = await supabase.from("custom_cake_options").update({ active: false }).in("id", removed);
-        error = result.error;
-      }
-    }
-    if (!error)
-      for (const option of input.options) {
-        const values = {
-          type: option.type,
-          name: option.name,
-          description: option.description || null,
-          price_adjustment: option.priceAdjustment,
-          quote_required: option.quoteRequired,
-          active: option.active,
-          sort_order: option.sortOrder,
-        };
-        const result = z.uuid().safeParse(option.id).success
-          ? await supabase.from("custom_cake_options").update(values).eq("id", option.id)
-          : await supabase.from("custom_cake_options").insert(values);
-        if (result.error) {
-          error = result.error;
-          break;
-        }
-      }
+    const options = input.options.map((option) => ({
+      ...option,
+      id: z.uuid().safeParse(option.id).success ? option.id : crypto.randomUUID(),
+    }));
+    ({ error } = await supabase.rpc("admin_save_cake_options", { p_options: options }));
   }
   if (input.action === "review-status")
     ({ error } = await supabase
@@ -421,6 +424,7 @@ export async function POST(request: Request) {
         ));
     }
   if (error) {
+    if (input.action === "cake-quote") return Response.json({ error: error.message }, { status: 409 });
     if (error.message.includes("LINKED_ORDER_STATUS_AUTHORITATIVE"))
       return Response.json(
         { error: "Update this cake from its linked order. The payment and order stages control its progress." },

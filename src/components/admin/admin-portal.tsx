@@ -1,10 +1,13 @@
 "use client";
+import { CustomerWorkspace } from "./customer-workspace";
+import { InventoryWorkspace } from "./inventory-workspace";
+import { HistoryWorkspace } from "./history-workspace";
 import { deliveryAreasSchema } from "@/features/fulfilment/validation";
 import { FulfilmentSettings } from "./fulfilment-settings";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, type FormEvent, useEffect, useState } from "react";
 import type {
   AdminAuditLog,
   AdminCakeRequest,
@@ -14,7 +17,7 @@ import type {
   AdminReview,
 } from "@/lib/data/admin";
 import type { DeliveryZone, OrderStatus, Product, ProductStatus } from "@/types";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 import { Badge, Button, EmptyState, Input, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
@@ -33,6 +36,7 @@ import type {
   MarketingExport,
 } from "@/types/content";
 import { resolveThemeTokens, themeTokenCss } from "@/lib/theme/tokens";
+import type { DashboardSummary } from "@/lib/data/admin-dashboard";
 import type { AnalyticsSnapshot } from "@/features/analytics/analytics";
 import { AnalyticsWorkspace } from "@/components/admin/analytics-workspace";
 
@@ -53,6 +57,7 @@ type Props = {
   initialMarketing: MarketingExport;
   initialAuditLogs: AdminAuditLog[];
   initialAnalytics: AnalyticsSnapshot | null;
+  initialDashboard?: DashboardSummary | null;
   siteUrl: string;
 };
 const titles: Record<string, string> = {
@@ -103,7 +108,6 @@ async function mutate(body: unknown) {
 export function AdminPortal({
   section = "dashboard",
   initialProducts,
-  initialOrders,
   initialZones,
   initialCakes,
   initialCoupons,
@@ -117,21 +121,19 @@ export function AdminPortal({
   initialMarketing,
   initialAuditLogs,
   initialAnalytics,
+  initialDashboard,
   siteUrl,
 }: Props) {
   const [products, setProducts] = useState(initialProducts);
-  const [orders, setOrders] = useState(initialOrders);
   const [zones, setZones] = useState(initialZones);
   const [editor, setEditor] = useState<Product | null>();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ALL");
   const [zoneBusy, setZoneBusy] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<string>();
   const notify = useToast();
   const router = useRouter();
   const { theme, setTheme } = useStoreTheme();
   useEffect(() => setProducts(initialProducts), [initialProducts]);
-  useEffect(() => setOrders(initialOrders), [initialOrders]);
   useEffect(() => setZones(initialZones), [initialZones]);
   async function productStatus(id: string, value: ProductStatus) {
     const before = products;
@@ -150,47 +152,6 @@ export function AdminPortal({
       notify(`${product.name} duplicated as a draft.`);
       router.refresh();
     } else notify(payload.error ?? "Product could not be duplicated.");
-  }
-  async function orderStatus(id: string, value: OrderStatus) {
-    const before = orders;
-    setOrders((v) => v.map((o) => (o.id === id ? { ...o, status: value } : o)));
-    const response = await mutate({ action: "order-status", orderNumber: id, status: value });
-    if (response.ok) notify("Order status updated.");
-    else {
-      setOrders(before);
-      const payload = await response.json().catch(() => null);
-      notify(payload?.error ?? "Order update could not be saved.");
-    }
-  }
-  async function inventory(productId: string, variantId: string, quantity: number) {
-    const before = products;
-    setProducts((v) =>
-      v.map((p) =>
-        p.id === productId
-          ? (() => {
-              const variants = p.variants.map((variant) =>
-                variant.id === variantId ? { ...variant, stockQuantity: quantity } : variant,
-              );
-              const stockQuantity = variants
-                .filter((variant) => variant.active)
-                .reduce((sum, variant) => sum + variant.stockQuantity, 0);
-              return {
-                ...p,
-                variants,
-                stockQuantity,
-                status: stockQuantity === 0 ? "OUT_OF_STOCK" : p.status === "OUT_OF_STOCK" ? "ACTIVE" : p.status,
-              };
-            })()
-          : p,
-      ),
-    );
-    const response = await mutate({ action: "inventory", id: productId, variantId, quantity });
-    if (response.ok) notify("Inventory updated.");
-    else {
-      setProducts(before);
-      const payload = await response.json().catch(() => null);
-      notify(payload?.error ?? "Inventory could not be saved.");
-    }
   }
   async function saveZones() {
     const parsed = deliveryAreasSchema.safeParse(zones.map((zone, sortOrder) => ({ ...zone, sortOrder })));
@@ -243,41 +204,25 @@ export function AdminPortal({
           )}
         </div>
       </div>
-      {section === "dashboard" && initialAnalytics && (
-        <Dashboard products={products} orders={orders} cakes={initialCakes} analytics={initialAnalytics} />
-      )}
+      {section === "dashboard" && initialDashboard && <Dashboard summary={initialDashboard} />}
       {section === "analytics" && initialAnalytics && <AnalyticsWorkspace snapshot={initialAnalytics} />}
       {section === "orders" && (
-        <>
-          <AdminFilters
-            query={query}
-            setQuery={setQuery}
-            status={status}
-            setStatus={setStatus}
-            options={[
-              "ALL",
-              "PENDING_PAYMENT",
-              "PAID",
-              "CONFIRMED",
-              "PREPARING",
-              "READY",
-              "OUT_FOR_DELIVERY",
-              "DELIVERED",
-              "CANCELLED",
-            ]}
-          />
-          <div className="admin-card">
-            <OrderTable
-              orders={orders.filter(
-                (o) =>
-                  (status === "ALL" || o.status === status) &&
-                  `${o.id} ${o.customer}`.toLowerCase().includes(query.toLowerCase()),
-              )}
-              onStatus={orderStatus}
-              onView={(order) => setSelectedOrderId(order.id)}
+        <HistoryWorkspace<AdminOrder>
+          kind="orders"
+          renderDetail={(order, close, refresh) => (
+            <OrderDetail
+              order={order}
+              close={close}
+              onRefresh={refresh}
+              onStatus={async (id, status) => {
+                const response = await mutate({ action: "order-status", orderNumber: id, status });
+                const payload = await response.json().catch(() => null);
+                notify(response.ok ? "Order updated." : (payload?.error ?? "Order could not be updated."));
+                if (response.ok) await refresh();
+              }}
             />
-          </div>
-        </>
+          )}
+        />
       )}
       {section === "custom-cakes" && <CakeWorkspace requests={initialCakes} configuration={initialCakeConfiguration} />}
       {section === "products" && (
@@ -292,8 +237,8 @@ export function AdminPortal({
           onDuplicate={duplicateProduct}
         />
       )}
-      {section === "inventory" && <Inventory products={products} onChange={inventory} onEdit={setEditor} />}
-      {section === "customers" && <Customers orders={orders} />}
+      {section === "inventory" && <InventoryWorkspace onEdit={setEditor} />}
+      {section === "customers" && <CustomerWorkspace />}
       {section === "coupons" && <Coupons initial={initialCoupons} products={products} categories={initialCategories} />}
       {section === "reviews" && <Reviews initial={initialReviews} />}
       {section === "content" && <ContentSettings initial={initialContent} />}
@@ -322,26 +267,14 @@ export function AdminPortal({
           <ProductEditor
             product={editor}
             close={() => setEditor(undefined)}
-            onSaved={() => {
+            onSaved={(updated) => {
+              setProducts((current) =>
+                current.map((product) => (product.id === editor?.id ? { ...product, ...updated } : product)),
+              );
               setEditor(undefined);
               notify("Product saved. Storefront visibility is up to date.");
               router.refresh();
             }}
-          />
-        </ModalOverlay>
-      )}
-      {selectedOrderId && orders.find((order) => order.id === selectedOrderId) && (
-        <ModalOverlay
-          open
-          onClose={() => setSelectedOrderId(undefined)}
-          className="admin-drawer order-detail"
-          scrimClassName="admin-scrim"
-          ariaLabel={`Order ${selectedOrderId}`}
-        >
-          <OrderDetail
-            order={orders.find((order) => order.id === selectedOrderId) as AdminOrder}
-            close={() => setSelectedOrderId(undefined)}
-            onStatus={orderStatus}
           />
         </ModalOverlay>
       )}
@@ -460,20 +393,8 @@ function AuditLog({ entries }: { entries: AdminAuditLog[] }) {
   );
 }
 
-function Dashboard({
-  products,
-  orders,
-  cakes,
-  analytics,
-}: {
-  products: Product[];
-  orders: AdminOrder[];
-  cakes: AdminCakeRequest[];
-  analytics: AnalyticsSnapshot;
-}) {
+function Dashboard({ summary }: { summary: DashboardSummary }) {
   const money = useMoney();
-  const summary = analytics.periods["30d"];
-  const low = products.filter((p) => p.stockQuantity <= p.lowStockThreshold);
   return (
     <>
       <div className="metric-grid">
@@ -496,13 +417,13 @@ function Dashboard({
           value={`${summary.repeatCustomerRate.toFixed(1)}%`}
           delta={`${summary.returningCustomers} returned in 30 days`}
         />
-        <Metric label="Low stock" value={String(low.length)} delta="Review inventory" />
+        <Metric label="Low stock" value={String(summary.lowStockProducts)} delta="Review inventory" />
       </div>
       <div className="dashboard-analytics-link">
         <div>
           <span className="overline">Business pulse</span>
-          <b>{summary.insights[0]?.title ?? "Your analytics are ready"}</b>
-          <p>{summary.insights[0]?.meaning ?? "See performance across sales, customers and operations."}</p>
+          <b>Your analytics are ready</b>
+          <p>See performance across sales, customers and operations.</p>
         </div>
         <Link className="button button-secondary" href="/admin/analytics">
           Open analytics <Icon name="arrow" />
@@ -517,7 +438,7 @@ function Dashboard({
             </div>
             <Link href="/admin/orders">View all</Link>
           </div>
-          <OrderTable orders={orders.slice(0, 5)} />
+          <OrderTable orders={summary.recentOrders} />
         </div>
         <div className="admin-card attention-list">
           <div className="card-head">
@@ -529,14 +450,14 @@ function Dashboard({
           <article>
             <span className="attention-icon danger">!</span>
             <div>
-              <b>{low.length} products are running low</b>
+              <b>{summary.lowStockProducts} products are running low</b>
               <small>Update today’s quantities</small>
             </div>
           </article>
           <article>
             <span className="attention-icon warning">$</span>
             <div>
-              <b>{cakes.filter((c) => c.status === "QUOTE_REQUIRED").length} cake quotes waiting</b>
+              <b>{summary.waitingQuotes} cake quotes waiting</b>
               <small>Open custom cake requests</small>
             </div>
           </article>
@@ -559,9 +480,9 @@ function OrderTable({
   onStatus,
   onView,
 }: {
-  orders: AdminOrder[];
+  orders: DashboardSummary["recentOrders"];
   onStatus?: (id: string, status: OrderStatus) => void;
-  onView?: (order: AdminOrder) => void;
+  onView?: (order: DashboardSummary["recentOrders"][number]) => void;
 }) {
   const money = useMoney();
   const business = useBusinessSettings();
@@ -618,20 +539,44 @@ function OrderDetail({
   order,
   close,
   onStatus,
+  onRefresh,
 }: {
   order: AdminOrder;
   close: () => void;
   onStatus: (id: string, status: OrderStatus) => Promise<void>;
+  onRefresh?: () => Promise<void>;
 }) {
-  const money = useMoney();
   const business = useBusinessSettings();
+  const money = (value: number) => formatMoney(value, order.currency, business.locale);
+  const paid = order.payment?.paidAt ? order.payment.amount : 0;
   const notify = useToast();
   const router = useRouter();
-  const refundable = Math.max(0, (order.payment?.amount ?? 0) - (order.payment?.refundedAmount ?? 0));
+  const refundable = order.payment?.paidAt ? Math.max(0, order.payment.amount - order.payment.refundedAmount) : 0;
   const [note, setNote] = useState(order.internalNote);
   const [refundAmount, setRefundAmount] = useState(refundable ? String(refundable / 100) : "");
   const [refundReason, setRefundReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const next: Partial<Record<OrderStatus, { stage: OrderStatus; label: string }>> = {
+    PAID: { stage: "CONFIRMED", label: "Confirm order" },
+    CONFIRMED: { stage: "PREPARING", label: "Begin preparation" },
+    PREPARING: { stage: "READY", label: "Mark ready" },
+    READY:
+      order.fulfilment === "pickup"
+        ? { stage: "DELIVERED", label: "Confirm pickup" }
+        : { stage: "OUT_FOR_DELIVERY", label: "Send for delivery" },
+    OUT_FOR_DELIVERY: { stage: "DELIVERED", label: "Confirm delivery" },
+  };
+  const nextAction = next[order.status];
+  async function advance() {
+    if (busy || !nextAction) return;
+    setBusy(true);
+    try {
+      await onStatus(order.id, nextAction.stage);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveNote() {
     setBusy(true);
     const response = await mutate({ action: "order-note", orderNumber: order.id, note });
@@ -667,57 +612,41 @@ function OrderDetail({
             ? "Full refund completed."
             : "Partial refund completed.",
       );
-      router.refresh();
+      if (onRefresh) await onRefresh();
+      else router.refresh();
     } else notify(payload?.error ?? "The refund could not be processed.");
   }
   return (
     <div className="order-detail-content">
       <div className="panel-head">
         <div>
-          <span className="overline">Order details</span>
+          <span className="overline">{formatDate(order.date, business.locale, business.timezone)}</span>
           <h2>{order.id}</h2>
+          <StatusBadge status={order.status} />
+          <Badge>Payment: {order.payment?.status.toLowerCase().replaceAll("_", " ") ?? "unpaid"}</Badge>
         </div>
         <button type="button" className="icon-button" onClick={close} aria-label="Close order details">
           <Icon name="close" />
         </button>
       </div>
       <div className="order-detail-actions no-print">
-        <OrderStatusSelect value={order.status} onChange={(value) => onStatus(order.id, value)} />
-        <Button variant="secondary" disabled={busy} onClick={retryNotifications}>
-          Retry customer emails
-        </Button>
-        <Button variant="secondary" onClick={() => window.print()}>
-          Print summary
-        </Button>
-      </div>
-      <section className="order-documents-area">
-        <span className="overline">Documents</span>
-        <h3>{order.payment?.paidAt ? "Payment receipt" : "Invoice and payment request"}</h3>
-        <p>
-          {order.payment?.paidAt
-            ? "The receipt is locked to the confirmed payment record."
-            : "Issue an invoice showing the current amount due."}
-        </p>
-        <Link
-          className="button button-primary"
-          href={`/admin/documents/orders/${encodeURIComponent(order.id)}/${order.payment?.paidAt ? "receipt" : "invoice"}`}
-          target="_blank"
-        >
-          {order.payment?.paidAt ? "View receipt" : "Create invoice"}
-        </Link>
-        {order.payment?.paidAt && (
-          <details>
-            <summary>Other document</summary>
-            <Link
-              className="text-button"
-              href={`/admin/documents/orders/${encodeURIComponent(order.id)}/invoice`}
-              target="_blank"
-            >
-              View invoice
-            </Link>
-          </details>
+        {nextAction && (
+          <Button disabled={busy} onClick={advance}>
+            {busy ? "Updating…" : nextAction.label}
+          </Button>
         )}
-      </section>
+        <details className="order-secondary-actions">
+          <summary>More actions</summary>
+          <OrderStatusSelect value={order.status} onChange={(value) => onStatus(order.id, value)} />
+          <Button variant="secondary" disabled={busy} onClick={retryNotifications}>
+            Retry customer emails
+          </Button>
+          <Button variant="secondary" onClick={() => window.print()}>
+            Print summary
+          </Button>
+        </details>
+      </div>
+
       <section>
         <h3>Customer and fulfilment</h3>
         <dl className="order-detail-list">
@@ -762,7 +691,7 @@ function OrderDetail({
         </dl>
       </section>
       <section>
-        <h3>Immutable purchase snapshot</h3>
+        <h3>Order items</h3>
         <div className="order-lines">
           {order.lines.map((line) => (
             <div key={line.id}>
@@ -770,7 +699,27 @@ function OrderDetail({
                 <b>{line.productName}</b>
                 <small>
                   {line.variantName} × {line.quantity}
+                  {line.packQuantity ? ` packs · ${line.quantity * line.packQuantity} pieces` : ""}
                 </small>
+                {line.configuration && (
+                  <dl className="purchase-configuration">
+                    {Object.entries({
+                      occasion: "Occasion",
+                      size: "Size",
+                      flavour: "Cake flavour",
+                      filling: "Filling",
+                      design: "Design",
+                      colours: "Preferred colours",
+                    }).map(([key, label]) =>
+                      line.configuration?.[key] ? (
+                        <div key={key}>
+                          <dt>{label}</dt>
+                          <dd>{line.configuration[key]}</dd>
+                        </div>
+                      ) : null,
+                    )}
+                  </dl>
+                )}
               </span>
               <b>{money(line.finalPrice)}</b>
             </div>
@@ -802,7 +751,7 @@ function OrderDetail({
         </dl>
       </section>
       <section>
-        <h3>Payment</h3>
+        <h3>Payment and balance</h3>
         {order.payment ? (
           <dl className="order-detail-list">
             <div>
@@ -811,7 +760,7 @@ function OrderDetail({
             </div>
             <div>
               <dt>Paid</dt>
-              <dd>{money(order.payment.amount)}</dd>
+              <dd>{money(paid)}</dd>
             </div>
             <div>
               <dt>Refunded</dt>
@@ -821,56 +770,94 @@ function OrderDetail({
         ) : (
           <p>No payment attempt has been recorded.</p>
         )}
+        <p>
+          Outstanding balance: <strong>{money(Math.max(0, order.total - paid))}</strong>
+        </p>
         {refundable > 0 && !["PENDING_PAYMENT", "FAILED", "CANCELLED"].includes(order.status) && (
-          <div className="refund-form no-print">
-            <Input
-              label={`Refund amount (${order.currency})`}
-              type="number"
-              min="0.01"
-              max={refundable / 100}
-              step="0.01"
-              value={refundAmount}
-              onChange={(event) => setRefundAmount(event.target.value)}
-            />
-            <Textarea
-              label="Reason for refund"
-              rows={3}
-              value={refundReason}
-              onChange={(event) => setRefundReason(event.target.value)}
-            />
-            <Button disabled={busy} variant="secondary" onClick={refund}>
-              {busy ? "Processing…" : "Process Stripe refund"}
-            </Button>
-          </div>
+          <details className="no-print">
+            <summary>Refund payment</summary>
+            <div className="refund-form no-print">
+              <Input
+                label={`Refund amount (${order.currency})`}
+                type="number"
+                min="0.01"
+                max={refundable / 100}
+                step="0.01"
+                value={refundAmount}
+                onChange={(event) => setRefundAmount(event.target.value)}
+              />
+              <Textarea
+                label="Reason for refund"
+                rows={3}
+                value={refundReason}
+                onChange={(event) => setRefundReason(event.target.value)}
+              />
+              <Button disabled={busy} variant="secondary" onClick={refund}>
+                {busy ? "Processing…" : "Process Stripe refund"}
+              </Button>
+            </div>
+          </details>
+        )}
+      </section>
+      <section className="order-documents-area">
+        <span className="overline">Documents</span>
+        <h3>{order.payment?.paidAt ? "Payment receipt" : "Invoice and payment request"}</h3>
+        <p>
+          {order.payment?.paidAt
+            ? "The receipt is locked to the confirmed payment record."
+            : "Issue an invoice showing the current amount due."}
+        </p>
+        <Link
+          className="button button-primary"
+          href={`/admin/documents/orders/${encodeURIComponent(order.id)}/${order.payment?.paidAt ? "receipt" : "invoice"}`}
+          target="_blank"
+        >
+          {order.payment?.paidAt ? "View receipt" : "Create invoice"}
+        </Link>
+        {order.payment?.paidAt && (
+          <details>
+            <summary>Other document</summary>
+            <Link
+              className="text-button"
+              href={`/admin/documents/orders/${encodeURIComponent(order.id)}/invoice`}
+              target="_blank"
+            >
+              View invoice
+            </Link>
+          </details>
         )}
       </section>
       <section className="no-print">
-        <h3>Internal note</h3>
-        <Textarea
-          label="Only administrators can see this"
-          rows={4}
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-        />
-        <Button disabled={busy} variant="secondary" onClick={saveNote}>
-          Save internal note
-        </Button>
+        <details>
+          <summary>Internal note</summary>
+          <Textarea
+            label="Only administrators can see this"
+            rows={4}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+          <Button disabled={busy} variant="secondary" onClick={saveNote}>
+            Save internal note
+          </Button>
+        </details>
       </section>
       <section>
-        <h3>Activity</h3>
-        <ol className="order-timeline">
-          {order.events.map((event) => (
-            <li key={event.id}>
-              <b>
-                {event.toStatus
-                  ? `${event.fromStatus?.replaceAll("_", " ")} → ${event.toStatus.replaceAll("_", " ")}`
-                  : event.eventType.replaceAll("_", " ")}
-              </b>
-              {event.note && <p>{event.note}</p>}
-              <small>{formatDate(event.createdAt, business.locale, business.timezone)}</small>
-            </li>
-          ))}
-        </ol>
+        <details>
+          <summary>Activity</summary>
+          <ol className="order-timeline">
+            {order.events.map((event) => (
+              <li key={event.id}>
+                <b>
+                  {event.toStatus
+                    ? `${event.fromStatus?.replaceAll("_", " ")} → ${event.toStatus.replaceAll("_", " ")}`
+                    : event.eventType.replaceAll("_", " ")}
+                </b>
+                {event.note && <p>{event.note}</p>}
+                <small>{formatDate(event.createdAt, business.locale, business.timezone)}</small>
+              </li>
+            ))}
+          </ol>
+        </details>
       </section>
     </div>
   );
@@ -904,6 +891,7 @@ function OrderStatusSelect({ value, onChange }: { value: OrderStatus; onChange: 
   return (
     <select
       className="status-select"
+      aria-label="Fulfilment stage"
       value={value}
       disabled={!values.length}
       onChange={(e) => onChange(e.target.value as OrderStatus)}
@@ -934,9 +922,14 @@ function AdminFilters({
     <div className="admin-filters">
       <div>
         <Icon name="search" />
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search…" />
+        <input
+          aria-label="Search records"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search…"
+        />
       </div>
-      <select value={status} onChange={(e) => setStatus(e.target.value)}>
+      <select aria-label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)}>
         {options.map((item) => (
           <option key={item}>{item.replaceAll("_", " ")}</option>
         ))}
@@ -1020,7 +1013,11 @@ function Products({
                     )}
                     <div>
                       <b>{product.name}</b>
-                      <small>{product.featured ? `Featured · ${product.slug}` : product.slug}</small>
+                      <small>
+                        {product.featured
+                          ? "Featured product"
+                          : product.shoppingMode?.replaceAll("_", " ").toLowerCase()}
+                      </small>
                     </div>
                   </div>
                 </td>
@@ -1039,11 +1036,14 @@ function Products({
                 <td>
                   <select
                     className="status-select"
+                    aria-label={`Change status for ${product.name}`}
                     value={product.status}
                     onChange={(e) => onStatus(product.id, e.target.value as ProductStatus)}
                   >
                     {["ACTIVE", "OUT_OF_STOCK", "DRAFT", "ARCHIVED"].map((item) => (
-                      <option key={item}>{item}</option>
+                      <option key={item} value={item}>
+                        {item.replaceAll("_", " ")}
+                      </option>
                     ))}
                   </select>
                 </td>
@@ -1065,216 +1065,6 @@ function Products({
     </>
   );
 }
-function Inventory({
-  products,
-  onChange,
-  onEdit,
-}: {
-  products: Product[];
-  onChange: (productId: string, variantId: string, quantity: number) => void;
-  onEdit: (product: Product) => void;
-}) {
-  const [query, setQuery] = useState("");
-  const [view, setView] = useState<"ALL" | "LOW" | "OUT">("ALL");
-  const units = products.flatMap((product) => product.variants.map((variant) => ({ product, variant })));
-  const normalizedQuery = query.trim().toLowerCase();
-  const visible = units.filter(({ product, variant }) => {
-    const matchesQuery = `${product.name} ${variant.name} ${variant.sku ?? ""}`.toLowerCase().includes(normalizedQuery);
-    const matchesView =
-      view === "ALL" ||
-      (view === "OUT" && variant.stockQuantity === 0) ||
-      (view === "LOW" && variant.stockQuantity > 0 && variant.stockQuantity <= product.lowStockThreshold);
-    return matchesQuery && matchesView;
-  });
-  const low = units.filter(
-    ({ product, variant }) => variant.stockQuantity > 0 && variant.stockQuantity <= product.lowStockThreshold,
-  ).length;
-  const out = units.filter(({ variant }) => variant.stockQuantity === 0).length;
-  const stockOnHand = units.reduce((total, { variant }) => total + variant.stockQuantity, 0);
-  return (
-    <div className="inventory-workspace">
-      <div className="inventory-overview">
-        <div>
-          <span>Units on hand</span>
-          <b>{stockOnHand}</b>
-          <small>Across {units.length} sellable options</small>
-        </div>
-        <div className={low ? "warning" : ""}>
-          <span>Running low</span>
-          <b>{low}</b>
-          <small>At or below their alert level</small>
-        </div>
-        <div className={out ? "danger" : ""}>
-          <span>Out of stock</span>
-          <b>{out}</b>
-          <small>Unavailable to customers</small>
-        </div>
-      </div>
-      <div className="admin-card inventory-panel">
-        <div className="inventory-panel-head">
-          <div>
-            <h2>Stock by product option</h2>
-            <p>Search by product, option, or SKU and adjust the quantity available to customers.</p>
-          </div>
-          <span>
-            <b>{visible.length}</b> of {units.length} options
-          </span>
-        </div>
-        <div className="inventory-toolbar">
-          <label className="inventory-search">
-            <Icon name="search" />
-            <input
-              aria-label="Search inventory"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search product, option or SKU"
-            />
-            {query && (
-              <button type="button" onClick={() => setQuery("")} aria-label="Clear inventory search">
-                Clear
-              </button>
-            )}
-          </label>
-          <fieldset aria-label="Filter inventory">
-            {(["ALL", "LOW", "OUT"] as const).map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={view === item ? "active" : ""}
-                aria-pressed={view === item}
-                onClick={() => setView(item)}
-              >
-                {item === "ALL" ? "All stock" : item === "LOW" ? `Low (${low})` : `Out (${out})`}
-              </button>
-            ))}
-          </fieldset>
-        </div>
-        <div className="inventory-list">
-          {!visible.length && <EmptyState title="No inventory matched" body="Try another search or stock filter." />}
-          {visible.map(({ product, variant }) => (
-            <article key={variant.id}>
-              {product.image ? (
-                <Image src={product.image} alt="" width={56} height={64} />
-              ) : (
-                <span className="admin-image-empty" role="img" aria-label="No product image" />
-              )}
-              <div className="inventory-item-copy">
-                <b>{product.name}</b>
-                <small>{variant.name}</small>
-                <code>{variant.sku ?? "SKU pending"}</code>
-                <button className="text-button" type="button" onClick={() => onEdit(product)}>
-                  Edit product, options & stock settings
-                </button>
-              </div>
-              <div className="inventory-quantity">
-                <span>On hand</span>
-                <div className="stock-control">
-                  <button
-                    type="button"
-                    aria-label={`Remove one ${product.name} ${variant.name}`}
-                    onClick={() => onChange(product.id, variant.id, Math.max(0, variant.stockQuantity - 1))}
-                  >
-                    −
-                  </button>
-                  <b className={variant.stockQuantity <= product.lowStockThreshold ? "danger-text" : ""}>
-                    {variant.stockQuantity}
-                  </b>
-                  <button
-                    type="button"
-                    aria-label={`Add one ${product.name} ${variant.name}`}
-                    onClick={() => onChange(product.id, variant.id, variant.stockQuantity + 1)}
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-              <label className="inventory-exact">
-                <span>Set exact</span>
-                <input
-                  key={`${variant.id}-${variant.stockQuantity}`}
-                  type="number"
-                  min="0"
-                  aria-label={`Set exact stock for ${product.name} ${variant.name}`}
-                  defaultValue={variant.stockQuantity}
-                  onBlur={(event) => {
-                    const quantity = Math.max(0, Number(event.currentTarget.value));
-                    if (quantity !== variant.stockQuantity) onChange(product.id, variant.id, quantity);
-                  }}
-                />
-              </label>
-              <StatusBadge
-                status={
-                  variant.stockQuantity === 0
-                    ? "OUT_OF_STOCK"
-                    : variant.stockQuantity <= product.lowStockThreshold
-                      ? "LOW_STOCK"
-                      : "HEALTHY"
-                }
-              />
-            </article>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-function Customers({ orders }: { orders: AdminOrder[] }) {
-  const money = useMoney();
-  const business = useBusinessSettings();
-  const customers = useMemo(
-    () =>
-      Object.values(
-        orders.reduce<Record<string, { name: string; email: string; orders: number; spent: number; last: string }>>(
-          (all, order) => {
-            const key = order.email.toLowerCase();
-            const current = all[key] ?? {
-              name: order.customer,
-              email: order.email,
-              orders: 0,
-              spent: 0,
-              last: order.date,
-            };
-            current.orders += 1;
-            current.spent += order.total;
-            if (order.date > current.last) current.last = order.date;
-            all[key] = current;
-            return all;
-          },
-          {},
-        ),
-      ),
-    [orders],
-  );
-  return (
-    <div className="admin-card table-scroll mobile-card-table customers-table">
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>Customer</th>
-            <th>Contact</th>
-            <th>Orders</th>
-            <th>Total spent</th>
-            <th>Last order</th>
-          </tr>
-        </thead>
-        <tbody>
-          {customers.map((customer) => (
-            <tr key={customer.email}>
-              <td>
-                <b>{customer.name}</b>
-              </td>
-              <td>{customer.email}</td>
-              <td>{customer.orders}</td>
-              <td>{money(customer.spent)}</td>
-              <td>{formatDate(customer.last, business.locale, business.timezone)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 function DeliveryZones({
   zones,
   setZones,
@@ -1481,7 +1271,7 @@ function DeliveryZones({
           </article>
         ))}
       </div>
-      <div className="admin-save-bar">
+      <div className="admin-save-bar delivery-save-bar">
         <span role="status">{saveState}</span>
         <Button
           disabled={busy}

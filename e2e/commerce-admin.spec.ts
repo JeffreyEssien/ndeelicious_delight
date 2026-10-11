@@ -14,6 +14,8 @@ test.beforeEach(async ({ context, page }) => {
     { name: "ndee_admin_session", value: `${payload}.${signature}`, url: origin.origin, httpOnly: true },
   ]);
   await page.route("**/api/analytics/events", (route) => route.fulfill({ status: 204 }));
+  await page.request.post("http://127.0.0.1:4545/__fixtures/reset");
+  await page.request.post("/api/admin/mutate", { data: { action: "theme", theme: "berry" } });
 });
 test("owner delivery configuration persists and rejects duplicate postal prefixes", async ({ page }) => {
   await page.request.post("http://127.0.0.1:4545/__fixtures/reset-delivery-areas");

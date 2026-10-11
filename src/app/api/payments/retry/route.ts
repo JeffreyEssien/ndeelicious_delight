@@ -1,8 +1,12 @@
-import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { isSameOrigin } from "@/lib/auth/validation";
 import { InventoryConflictError, transitionOrderStatus } from "@/lib/data/inventory";
-import { createStripeCheckout, expireStripeCheckout, PaymentConfigurationError } from "@/lib/payments/stripe";
+import {
+  createStripeCheckout,
+  expireStripeCheckout,
+  retrieveStripeCheckout,
+  PaymentConfigurationError,
+} from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
@@ -31,22 +35,49 @@ export async function POST(request: Request) {
   if (error || !data) return Response.json({ error: "Payment session not found." }, { status: 404 });
   const order = Array.isArray(data.orders) ? data.orders[0] : data.orders;
   if (!order) return Response.json({ error: "Order not found." }, { status: 404 });
-  const previousPayload = (data.provider_payload ?? {}) as Record<string, unknown>;
-  if (data.status === "PENDING" && typeof previousPayload.checkout_url === "string") {
-    return Response.json({ payment: { checkoutUrl: previousPayload.checkout_url } });
-  }
-  if (data.status === "SUCCEEDED" || order.status === "PAID") {
-    return Response.json({ error: "This order is already paid." }, { status: 409 });
+  if (!["PENDING_PAYMENT", "FAILED"].includes(order.status) || data.status === "SUCCEEDED") {
+    return Response.json({ error: "This order is no longer awaiting payment." }, { status: 409 });
   }
 
   let sessionId: string | undefined;
   try {
+    // An old email can refer to an earlier attempt; prefer the current session.
+    const latest = await service
+      .from("payments")
+      .select("provider_payment_id,status")
+      .eq("order_id", data.order_id)
+      .eq("provider", "stripe")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latest.error) throw latest.error;
+    if (latest.data?.status === "SUCCEEDED")
+      return Response.json({ error: "This order is already paid." }, { status: 409 });
+    const existing = await retrieveStripeCheckout(latest.data?.provider_payment_id ?? parsed.data.sessionId);
+    if (existing.status === "complete" || existing.paymentStatus === "paid") {
+      return Response.json(
+        { error: "Payment has been submitted. We are confirming it; please do not pay again." },
+        { status: 409 },
+      );
+    }
+    if (existing.status === "open" && existing.url && existing.expiresAt > Date.now() / 1000) {
+      return Response.json({ payment: { checkoutUrl: existing.url } }, { headers: { "Cache-Control": "no-store" } });
+    }
+    if (existing.status !== "expired")
+      return Response.json({ error: "Payment status is being updated. Please try again shortly." }, { status: 409 });
+    // A delayed expiry webhook for the old attempt must not release a new hold.
+    const retired = await service
+      .from("payments")
+      .update({ status: "FAILED", updated_at: new Date().toISOString() })
+      .eq("provider_payment_id", latest.data?.provider_payment_id ?? parsed.data.sessionId)
+      .eq("status", "PENDING");
+    if (retired.error) throw retired.error;
     const { error: prepareError } = await service.rpc("prepare_order_payment_retry", {
       p_order_id: data.order_id,
       p_hold_minutes: 60,
     });
     if (prepareError) throw prepareError;
-    const attemptKey = `checkout:${data.order_id}:${randomUUID()}`;
+    const attemptKey = `checkout:${data.order_id}:renew:${latest.data?.provider_payment_id ?? parsed.data.sessionId}`;
     const checkout = await createStripeCheckout({
       orderId: data.order_id,
       orderNumber: order.order_number,
@@ -56,25 +87,28 @@ export async function POST(request: Request) {
       attemptKey,
     });
     sessionId = checkout.id;
-    const { error: insertError } = await service.from("payments").insert({
-      order_id: data.order_id,
-      provider: "stripe",
-      provider_payment_id: checkout.id,
-      status: "PENDING",
-      amount: order.grand_total,
-      currency: order.currency,
-      idempotency_key: attemptKey,
-      provider_payload: {
-        checkout_session_id: checkout.id,
-        checkout_url: checkout.url,
-        expires_at: checkout.expiresAt,
+    const { error: insertError } = await service.from("payments").upsert(
+      {
+        order_id: data.order_id,
+        provider: "stripe",
+        provider_payment_id: checkout.id,
+        status: "PENDING",
+        amount: order.grand_total,
+        currency: order.currency,
+        idempotency_key: attemptKey,
+        provider_payload: {
+          checkout_session_id: checkout.id,
+          checkout_url: checkout.url,
+          expires_at: checkout.expiresAt,
+        },
       },
-    });
+      { onConflict: "idempotency_key", ignoreDuplicates: true },
+    );
     if (insertError) throw insertError;
     return Response.json({ payment: { checkoutUrl: checkout.url } });
   } catch (reason) {
     if (sessionId) await expireStripeCheckout(sessionId);
-    await transitionOrderStatus(service, order.order_number, "FAILED").catch(() => undefined);
+    if (sessionId) await transitionOrderStatus(service, order.order_number, "FAILED").catch(() => undefined);
     if (reason instanceof PaymentConfigurationError)
       return Response.json({ error: reason.message, code: "PAYMENT_UNAVAILABLE" }, { status: 503 });
     if (reason instanceof InventoryConflictError)

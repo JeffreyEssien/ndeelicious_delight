@@ -274,6 +274,7 @@ describe("POST /api/admin/mutate inventory operations", () => {
             slug: "wedding-cake",
             description: "",
             basePrice: 2500,
+            taxClass: "WEDDING_CAKE",
             leadTimeValue: 4,
             leadTimeUnit: "weeks",
             active: true,

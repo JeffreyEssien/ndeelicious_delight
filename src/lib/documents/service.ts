@@ -1,3 +1,5 @@
+import { paymentEntryUrl } from "@/lib/payments/stripe";
+import { cakeQuoteContent } from "./cake-quote-preview";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getBusinessSettings, getStoreAppearance, getStoreTheme } from "@/lib/data/settings";
 import { resolveThemeTokens } from "@/lib/theme/tokens";
@@ -89,7 +91,7 @@ export async function issueOrderDocument(
   const { data: order, error } = await db
     .from("orders")
     .select(
-      "id,order_number,customer_name,email,phone,status,fulfilment,delivery_address_snapshot,subtotal,discount_total,delivery_fee,tax_total,tax_rate_bps,tax_snapshot,grand_total,created_at,customer_note,order_items(id,product_name,variant_name,sku,unit_price,quantity,final_price,product_snapshot),payments(status,amount,refunded_amount,paid_at,created_at,provider_payload)",
+      "id,order_number,customer_name,email,phone,status,fulfilment,delivery_address_snapshot,subtotal,discount_total,delivery_fee,tax_total,tax_rate_bps,tax_snapshot,grand_total,created_at,customer_note,order_items(id,product_name,variant_name,sku,unit_price,quantity,final_price,product_snapshot),payments(status,amount,refunded_amount,paid_at,created_at,provider_payload,provider_payment_id)",
     )
     .eq("order_number", orderNumber)
     .maybeSingle();
@@ -164,7 +166,10 @@ export async function issueOrderDocument(
         ? {
             payNowUrl: (order.payments ?? [])
               .filter((payment) => payment.status === "PENDING")
-              .map((payment) => payment.provider_payload?.checkout_url)
+              .sort((a, b) => b.created_at.localeCompare(a.created_at))
+              .map((payment) =>
+                payment.provider_payment_id ? paymentEntryUrl(payment.provider_payment_id) : undefined,
+              )
               .find((url): url is string => typeof url === "string"),
           }
         : {}),
@@ -199,6 +204,7 @@ export async function issueCakeQuote(
   db: SupabaseClient,
   cakeId: string,
   createdBy?: string,
+  reviewed?: { quotedTotal: number; revision?: number },
 ): Promise<PersistedDocument> {
   const { data: cake, error } = await db
     .from("custom_cake_orders")
@@ -210,11 +216,19 @@ export async function issueCakeQuote(
   if (error) throw error;
   if (!cake?.quoted_total) throw new Error("QUOTE_NOT_READY");
   if (cake.order_id) throw new Error("QUOTE_ALREADY_CONVERTED");
+  if (reviewed && cake.quoted_total !== reviewed.quotedTotal) throw new Error("Quote amount changed. Preview again.");
   const { revision, previous } = await nextRevision(db, "QUOTE", "cake_order_id", cake.id);
+  if (reviewed?.revision !== undefined && revision !== reviewed.revision + 1)
+    throw new Error("Quote revision changed. Preview again.");
   const { business, branding } = await brandSnapshot(db);
   const issuedAt = new Date();
   const validUntil = new Date(issuedAt.getTime() + 7 * 86400000).toISOString();
-  const configuration = cake.configuration as Record<string, string>;
+  const content = cakeQuoteContent(
+    { ...cake, configuration: cake.configuration as Record<string, string> },
+    business,
+    cake.quoted_total,
+    branding,
+  );
   const { data, error: insertError } = await db
     .from("business_documents")
     .insert({
@@ -227,32 +241,11 @@ export async function issueCakeQuote(
       valid_until: validUntil,
       business_snapshot: business,
       customer_snapshot: { name: cake.customer_name, email: cake.email, phone: cake.phone },
-      line_items_snapshot: [
-        {
-          id: cake.request_number,
-          name: `${configuration.occasion || "Custom"} cake`,
-          detail: [configuration.size, configuration.flavour, configuration.filling, configuration.design]
-            .filter(Boolean)
-            .join(" · "),
-          quantity: 1,
-          unitPrice: cake.quoted_total,
-          total: cake.quoted_total,
-        },
-      ],
+      line_items_snapshot: content.lines,
       totals_snapshot: { subtotal: cake.quoted_total, total: cake.quoted_total, amountDue: cake.quoted_total },
       branding_snapshot: branding,
       presentation_snapshot: {
-        notes: [
-          `Requested fulfilment date: ${cake.requested_date}`,
-          ...(configuration.cakeType
-            ? [
-                `Cake type: ${configuration.cakeType}`,
-                `Minimum lead time at submission: ${configuration.minimumLeadTime}`,
-              ]
-            : []),
-          ...(cake.customer_note ? [`Customer note: ${cake.customer_note}`] : []),
-          "Final design details remain subject to written approval and availability.",
-        ],
+        notes: content.notes,
         design: "classic",
         showSku: false,
       },
@@ -298,4 +291,21 @@ export async function latestDocument(
     .maybeSingle();
   if (error) throw error;
   return data as PersistedDocument | null;
+}
+
+export async function previewCakeQuote(db: SupabaseClient, cakeId: string, amount: number) {
+  const { data: cake, error } = await db
+    .from("custom_cake_orders")
+    .select("id,request_number,order_id,customer_name,email,phone,status,configuration,requested_date,customer_note")
+    .eq("id", cakeId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!cake || cake.order_id) throw new Error("Request is unavailable or already converted to an order.");
+  const { business, branding } = await brandSnapshot(db);
+  return cakeQuoteContent(
+    { ...cake, configuration: cake.configuration as Record<string, string> },
+    business,
+    amount,
+    branding,
+  );
 }

@@ -9,7 +9,10 @@ export default async function Page({ params }: { params: Promise<{ section?: str
   const { section } = await params;
   const selectedSection = section?.[0] ?? "dashboard";
   const data = await getAdminData(session.db, {
-    includeAnalytics: ["dashboard", "analytics"].includes(selectedSection),
+    section: selectedSection,
+    includeAnalytics: selectedSection === "analytics",
+    skipHistory: selectedSection !== "dashboard",
+    recentLimit: 5,
   });
   return (
     <AdminPortal
@@ -29,6 +32,7 @@ export default async function Page({ params }: { params: Promise<{ section?: str
       initialMarketing={data.marketing}
       initialAuditLogs={data.auditLogs}
       initialAnalytics={data.analytics}
+      initialDashboard={data.dashboard}
       siteUrl={getSiteUrl()}
     />
   );

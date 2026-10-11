@@ -104,3 +104,14 @@ describe("Halifax fulfilment dates", () => {
     expect(() => earliestFulfilment({ mode: "pickup", schedule: null, preparationHours: 0 })).toThrow("setup");
   });
 });
+
+it("keeps minute precision in pickup readiness and combines a minute buffer", () => {
+  const now = new Date("2026-10-07T13:00:00Z");
+  const result = earliestFulfilment({
+    mode: "pickup",
+    schedule: { ...schedule, pickupPreparationBufferHours: 15 / 60 },
+    preparationHours: 45 / 60,
+    now,
+  });
+  expect(result.earliestAt).toBe("2026-10-07T14:00:00.000Z");
+});

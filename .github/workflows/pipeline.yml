@@ -57,6 +57,60 @@ jobs:
       - name: Run domain regression suite
         run: npm run test:css && npm run test:regression
 
+  admin-database-tests:
+    name: Admin migration and scale checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:admin:db && node scripts/test-product-packs.mjs && node scripts/test-preparation-minutes.mjs && node scripts/test-admin-customers.mjs
+
+  isolated-browser-tests:
+    name: Isolated admin responsive and accessibility checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NDEE_BROWSER_FIXTURES: 'true'
+      PLAYWRIGHT_ISOLATED_ENVIRONMENT: 'true'
+      PLAYWRIGHT_BASE_URL: http://localhost:3100
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:4545
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: fixture-key
+      SUPABASE_SERVICE_ROLE_KEY: fixture-service-key
+      ADMIN_AUTH_SECRET: isolated-ndee-browser-secret-32-characters
+      NEXT_PUBLIC_SITE_URL: http://localhost:3100
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Start isolated fixtures and app
+        run: |
+          node e2e/fixture-server.mjs > /tmp/ndee-fixtures.log 2>&1 &
+          npm run dev -- --port 3100 > /tmp/ndee-app.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://localhost:3100/admin/login > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/ndee-app.log
+          exit 1
+      - name: Check seven screen widths
+        run: npx playwright test e2e/admin-audit.spec.ts e2e/admin-configuration.spec.ts e2e/admin-documents.spec.ts e2e/admin-history.spec.ts e2e/admin-mobile-followup.spec.ts e2e/admin-delta.spec.ts e2e/product-packs.spec.ts --workers=1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: isolated-admin-browser-results
+          path: |
+            test-results/
+            playwright-report/
+
   browser-tests:
     name: Responsive visual and accessibility tests
     if: vars.E2E_ENABLED == 'true'
@@ -124,7 +178,7 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/develop' &&
       vars.VERCEL_CD_ENABLED == 'true'
-    needs: [code-quality, regression-tests, functional-tests, structural-tests]
+    needs: [code-quality, regression-tests, functional-tests, structural-tests, admin-database-tests, isolated-browser-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -158,7 +212,7 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       vars.VERCEL_CD_ENABLED == 'true'
-    needs: [code-quality, regression-tests, functional-tests, structural-tests]
+    needs: [code-quality, regression-tests, functional-tests, structural-tests, admin-database-tests, isolated-browser-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:

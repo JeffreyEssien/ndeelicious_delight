@@ -514,3 +514,328 @@
     break-inside: avoid;
   }
 }
+
+/* Commercial documents share Letter proportions and the embedded PDF font. */
+@font-face {
+  font-family: "Noto Sans Document";
+  src: url("/fonts/NotoSans-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Noto Sans Document";
+  src: url("/fonts/NotoSans-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+.business-document {
+  font-family: "Noto Sans Document", sans-serif;
+  border-radius: 4px;
+  padding: 44px;
+  color: #282220;
+}
+.business-document header .brand-logo {
+  max-width: 160px;
+}
+.business-document > header {
+  border-bottom: 1px solid #ded8d4;
+  padding-bottom: 24px;
+}
+.business-document > header h1 {
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+.document-parties {
+  gap: 24px;
+}
+.document-parties p,
+.document-parties b,
+.document-parties dd {
+  overflow-wrap: anywhere;
+}
+.document-meaning {
+  font-size: 11px;
+  color: #6c625e;
+  padding: 12px 0;
+  border-bottom: 1px solid #ded8d4;
+}
+.business-document table {
+  table-layout: fixed;
+  width: 100%;
+}
+.business-document th:first-child {
+  width: 52%;
+}
+.business-document td {
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+.business-document th:not(:first-child),
+.business-document td:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.business-document td small {
+  line-height: 1.6;
+}
+.document-total {
+  background: #f4f3f1;
+  padding: 10px 8px;
+}
+@media (max-width: 600px) {
+  .business-document {
+    padding: 20px 14px;
+  }
+  .business-document th,
+  .business-document td {
+    padding: 10px 5px;
+    font-size: 10px;
+  }
+  .business-document > header {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .business-document > header > div {
+    text-align: left;
+  }
+}
+@media print {
+  @page {
+    size: Letter;
+    margin: 14mm;
+  }
+  .business-document {
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+  .business-document thead {
+    display: table-header-group;
+  }
+  .business-document tr {
+    break-inside: avoid;
+  }
+  .document-summary dl {
+    break-inside: avoid;
+  }
+  .document-meaning {
+    color: #282220;
+  }
+}
+.document-logo {
+  width: 140px;
+  max-width: 45%;
+  height: auto;
+  max-height: 72px;
+  object-fit: contain;
+  object-position: left top;
+}
+.history-detail .business-document-wrap {
+  width: 100%;
+  margin: 1rem 0;
+}
+.history-detail .business-document {
+  padding: 1rem;
+}
+
+.document-editor-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  position: static;
+  backdrop-filter: none;
+}
+.document-editor-actions .button {
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+}
+.document-parties {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.document-parties > * {
+  min-width: 0;
+}
+.document-parties dl div {
+  flex-wrap: wrap;
+}
+@media screen and (max-width: 1100px) {
+  .document-studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .document-editor {
+    position: static;
+    height: auto;
+    overflow: visible;
+    border-right: 0;
+  }
+}
+@media screen and (max-width: 700px) {
+  .document-parties {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Start with the document and two clear actions; sharing and styling are optional. */
+.document-studio {
+  grid-template-columns: minmax(0, 1fr);
+}
+.document-editor {
+  position: static;
+  height: auto;
+  overflow: visible;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+}
+.document-editor-head {
+  padding: 24px 24px 12px;
+}
+.document-editor-head h1 {
+  font-size: 26px;
+}
+.document-editor-head p {
+  font-size: 14px;
+}
+.document-editor-fields {
+  padding: 0 24px 16px;
+  gap: 12px;
+}
+.document-integrity-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  border: 0;
+  padding: 0;
+  font-size: 13px;
+}
+.document-editor-fields details {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.document-editor-fields summary,
+.document-sharing summary {
+  min-height: 44px;
+  padding: 10px 0;
+  font-size: 14px;
+  cursor: pointer;
+}
+.document-editor-fields details .form-stack {
+  max-width: 600px;
+  padding: 16px 0;
+}
+.document-editor-actions {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  padding: 16px 24px;
+  gap: 12px;
+  align-items: flex-start;
+}
+.document-editor-actions > .button {
+  min-height: 44px;
+  flex: 0 1 180px;
+}
+.document-sharing {
+  flex: 1;
+  min-width: 160px;
+}
+.document-sharing > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 10px;
+}
+.document-preview {
+  padding: 24px;
+}
+.document-preview .business-document-wrap {
+  width: min(850px, 100%);
+  margin: 0 auto;
+}
+.payment-entry {
+  width: min(520px, calc(100% - 32px));
+  margin: 48px auto;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.payment-entry h1 {
+  font-size: 28px;
+}
+.payment-entry p {
+  font-size: 15px;
+  line-height: 1.7;
+}
+.payment-entry .button {
+  width: 100%;
+  margin: 12px 0;
+}
+.payment-entry small {
+  display: block;
+  color: var(--muted);
+  line-height: 1.6;
+}
+@media (max-width: 768px) {
+  .document-editor-head {
+    padding: 20px 16px 12px;
+  }
+  .document-editor-fields {
+    padding: 0 16px 12px;
+  }
+  .document-editor-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 12px 16px;
+    gap: 8px;
+  }
+  .document-sharing {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+  }
+  .document-preview {
+    padding: 16px 8px;
+  }
+}
+@media print {
+  .document-studio {
+    display: block;
+  }
+  .document-preview {
+    padding: 0;
+  }
+}
+
+@media screen and (max-width: 700px) {
+  .business-document tbody tr {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    padding: 16px 0;
+  }
+  .business-document tbody td {
+    display: grid;
+    gap: 4px;
+    width: auto;
+    text-align: left;
+    padding: 0;
+    font-size: 12px;
+  }
+  .business-document tbody td:first-child {
+    grid-column: 1 / -1;
+  }
+  .business-document tbody td:last-child {
+    text-align: right;
+    font-weight: 700;
+  }
+  .business-document tbody td:nth-child(2)::before {
+    content: "Qty";
+  }
+  .business-document tbody td:nth-child(3)::before {
+    content: "Unit price";
+  }
+  .business-document tbody td::before {
+    font-weight: 500;
+    font-size: 10px;
+  }
+}

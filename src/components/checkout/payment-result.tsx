@@ -12,6 +12,7 @@ type PaymentState = {
   orderStatus?: string;
   orderNumber?: string;
   checkoutUrl?: string;
+  expired?: boolean;
 };
 
 export function PaymentResult({
@@ -40,15 +41,38 @@ export function PaymentResult({
       if (!response.ok) throw new Error(payload.error ?? t("Payment status is unavailable."));
       setPayment(payload.payment);
       setError("");
+      return payload.payment as PaymentState;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("Payment status is unavailable."));
     }
   }, [sessionId, t]);
 
   useEffect(() => {
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), 2500);
-    return () => window.clearInterval(timer);
+    let stopped = false;
+    let terminal = false;
+    let delay = 5000;
+    let timer: ReturnType<typeof setTimeout>;
+    async function poll() {
+      if (stopped || terminal || document.hidden) return;
+      const result = await refresh();
+      if (stopped) return;
+      terminal = Boolean(result && (result.status !== "PENDING" || result.expired));
+      if (!terminal) {
+        timer = setTimeout(() => void poll(), delay);
+        delay = Math.min(delay * 1.5, 30000);
+      }
+    }
+    function visibilityChanged() {
+      clearTimeout(timer);
+      if (!document.hidden) void poll();
+    }
+    void poll();
+    document.addEventListener("visibilitychange", visibilityChanged);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", visibilityChanged);
+    };
   }, [refresh]);
 
   useEffect(() => {
@@ -77,24 +101,29 @@ export function PaymentResult({
   }
 
   const succeeded = payment?.status === "SUCCEEDED";
-  const failed = payment?.status === "FAILED";
-  const pending = !payment || payment.status === "PENDING";
-  const headline = succeeded
-    ? content.headline
-    : failed
-      ? t("Your payment wasn’t completed.")
-      : cancelled
-        ? t("Your order is still awaiting payment.")
-        : t("We’re confirming your payment.");
-  const body = succeeded
-    ? content.body
-    : failed
-      ? t("No payment was confirmed. You can safely try again; stock and coupon availability will be checked first.")
-      : cancelled
-        ? t("Nothing has been charged. Resume the secure checkout whenever you’re ready.")
-        : t(
-            "This usually takes only a few seconds. You can leave this page; Stripe’s signed confirmation will update your order.",
-          );
+  const refunded = payment?.status === "REFUNDED" || payment?.status === "PARTIALLY_REFUNDED";
+  const failed = payment?.status === "FAILED" || Boolean(payment?.expired);
+  const pending = !payment || (payment.status === "PENDING" && !payment.expired);
+  const headline = refunded
+    ? t("Your payment has been refunded.")
+    : succeeded
+      ? content.headline
+      : failed
+        ? t("Your payment wasn’t completed.")
+        : cancelled
+          ? t("Your order is still awaiting payment.")
+          : t("We’re confirming your payment.");
+  const body = refunded
+    ? t("Your order records have been updated. Contact the bakery if you have questions about your refund.")
+    : succeeded
+      ? content.body
+      : failed
+        ? t("No payment was confirmed. You can safely try again; stock and coupon availability will be checked first.")
+        : cancelled
+          ? t("Nothing has been charged. Resume the secure checkout whenever you’re ready.")
+          : t(
+              "This usually takes only a few seconds. You can leave this page; Stripe’s signed confirmation will update your order.",
+            );
 
   return (
     <section className="success-page">
@@ -148,7 +177,7 @@ export function PaymentResult({
             {t("Track this order")}
           </Link>
         )}
-        {(failed || cancelled) && (
+        {(failed || (cancelled && !refunded)) && (
           <button type="button" className="button button-primary" disabled={retrying} onClick={retry}>
             {retrying ? t("Preparing payment…") : failed ? t("Try payment again") : t("Resume secure payment")}
           </button>

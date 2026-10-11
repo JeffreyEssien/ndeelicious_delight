@@ -103,6 +103,9 @@ const products = seedProducts.slice(0, 8).map((p, i) => ({
     id: id(100 + i * 10 + j),
     name: v.name,
     pack_quantity: v.packQuantity ?? null,
+    sort_order: j,
+    track_inventory: null,
+    retired_at: null,
     sku: `FIXTURE-${i}-${j}`,
     price_adjustment: i === 1 ? v.priceAdjustment : Math.round(v.priceAdjustment / 1000),
     stock_quantity: i === 1 ? 0 : v.stockQuantity,
@@ -199,6 +202,114 @@ const server = http.createServer(async (req, res) => {
     });
   if (url.pathname.includes("/rpc/")) {
     const args = body ? JSON.parse(body) : {};
+    if (table === "product_pack_availability") {
+      respond(
+        200,
+        Object.fromEntries(
+          tables.product_variants.filter((v) => args.p_ids.includes(v.product_id)).map((v) => [v.id, v.stock_quantity]),
+        ),
+      );
+      return;
+    }
+    if (table === "admin_save_product") {
+      const productId = args.p_id ?? id(1000 + tables.products.length);
+      let product = tables.products.find((p) => p.id === productId);
+      if (!product) {
+        product = { id: productId };
+        tables.products.push(product);
+      }
+      Object.assign(product, args.p_product);
+      product.categories = tables.categories.find((c) => c.id === product.category_id);
+      const ids = new Set(args.p_variants.map((v) => v.id));
+      for (const v of tables.product_variants)
+        if (v.product_id === productId && !ids.has(v.id)) {
+          v.active = false;
+          v.retired_at = new Date().toISOString();
+        }
+      for (const v of args.p_variants) {
+        const data = {
+          id: v.id ?? id(2000 + tables.product_variants.length),
+          product_id: productId,
+          name: v.name,
+          pack_quantity: v.packQuantity,
+          price_adjustment: v.priceAdjustment,
+          stock_quantity: v.stockQuantity,
+          active: v.active,
+          sort_order: v.sortOrder,
+          track_inventory: v.trackInventory,
+          retired_at: null,
+        };
+        const existing = tables.product_variants.find((item) => item.id === data.id);
+        if (existing) Object.assign(existing, data);
+        else tables.product_variants.push({ sku: `FIXTURE-PACK-${tables.product_variants.length}`, ...data });
+      }
+      for (const image of args.p_images)
+        Object.assign(
+          tables.product_images.find((i) => i.id === image.id),
+          { alt_text: image.altText, sort_order: image.sortOrder },
+        );
+      tables.product_images = tables.product_images.filter(
+        (i) => i.product_id !== productId || args.p_images.some((image) => image.id === i.id),
+      );
+      respond(200, productId);
+      return;
+    }
+    if (table === "admin_dashboard_summary") {
+      respond(200, {
+        netRevenue: 0,
+        paidOrders: 0,
+        averageOrderValue: 0,
+        revenueChange: null,
+        returningCustomers: 0,
+        repeatCustomerRate: 0,
+        lowStockProducts: 0,
+        waitingQuotes: 0,
+        recentOrders: [],
+      });
+      return;
+    }
+    if (table === "admin_save_cake_options") {
+      const ids = new Set(args.p_options.map((option) => option.id));
+      for (const option of tables.custom_cake_options) if (!ids.has(option.id)) option.active = false;
+      for (const option of args.p_options) {
+        const data = {
+          id: option.id,
+          type: option.type,
+          name: option.name,
+          description: option.description,
+          price_adjustment: option.priceAdjustment,
+          quote_required: option.quoteRequired,
+          active: option.active,
+          sort_order: option.sortOrder,
+        };
+        const existing = tables.custom_cake_options.find((item) => item.id === option.id);
+        if (existing) Object.assign(existing, data);
+        else tables.custom_cake_options.push(data);
+      }
+      respond(200, null);
+      return;
+    }
+    if (table === "admin_history_page") {
+      respond(200, {
+        rows: [],
+        total: 0,
+        counts: {},
+        page: args.p_filters?.page || 1,
+        size: args.p_filters?.size || 25,
+        asOf: args.p_filters?.asOf || new Date().toISOString(),
+      });
+      return;
+    }
+    if (table === "admin_inventory_page") {
+      respond(200, {
+        ids: tables.products.map((product) => product.id),
+        total: tables.products.length,
+        counts: { ALL: tables.products.length },
+        page: 1,
+        size: 25,
+      });
+      return;
+    }
     if (table === "consume_public_rate_limit") {
       respond(200, { allowed: true, retry_after: 1 });
       return;
@@ -223,11 +334,13 @@ const server = http.createServer(async (req, res) => {
         if (row) Object.assign(row, values);
         else tables.cake_types.push(values);
       }
-      if (args.p_assignments)
-        tables.cake_type_options = args.p_assignments.map((link) => ({
-          cake_type_id: link.cakeTypeId,
-          option_id: link.optionId,
-        }));
+      if (args.p_assignments) {
+        const ids = new Set(args.p_types.map((type) => type.id));
+        tables.cake_type_options = [
+          ...tables.cake_type_options.filter((link) => !ids.has(link.cake_type_id)),
+          ...args.p_assignments.map((link) => ({ cake_type_id: link.cakeTypeId, option_id: link.optionId })),
+        ];
+      }
     }
     if (table === "save_delivery_areas")
       tables.delivery_zones = args.p_areas.map((area) => ({
@@ -247,12 +360,27 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (table === "products")
-    products.forEach((p) => {
+    tables.products.forEach((p) => {
       p.product_variants = tables.product_variants.filter((v) => v.product_id === p.id);
       p.product_images = tables.product_images.filter((image) => image.product_id === p.id);
     });
   const all = tables[table] ?? [];
   let rows = all.filter(filter);
+  const ordering = url.searchParams.get("order");
+  if (ordering)
+    rows.sort((a, b) => {
+      for (const field of ordering.split(",")) {
+        const [key, direction] = field.split(".");
+        const left = a[key] ?? 0;
+        const right = b[key] ?? 0;
+        const result =
+          typeof left === "number" && typeof right === "number"
+            ? left - right
+            : String(left).localeCompare(String(right));
+        if (result) return direction === "desc" ? -result : result;
+      }
+      return 0;
+    });
   if (req.method === "PATCH") {
     const patch = JSON.parse(body);
     rows.forEach((row) => {

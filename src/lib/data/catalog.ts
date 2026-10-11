@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
+import { isVariantInventoryTracked } from "@/features/catalog/availability";
 import type { Product, ProductImage, ProductVariant } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -32,6 +33,9 @@ type ProductRow = {
     sku: string | null;
     price_adjustment: number;
     pack_quantity: number | null;
+    retired_at: string | null;
+    sort_order: number;
+    track_inventory: boolean | null;
     stock_quantity: number;
     active: boolean;
   }[];
@@ -56,13 +60,16 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
       storagePath: image.storage_path ?? undefined,
     }));
   const variants: ProductVariant[] = row.product_variants
-    .filter((variant) => includeInactiveVariants || variant.active)
+    .filter((variant) => !variant.retired_at && (includeInactiveVariants || variant.active))
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id.localeCompare(b.id))
     .map((variant) => ({
       id: variant.id,
       name: variant.name,
       sku: variant.sku ?? undefined,
       priceAdjustment: variant.price_adjustment,
       packQuantity: variant.pack_quantity ?? null,
+      sortOrder: variant.sort_order ?? 0,
+      trackInventory: variant.track_inventory ?? null,
       stockQuantity: variant.stock_quantity,
       active: variant.active,
     }));
@@ -95,21 +102,42 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
   };
 }
 
-async function loadProducts(options: { includeInactive?: boolean; client?: SupabaseClient } = {}) {
+async function loadProducts(options: { includeInactive?: boolean; client?: SupabaseClient; ids?: string[] } = {}) {
   const supabase = options.client ?? (await createClient());
   let query = supabase
     .from("products")
     .select(`
       id,slug,name,short_description,description,sku,shopping_mode,preparation_hours,tax_class,base_price,discount_price,status,featured,
       track_inventory,stock_quantity,low_stock_threshold,ingredients,allergens,storage_instructions,preparation_instructions,
-      categories(id,slug),product_variants(id,name,sku,price_adjustment,pack_quantity,stock_quantity,active),
+      categories(id,slug),product_variants(id,name,sku,price_adjustment,pack_quantity,sort_order,track_inventory,retired_at,stock_quantity,active),
       product_images(id,url,alt_text,sort_order,storage_path)
     `)
     .order("created_at", { ascending: false });
   if (!options.includeInactive) query = query.in("status", ["ACTIVE", "OUT_OF_STOCK"]);
+  if (options.ids) {
+    if (!options.ids.length) return [];
+    query = query.in("id", options.ids);
+  }
   const { data, error } = await query;
   if (error) throw error;
-  return (data as unknown as ProductRow[] | null)?.map((row) => mapProduct(row, options.includeInactive)) ?? [];
+  const products =
+    (data as unknown as ProductRow[] | null)?.map((row) => mapProduct(row, options.includeInactive)) ?? [];
+  if (options.includeInactive || !products.length) return products;
+  const { data: available, error: availabilityError } = await supabase.rpc("product_pack_availability", {
+    p_ids: products.map((product) => product.id),
+  });
+  if (availabilityError) throw availabilityError;
+  if (!available || typeof available !== "object" || Array.isArray(available))
+    throw new Error("Pack availability could not be verified.");
+  return products.map((product) => ({
+    ...product,
+    variants: product.variants.map((variant) => ({
+      ...variant,
+      stockQuantity: isVariantInventoryTracked(product, variant)
+        ? Number(available[variant.id] ?? 0)
+        : variant.stockQuantity,
+    })),
+  }));
 }
 
 const getCachedProducts = unstable_cache(
@@ -121,7 +149,7 @@ const getCachedProducts = unstable_cache(
   },
 );
 
-export function getProducts(options: { includeInactive?: boolean; client?: SupabaseClient } = {}) {
+export function getProducts(options: { includeInactive?: boolean; client?: SupabaseClient; ids?: string[] } = {}) {
   return options.client || options.includeInactive ? loadProducts(options) : getCachedProducts();
 }
 

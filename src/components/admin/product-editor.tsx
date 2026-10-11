@@ -5,9 +5,15 @@ import { type FormEvent, useState } from "react";
 import type { Product, ProductImage, ProductStatus, ProductVariant } from "@/types";
 import { Button, Checkbox, Input, Select, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
+import { variantPrice } from "@/features/catalog/pricing";
 import { useBusinessSettings } from "@/components/providers";
 
-type DraftVariant = Omit<ProductVariant, "id"> & { id?: string };
+type DraftVariant = Omit<ProductVariant, "id"> & {
+  id?: string;
+  key: string;
+  sellingPrice: number;
+  expectedStockQuantity?: number;
+};
 type PendingImage = { key: string; file: File; altText: string };
 
 function slugify(value: string) {
@@ -25,19 +31,65 @@ export function ProductEditor({
 }: {
   product: Product | null;
   close: () => void;
-  onSaved: () => void;
+  onSaved: (updated: Partial<Product>) => void;
 }) {
   const { currency } = useBusinessSettings();
+  const initialPreparationUnit =
+    product?.preparationHours && Number.isInteger(product.preparationHours) ? "hours" : "minutes";
+  const [preparationUnit, setPreparationUnit] = useState(initialPreparationUnit);
+  const [preparationValue, setPreparationValue] = useState(
+    String(
+      initialPreparationUnit === "minutes"
+        ? Math.round((product?.preparationHours ?? 0) * 60)
+        : (product?.preparationHours ?? 0),
+    ),
+  );
+  const [mode, setMode] = useState(
+    product?.shoppingMode ?? (product?.category === "READY_TO_BAKE" ? "READY_TO_BAKE" : "READY_TO_ORDER"),
+  );
+  const [price, setPrice] = useState(String((product?.price ?? 0) / 100));
+  const [discount, setDiscount] = useState(
+    product?.discountPrice === undefined ? "" : String(product.discountPrice / 100),
+  );
+  const [editingPack, setEditingPack] = useState<string | null>(null);
+  const effectiveBase = Math.round(Number(discount || price) * 100);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [savedId, setSavedId] = useState(product?.id ?? "");
   const [variants, setVariants] = useState<DraftVariant[]>(
-    product?.variants.length
-      ? product.variants.map((variant) => ({ ...variant, active: variant.active ?? true }))
-      : [{ name: "Standard", priceAdjustment: 0, stockQuantity: 0, active: true }],
+    product
+      ? product.variants.map((variant) => ({
+          ...variant,
+          key: variant.id,
+          sellingPrice: variantPrice(product, variant),
+          expectedStockQuantity: variant.stockQuantity,
+          active: variant.active ?? true,
+        }))
+      : [
+          {
+            id: crypto.randomUUID(),
+            key: "standard",
+            name: "Standard",
+            sellingPrice: 0,
+            priceAdjustment: 0,
+            stockQuantity: 0,
+            active: true,
+          },
+        ],
   );
   const [images, setImages] = useState<ProductImage[]>(product?.images ?? []);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+
+  function patchPack(index: number, patch: Partial<DraftVariant>) {
+    setVariants((current) => current.map((v, i) => (i === index ? { ...v, ...patch } : v)));
+  }
+  function movePack(index: number, direction: -1 | 1) {
+    setVariants((current) => {
+      const next = [...current];
+      [next[index], next[index + direction]] = [next[index + direction], next[index]];
+      return next;
+    });
+  }
 
   function moveImage(index: number, direction: -1 | 1) {
     const target = index + direction;
@@ -66,6 +118,7 @@ export function ProductEditor({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError("");
     const form = new FormData(event.currentTarget);
@@ -81,7 +134,7 @@ export function ProductEditor({
       status: String(form.get("status")) as ProductStatus,
       featured: form.get("featured") === "on",
       shoppingMode: String(form.get("shoppingMode")),
-      preparationHours: Number(form.get("preparationHours")),
+      preparationHours: Number(form.get("preparationHours")) / (form.get("preparationUnit") === "minutes" ? 60 : 1),
       taxClass: String(form.get("taxClass")),
       trackInventory: form.get("trackInventory") === "on",
       lowStockThreshold: Number(form.get("lowStockThreshold")),
@@ -92,13 +145,16 @@ export function ProductEditor({
         .filter(Boolean),
       storageInstructions: String(form.get("storageInstructions")),
       preparationInstructions: String(form.get("preparationInstructions")),
-      variants: variants.map(({ id, name: variantName, priceAdjustment, stockQuantity, active, packQuantity }) => ({
-        id,
-        name: variantName,
-        priceAdjustment,
-        packQuantity: packQuantity ?? null,
-        stockQuantity,
-        active,
+      variants: variants.map((variant, index) => ({
+        id: variant.id,
+        name: variant.name,
+        priceAdjustment: mode === "MADE_TO_ORDER" ? variant.sellingPrice - effectiveBase : variant.priceAdjustment,
+        packQuantity: variant.packQuantity ?? null,
+        stockQuantity: variant.stockQuantity,
+        active: variant.active,
+        sortOrder: index,
+        trackInventory: variant.trackInventory ?? null,
+        expectedStockQuantity: variant.expectedStockQuantity,
       })),
       images: images.map((image, index) => ({ id: image.id, altText: image.altText, sortOrder: index })),
     };
@@ -114,7 +170,7 @@ export function ProductEditor({
       if (!response.ok) throw new Error(result.error ?? "Product could not be saved.");
       setSavedId(result.id);
       if (pendingImages.length) await uploadImages(result.id, name);
-      onSaved();
+      onSaved({ preparationHours: payload.preparationHours });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Product could not be saved.");
       setBusy(false);
@@ -132,11 +188,14 @@ export function ProductEditor({
           <Icon name="close" />
         </button>
       </div>
-      <form onSubmit={submit} className="form-stack">
+      <form onSubmit={submit} className="form-stack" aria-busy={busy}>
         <div className="product-editor-section">
           <h3>Basics</h3>
           <Input label="Product name" name="name" defaultValue={product?.name} required />
-          <Input label="URL slug" name="slug" defaultValue={product?.slug} placeholder="Generated from the name" />
+          <details>
+            <summary>Product link</summary>
+            <Input label="URL slug" name="slug" defaultValue={product?.slug} placeholder="Generated from the name" />
+          </details>
           <Textarea
             label="Short description"
             name="shortDescription"
@@ -161,7 +220,8 @@ export function ProductEditor({
               type="number"
               min="0"
               step="0.01"
-              defaultValue={(product?.price ?? 0) / 100}
+              value={price}
+              onChange={(event) => setPrice(event.target.value)}
               required
             />
             <Input
@@ -170,7 +230,8 @@ export function ProductEditor({
               type="number"
               min="0"
               step="0.01"
-              defaultValue={product?.discountPrice ? product.discountPrice / 100 : ""}
+              value={discount}
+              onChange={(event) => setDiscount(event.target.value)}
             />
           </div>
           <Select label="Storefront visibility" name="status" defaultValue={product?.status ?? "DRAFT"}>
@@ -199,23 +260,52 @@ export function ProductEditor({
           <Select
             label="Shopping mode"
             name="shoppingMode"
-            defaultValue={
-              product?.shoppingMode ?? (product?.category === "READY_TO_BAKE" ? "READY_TO_BAKE" : "READY_TO_ORDER")
-            }
+            value={mode}
+            onChange={(event) => {
+              const next = event.target.value as NonNullable<Product["shoppingMode"]>;
+              if (next === "MADE_TO_ORDER" && mode !== next) {
+                setVariants((current) =>
+                  !product && current.length === 1 && current[0].key === "standard"
+                    ? []
+                    : current.map((v) => ({ ...v, sellingPrice: effectiveBase + v.priceAdjustment })),
+                );
+              }
+              if (mode === "MADE_TO_ORDER" && next !== mode) {
+                setVariants((current) =>
+                  current.map((v) => ({ ...v, priceAdjustment: v.sellingPrice - effectiveBase })),
+                );
+              }
+              setMode(next);
+            }}
           >
             <option value="READY_TO_ORDER">Ready to Order</option>
             <option value="MADE_TO_ORDER">Made to Order</option>
             <option value="READY_TO_BAKE">Ready to Bake</option>
           </Select>
           <Input
-            label="Preparation time (hours)"
+            label="Preparation time"
             name="preparationHours"
             type="number"
             min="0"
-            max="8760"
-            defaultValue={product?.preparationHours ?? 0}
+            max={preparationUnit === "minutes" ? 525600 : 8760}
+            step={preparationUnit === "minutes" ? "1" : "any"}
+            value={preparationValue}
+            onChange={(event) => setPreparationValue(event.target.value)}
             required
           />
+          <Select
+            label="Preparation unit"
+            name="preparationUnit"
+            value={preparationUnit}
+            onChange={(event) => {
+              const unit = event.target.value === "hours" ? "hours" : "minutes";
+              setPreparationValue(String(Number(preparationValue) * (unit === "minutes" ? 60 : 1 / 60)));
+              setPreparationUnit(unit);
+            }}
+          >
+            <option value="minutes">Minutes</option>
+            <option value="hours">Hours</option>
+          </Select>
           <h3>Inventory</h3>
           <Checkbox label="Track inventory" name="trackInventory" defaultChecked={product?.trackInventory ?? true} />
           <div className="field-row">
@@ -239,128 +329,213 @@ export function ProductEditor({
 
         <div className="product-editor-section">
           <div className="editor-section-head">
-            <h3>Variants / packs</h3>
+            <div>
+              <h3>{mode === "MADE_TO_ORDER" ? "Pack options" : "Variants / packs"}</h3>
+              <p className="field-help">
+                {mode === "MADE_TO_ORDER"
+                  ? "Choose any pack size and set its selling price. Stock is optional and counts packs, not pieces."
+                  : "Manage product choices and their stock."}
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const key = crypto.randomUUID();
+                setVariants((current) => [
+                  ...current,
+                  {
+                    id: key,
+                    key,
+                    name: "",
+                    packQuantity: null,
+                    sellingPrice: 0,
+                    priceAdjustment: 0,
+                    stockQuantity: 0,
+                    active: false,
+                    trackInventory: mode === "MADE_TO_ORDER" ? false : null,
+                  },
+                ]);
+                setEditingPack(key);
+              }}
+            >
+              <Icon name="plus" />
+              {mode === "MADE_TO_ORDER" ? "Add pack" : "Add variant"}
+            </Button>
+          </div>
+          {mode === "MADE_TO_ORDER" && (
             <Button
               variant="secondary"
               onClick={() =>
                 setVariants((current) => [
-                  ...current.filter((v) => v.name !== "Standard"),
+                  ...current,
                   ...[3, 6, 12]
-                    .filter((size) => !current.some((v) => v.name === `Pack of ${size}`))
-                    .map((size) => ({ name: `Pack of ${size}`, priceAdjustment: 0, stockQuantity: 0, active: false })),
+                    .filter((size) => !current.some((v) => v.packQuantity === size))
+                    .map((size) => ({
+                      key: crypto.randomUUID(),
+                      id: crypto.randomUUID(),
+                      name: `Pack of ${size}`,
+                      packQuantity: size,
+                      sellingPrice: 0,
+                      priceAdjustment: 0,
+                      stockQuantity: 0,
+                      active: false,
+                      trackInventory: false,
+                    })),
                 ])
               }
             >
-              Add 3 / 6 / 12 packs
+              Add common sizes
             </Button>
-            <Button
-              variant="secondary"
-              onClick={() =>
-                setVariants((current) => [...current, { name: "", priceAdjustment: 0, stockQuantity: 0, active: true }])
-              }
-            >
-              <Icon name="plus" /> Add variant
-            </Button>
-          </div>
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={() =>
-              setVariants((current) => [
-                ...current,
-                ...[3, 6, 12]
-                  .filter((quantity) => !current.some((variant) => variant.packQuantity === quantity))
-                  .map((quantity) => ({
-                    name: `Pack of ${quantity}`,
-                    packQuantity: quantity,
-                    priceAdjustment: 0,
-                    stockQuantity: 0,
-                    active: false,
-                  })),
-              ])
-            }
-          >
-            Add 3 / 6 / 12 pack options
-          </Button>
-          <p>Set each pack’s actual price and availability before activating it.</p>
+          )}
+          {!variants.length && (
+            <p className="empty-state">No packs yet. Add any size, then enter its name and price before publishing.</p>
+          )}
           {variants.map((variant, index) => (
-            <div className="variant-editor" key={variant.id ?? `new-${index}`}>
-              <Input
-                label="Name"
-                value={variant.name}
-                onChange={(event) =>
-                  setVariants((current) =>
-                    current.map((item, itemIndex) =>
-                      itemIndex === index ? { ...item, name: event.target.value } : item,
-                    ),
-                  )
-                }
-                required
-              />
-              <Input label="SKU" value={variant.sku ?? "Generated after save"} readOnly />
-              <Input
-                label={`Price adjustment (${currency})`}
-                type="number"
-                step="0.01"
-                value={variant.priceAdjustment / 100}
-                onChange={(event) =>
-                  setVariants((current) =>
-                    current.map((item, itemIndex) =>
-                      itemIndex === index
-                        ? { ...item, priceAdjustment: Math.round(Number(event.target.value) * 100) }
-                        : item,
-                    ),
-                  )
-                }
-              />
-              <Input
-                label="Pieces in this pack"
-                type="number"
-                min="1"
-                step="1"
-                value={variant.packQuantity ?? ""}
-                onChange={(event) =>
-                  setVariants((current) =>
-                    current.map((item, itemIndex) =>
-                      itemIndex === index
-                        ? { ...item, packQuantity: event.target.value ? Number(event.target.value) : null }
-                        : item,
-                    ),
-                  )
-                }
-              />
-              <Input
-                label="Stock"
-                type="number"
-                min="0"
-                value={variant.stockQuantity}
-                onChange={(event) =>
-                  setVariants((current) =>
-                    current.map((item, itemIndex) =>
-                      itemIndex === index ? { ...item, stockQuantity: Number(event.target.value) } : item,
-                    ),
-                  )
-                }
-              />
-              <Checkbox
-                label="Active"
-                checked={variant.active ?? true}
-                onChange={(event) =>
-                  setVariants((current) =>
-                    current.map((item, itemIndex) =>
-                      itemIndex === index ? { ...item, active: event.target.checked } : item,
-                    ),
-                  )
-                }
-              />
-              <button
-                type="button"
-                className="text-button danger-text"
-                disabled={variants.length === 1}
-                onClick={() => setVariants((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-              >
-                Remove
-              </button>
+            <div className="pack-editor-card" key={variant.key}>
+              <div className="pack-editor-summary">
+                <div>
+                  <strong>{variant.name || "New pack"}</strong>
+                  <p>
+                    {variant.packQuantity ? `${variant.packQuantity} pieces · ` : "Size not set · "}
+                    {currency}{" "}
+                    {(mode === "MADE_TO_ORDER"
+                      ? variant.sellingPrice / 100
+                      : (effectiveBase + variant.priceAdjustment) / 100
+                    ).toFixed(2)}{" "}
+                    · {variant.active ? "Published" : "Unavailable"}
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  aria-expanded={editingPack === variant.key}
+                  onClick={() => setEditingPack(editingPack === variant.key ? null : variant.key)}
+                >
+                  {editingPack === variant.key ? "Done" : "Edit"}
+                </Button>
+              </div>
+              {editingPack === variant.key && (
+                <div className="pack-editor-fields">
+                  <Input
+                    label="Display name"
+                    value={variant.name}
+                    onChange={(event) => patchPack(index, { name: event.target.value })}
+                    required
+                  />
+                  <div className="field-row">
+                    <Input
+                      label="Pieces per pack"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={variant.packQuantity ?? ""}
+                      onChange={(event) =>
+                        patchPack(index, { packQuantity: event.target.value ? Number(event.target.value) : null })
+                      }
+                      required={mode === "MADE_TO_ORDER" && variant.active}
+                    />
+                    <Input
+                      label={
+                        mode === "MADE_TO_ORDER" ? `Selling price (${currency})` : `Price adjustment (${currency})`
+                      }
+                      type="number"
+                      min={mode === "MADE_TO_ORDER" ? "0" : undefined}
+                      step="0.01"
+                      value={(mode === "MADE_TO_ORDER" ? variant.sellingPrice : variant.priceAdjustment) / 100}
+                      onChange={(event) =>
+                        patchPack(
+                          index,
+                          mode === "MADE_TO_ORDER"
+                            ? { sellingPrice: Math.round(Number(event.target.value) * 100) }
+                            : { priceAdjustment: Math.round(Number(event.target.value) * 100) },
+                        )
+                      }
+                    />
+                  </div>
+                  <Checkbox
+                    label="Published (available to customers)"
+                    checked={variant.active ?? true}
+                    onChange={(event) => patchPack(index, { active: event.target.checked })}
+                  />
+                  <details>
+                    <summary>Inventory & SKU</summary>
+                    <Checkbox
+                      label="Track stock for this pack"
+                      checked={variant.trackInventory ?? product?.trackInventory ?? true}
+                      onChange={(event) => patchPack(index, { trackInventory: event.target.checked })}
+                    />
+                    {(variant.trackInventory ?? product?.trackInventory ?? true) && (
+                      <Input
+                        label="Stock (available packs)"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={variant.stockQuantity}
+                        onChange={(event) => patchPack(index, { stockQuantity: Number(event.target.value) })}
+                      />
+                    )}
+                    <p className="field-help">
+                      {variant.sku ? `SKU: ${variant.sku}` : "A unique SKU is created when saved."} Untracked published
+                      packs can be ordered even with zero stock.
+                    </p>
+                  </details>
+                </div>
+              )}
+              <div className="pack-editor-actions">
+                <button
+                  type="button"
+                  className="icon-button"
+                  disabled={index === 0}
+                  onClick={() => movePack(index, -1)}
+                  aria-label={`Move ${variant.name || "pack"} earlier`}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="icon-button"
+                  disabled={index === variants.length - 1}
+                  onClick={() => movePack(index, 1)}
+                  aria-label={`Move ${variant.name || "pack"} later`}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => {
+                    const key = crypto.randomUUID();
+                    setVariants((current) => [
+                      ...current,
+                      {
+                        ...variant,
+                        id: key,
+                        key,
+                        sku: undefined,
+                        expectedStockQuantity: undefined,
+                        name: `${variant.name} (Copy)`,
+                        active: false,
+                      },
+                    ]);
+                    setEditingPack(key);
+                  }}
+                >
+                  Duplicate
+                </button>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => patchPack(index, { active: !variant.active })}
+                >
+                  {variant.active ? "Disable" : "Enable"}
+                </button>
+                <button
+                  type="button"
+                  className="text-button danger-text"
+                  onClick={() => setVariants((current) => current.filter((v) => v.key !== variant.key))}
+                >
+                  Retire
+                </button>
+              </div>
             </div>
           ))}
         </div>

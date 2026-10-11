@@ -1,0 +1,77 @@
+import { PGlite } from "@electric-sql/pglite";
+import fs from "node:fs";
+import assert from "node:assert/strict";
+const db = new PGlite();
+const read = (name) => fs.readFileSync(new URL(`../db/migrations/${name}`, import.meta.url), "utf8");
+await db.exec("create role anon;create role authenticated;create role service_role;");
+await db.exec(read("0001_initial.sql").replace("create extension if not exists pgcrypto;", ""));
+await db.exec("alter table orders add column tax_total integer not null default 0;");
+for (const name of [
+  "0030_cake_types.sql",
+  "0031_product_shopping_modes.sql",
+  "0032_commerce_configuration.sql",
+  "0037_cake_publication.sql",
+])
+  await db.exec(read(name));
+const id = "11111111-1111-4111-8111-111111111111";
+const draft = {
+  id,
+  name: "Draft",
+  slug: "draft",
+  description: "",
+  basePrice: null,
+  taxClass: "REQUIRES_REVIEW",
+  leadTimeValue: 0,
+  leadTimeUnit: "days",
+  active: false,
+  sortOrder: 0,
+  image: "",
+  customerNotice: "",
+};
+async function save(type, links = []) {
+  await db.query("select save_cake_configuration($1::jsonb,$2::jsonb)", [
+    JSON.stringify([type]),
+    JSON.stringify(links),
+  ]);
+}
+await save(draft);
+await assert.rejects(save({ ...draft, active: true, basePrice: 1000, leadTimeValue: 3 }), /Complete price/);
+await assert.rejects(
+  save({ ...draft, active: true, basePrice: 1000, leadTimeValue: 3, taxClass: "FULL_CAKE" }),
+  /available choices/,
+);
+assert.equal((await db.query("select active from cake_types where id=$1", [id])).rows[0].active, false);
+const options = [];
+for (const [index, type] of ["occasion", "size", "flavour", "filling", "design"].entries())
+  options.push({
+    id: `22222222-2222-4222-8222-${String(index).padStart(12, "0")}`,
+    name: type,
+    type,
+    description: "",
+    priceAdjustment: index * 100,
+    quoteRequired: false,
+    active: true,
+    sortOrder: index,
+  });
+await db.query("select admin_save_cake_options($1::jsonb)", [JSON.stringify(options)]);
+const links = options.map((option) => ({ cakeTypeId: id, optionId: option.id }));
+await save({ ...draft, active: true, basePrice: 1000, leadTimeValue: 3, taxClass: "FULL_CAKE" }, links);
+await assert.rejects(
+  db.query("select admin_save_cake_options($1::jsonb)", [JSON.stringify(options.slice(1))]),
+  /available choices/,
+);
+assert.equal((await db.query("select count(*)::int as n from custom_cake_options where active")).rows[0].n, 5);
+await save({ ...draft, basePrice: 1000, leadTimeValue: 3, taxClass: "FULL_CAKE" }, links);
+await db.query("select admin_save_cake_options($1::jsonb)", [JSON.stringify(options.slice(1))]);
+assert.equal(
+  (await db.query("select active from custom_cake_options where id=$1", [options[0].id])).rows[0].active,
+  false,
+);
+assert.equal(
+  (await db.query("select count(*)::int as n from cake_type_options where cake_type_id=$1", [id])).rows[0].n,
+  5,
+);
+console.log(
+  "PASS incomplete drafts, publication price/tax/lead-time/mandatory choices, transactional rollback and historical option preservation",
+);
+await db.close();

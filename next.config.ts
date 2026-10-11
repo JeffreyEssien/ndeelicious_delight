@@ -12,6 +12,9 @@ function productImagePatterns() {
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  devIndicators: false,
+  serverExternalPackages: ["pdfkit", "fontkit"],
+  outputFileTracingIncludes: { "/api/**/pdf": ["./public/fonts/*.ttf", "./public/brand-logo.jpg"] },
   distDir: process.env.NDEE_BROWSER_FIXTURES === "true" ? ".next-fixtures" : ".next",
   async headers() {
     return [

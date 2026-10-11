@@ -69,10 +69,10 @@ export function FulfilmentSettings({ business }: { business: BusinessSettings })
     }
   }
   return (
-    <section className="admin-card form-stack">
+    <section className="admin-card form-stack fulfilment-settings">
       <h2>Delivery schedule &amp; pickup</h2>
       <p>All times use America/Halifax. Choose operating days before accepting orders.</p>
-      <fieldset disabled={busy}>
+      <fieldset disabled={busy} className="weekday-picker">
         <legend>Delivery days</legend>
         {weekdays.map((day, index) => (
           <label key={day}>
@@ -189,7 +189,7 @@ export function FulfilmentSettings({ business }: { business: BusinessSettings })
         value={schedule.pickupInstructions}
         onChange={(event) => update({ pickupInstructions: event.target.value })}
       />
-      <fieldset disabled={busy}>
+      <fieldset disabled={busy} className="weekday-picker">
         <legend>Pickup days</legend>
         {weekdays.map((day, index) => (
           <label key={day}>
@@ -222,11 +222,11 @@ export function FulfilmentSettings({ business }: { business: BusinessSettings })
           onChange={(event) => update({ pickupHours: { ...schedule.pickupHours, end: event.target.value } })}
         />
         <Input
-          label="Additional pickup preparation hours"
+          label="Additional pickup preparation (minutes)"
           type="number"
           min="0"
-          value={schedule.pickupPreparationBufferHours}
-          onChange={(event) => update({ pickupPreparationBufferHours: Number(event.target.value) })}
+          value={Math.round(schedule.pickupPreparationBufferHours * 60)}
+          onChange={(event) => update({ pickupPreparationBufferHours: Number(event.target.value) / 60 })}
         />
       </div>
       <details>

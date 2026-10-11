@@ -1,5 +1,6 @@
 import { calculateLineTaxes } from "@/features/tax/calculator";
 import type { DeliveryTaxMode, TaxSnapshot } from "@/features/tax/types";
+import { isVariantInventoryTracked, isVariantPurchasable } from "@/features/catalog/availability";
 import { variantPrice } from "@/features/catalog/pricing";
 import type { CartLine, Fulfilment, Product } from "@/types";
 import { formatMoney } from "@/lib/format";
@@ -29,6 +30,9 @@ export type OrderQuote = {
     sku: string;
     name: string;
     variantName: string;
+    packQuantity: number | null;
+    totalPieces: number | null;
+    inventoryTracked: boolean;
     quantity: number;
     unitPrice: number;
     lineTotal: number;
@@ -86,16 +90,16 @@ export function calculateOrderQuote(input: {
   assertFulfilmentAvailable(input);
   if (!input.cart.length) throw new CommerceError("EMPTY_CART", "Your basket is empty.");
   const lines = input.cart.map((line) => {
-    if (!Number.isInteger(line.quantity) || line.quantity < 1)
+    if (!Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > 50)
       throw new CommerceError("INVALID_QUANTITY", "Choose a valid quantity.");
     const product = input.products.find((p) => p.id === line.productId);
     if (!product || product.status === "DRAFT" || product.status === "ARCHIVED")
       throw new CommerceError("PRODUCT_UNAVAILABLE", "A product in your basket is no longer available.");
     const variant = product.variants.find((v) => v.id === line.variantId);
-    if (!variant || variant.active === false || product.status === "OUT_OF_STOCK")
+    if (!variant || !isVariantPurchasable(product, variant))
       throw new CommerceError("VARIANT_UNAVAILABLE", `${product.name} is currently unavailable.`);
-    if (product.trackInventory !== false) {
-      const available = Math.min(product.stockQuantity, variant.stockQuantity);
+    if (isVariantInventoryTracked(product, variant)) {
+      const available = variant.stockQuantity;
       if (available < 1) throw new CommerceError("VARIANT_UNAVAILABLE", `${product.name} is currently unavailable.`);
       if (line.quantity > available)
         throw new CommerceError("INSUFFICIENT_STOCK", `Only ${available} of ${product.name} remain.`);
@@ -109,6 +113,9 @@ export function calculateOrderQuote(input: {
       sku: variant.sku ?? "",
       name: product.name,
       variantName: variant.name,
+      packQuantity: variant.packQuantity ?? null,
+      totalPieces: variant.packQuantity ? variant.packQuantity * line.quantity : null,
+      inventoryTracked: isVariantInventoryTracked(product, variant),
       quantity: line.quantity,
       unitPrice,
       lineTotal: unitPrice * line.quantity,

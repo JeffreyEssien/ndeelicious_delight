@@ -75,3 +75,45 @@ it("stores explicit pack quantities and rejects zero, fractional or negative pie
       }).packQuantity,
     ).toBe(packQuantity);
 });
+
+it("persists whole-minute preparation without rounding to whole hours", () => {
+  for (const minutes of [1, 15, 45, 90, 525600]) {
+    expect(productInputSchema.parse({ ...valid, preparationHours: minutes / 60 }).preparationHours).toBe(minutes / 60);
+  }
+  for (const preparationHours of [-1, 9000, 0.001, Number.NaN])
+    expect(productInputSchema.safeParse({ ...valid, preparationHours }).success).toBe(false);
+});
+
+it("validates arbitrary priced packs, empty drafts, unique active sizes and stable IDs", () => {
+  const madeToOrder = {
+    ...valid,
+    shoppingMode: "MADE_TO_ORDER",
+    status: "ACTIVE",
+    price: 1000,
+    discountPrice: 800,
+    variants: [3, 5, 8, 15].map((packQuantity, index) => ({
+      name: `Box of ${packQuantity}`,
+      packQuantity,
+      priceAdjustment: 400 + index * 900,
+      stockQuantity: 0,
+      trackInventory: false,
+      active: true,
+    })),
+  };
+  expect(productInputSchema.safeParse(madeToOrder).success).toBe(true);
+  expect(productInputSchema.safeParse({ ...madeToOrder, status: "DRAFT", variants: [] }).success).toBe(true);
+  for (const variants of [
+    [],
+    [{ ...madeToOrder.variants[0], packQuantity: null }],
+    [{ ...madeToOrder.variants[0], priceAdjustment: -800 }],
+    [...madeToOrder.variants, madeToOrder.variants[0]],
+  ]) {
+    expect(productInputSchema.safeParse({ ...madeToOrder, variants }).success).toBe(false);
+  }
+  expect(
+    productInputSchema.safeParse({
+      ...madeToOrder,
+      variants: [...madeToOrder.variants, { ...madeToOrder.variants[0], active: false }],
+    }).success,
+  ).toBe(true);
+});
