@@ -1,3 +1,4 @@
+import { paymentEntryUrl } from "@/lib/payments/stripe";
 import { cakeQuoteContent } from "./cake-quote-preview";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getBusinessSettings, getStoreAppearance, getStoreTheme } from "@/lib/data/settings";
@@ -90,7 +91,7 @@ export async function issueOrderDocument(
   const { data: order, error } = await db
     .from("orders")
     .select(
-      "id,order_number,customer_name,email,phone,status,fulfilment,delivery_address_snapshot,subtotal,discount_total,delivery_fee,tax_total,tax_rate_bps,tax_snapshot,grand_total,created_at,customer_note,order_items(id,product_name,variant_name,sku,unit_price,quantity,final_price,product_snapshot),payments(status,amount,refunded_amount,paid_at,created_at,provider_payload)",
+      "id,order_number,customer_name,email,phone,status,fulfilment,delivery_address_snapshot,subtotal,discount_total,delivery_fee,tax_total,tax_rate_bps,tax_snapshot,grand_total,created_at,customer_note,order_items(id,product_name,variant_name,sku,unit_price,quantity,final_price,product_snapshot),payments(status,amount,refunded_amount,paid_at,created_at,provider_payload,provider_payment_id)",
     )
     .eq("order_number", orderNumber)
     .maybeSingle();
@@ -165,7 +166,10 @@ export async function issueOrderDocument(
         ? {
             payNowUrl: (order.payments ?? [])
               .filter((payment) => payment.status === "PENDING")
-              .map((payment) => payment.provider_payload?.checkout_url)
+              .sort((a, b) => b.created_at.localeCompare(a.created_at))
+              .map((payment) =>
+                payment.provider_payment_id ? paymentEntryUrl(payment.provider_payment_id) : undefined,
+              )
               .find((url): url is string => typeof url === "string"),
           }
         : {}),

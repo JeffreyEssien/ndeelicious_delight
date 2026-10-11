@@ -12,6 +12,7 @@ type PaymentState = {
   orderStatus?: string;
   orderNumber?: string;
   checkoutUrl?: string;
+  expired?: boolean;
 };
 
 export function PaymentResult({
@@ -77,8 +78,8 @@ export function PaymentResult({
   }
 
   const succeeded = payment?.status === "SUCCEEDED";
-  const failed = payment?.status === "FAILED";
-  const pending = !payment || payment.status === "PENDING";
+  const failed = payment?.status === "FAILED" || Boolean(payment?.expired);
+  const pending = !payment || (payment.status === "PENDING" && !payment.expired);
   const headline = succeeded
     ? content.headline
     : failed

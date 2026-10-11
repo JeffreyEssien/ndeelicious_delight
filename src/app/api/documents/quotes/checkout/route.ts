@@ -10,7 +10,7 @@ import { leadTimeHours } from "@/features/cakes/lead-time";
 import { assertFulfilmentAvailable } from "@/features/checkout/pricing";
 import { isSameOrigin } from "@/lib/auth/validation";
 import { hashDocumentToken } from "@/lib/documents/tokens";
-import { createStripeCheckout, PaymentConfigurationError } from "@/lib/payments/stripe";
+import { createStripeCheckout, retrieveStripeCheckout, PaymentConfigurationError } from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         .eq("id", cake.data.order_id)
         .single();
       if (previous.error || !previous.data) throw new Error("The recorded order is unavailable.");
-      if (previous.data.status !== "PENDING_PAYMENT")
+      if (!["PENDING_PAYMENT", "FAILED"].includes(previous.data.status))
         return Response.json({ error: "This order is no longer awaiting payment." }, { status: 409 });
       return startQuotePayment(db, {
         orderId: previous.data.id,
@@ -162,26 +162,44 @@ async function startQuotePayment(
 ) {
   const existing = await db
     .from("payments")
-    .select("provider_payload,status")
+    .select("provider_payload,status,provider_payment_id")
     .eq("order_id", data.orderId)
     .eq("provider", "stripe")
-    .in("status", ["PENDING", "SUCCEEDED"])
+    .in("status", ["PENDING", "SUCCEEDED", "FAILED", "PARTIALLY_REFUNDED", "REFUNDED"])
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (existing.data?.status === "SUCCEEDED")
+  if (["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(existing.data?.status ?? ""))
     return Response.json({ error: "This order has already been paid." }, { status: 409 });
-  const existingUrl = existing.data?.provider_payload?.checkout_url;
-  if (existing.data?.status === "PENDING" && typeof existingUrl === "string")
-    return Response.json({ checkoutUrl: existingUrl, orderNumber: data.orderNumber, total: data.total });
+  if (existing.error) return Response.json({ error: "Payment status is unavailable. Please retry." }, { status: 503 });
   try {
+    if (existing.data?.provider_payment_id) {
+      const session = await retrieveStripeCheckout(existing.data.provider_payment_id);
+      if (session.status === "complete" || session.paymentStatus === "paid")
+        return Response.json({ error: "Payment is being confirmed. Please do not pay again." }, { status: 409 });
+      if (session.status === "open" && session.url && session.expiresAt > Date.now() / 1000)
+        return Response.json({ checkoutUrl: session.url, orderNumber: data.orderNumber, total: data.total });
+      if (session.status !== "expired")
+        return Response.json({ error: "Payment status is being updated. Please try again shortly." }, { status: 409 });
+      const retired = await db
+        .from("payments")
+        .update({ status: "FAILED", updated_at: new Date().toISOString() })
+        .eq("provider_payment_id", existing.data.provider_payment_id)
+        .eq("status", "PENDING");
+      if (retired.error) throw retired.error;
+      const prepared = await db.rpc("prepare_order_payment_retry", { p_order_id: data.orderId, p_hold_minutes: 60 });
+      if (prepared.error) throw prepared.error;
+    }
+    const attemptKey = existing.data?.provider_payment_id
+      ? `checkout:${data.orderId}:renew:${existing.data.provider_payment_id}`
+      : `checkout:${data.orderId}:initial`;
     const checkout = await createStripeCheckout({
       orderId: data.orderId,
       orderNumber: data.orderNumber,
       email: data.email,
       amount: data.total,
       currency: data.currency,
-      attemptKey: `custom-quote:${data.orderId}:initial`,
+      attemptKey,
     });
     const payment = await db.from("payments").upsert(
       {
@@ -191,14 +209,14 @@ async function startQuotePayment(
         status: "PENDING",
         amount: data.total,
         currency: data.currency,
-        idempotency_key: `checkout:${data.orderId}:initial`,
+        idempotency_key: attemptKey,
         provider_payload: {
           checkout_session_id: checkout.id,
           checkout_url: checkout.url,
           expires_at: checkout.expiresAt,
         },
       },
-      { onConflict: "idempotency_key" },
+      { onConflict: "idempotency_key", ignoreDuplicates: true },
     );
     if (payment.error) throw payment.error;
     return Response.json({ checkoutUrl: checkout.url, orderNumber: data.orderNumber, total: data.total });

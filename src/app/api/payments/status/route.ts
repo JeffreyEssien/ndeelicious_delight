@@ -25,13 +25,16 @@ export async function GET(request: Request) {
 
   const related = Array.isArray(data.orders) ? data.orders[0] : data.orders;
   const payload = (data.provider_payload ?? {}) as Record<string, unknown>;
+  const expired =
+    data.status === "PENDING" && typeof payload.expires_at === "number" && payload.expires_at <= Date.now() / 1000;
   return Response.json(
     {
       payment: {
         status: data.status,
         orderStatus: related?.status,
         orderNumber: related?.order_number,
-        checkoutUrl: data.status === "PENDING" ? payload.checkout_url : undefined,
+        expired,
+        checkoutUrl: data.status === "PENDING" && !expired ? payload.checkout_url : undefined,
       },
     },
     { headers: { "Cache-Control": "no-store" } },

@@ -25,9 +25,19 @@ export function ProductEditor({
 }: {
   product: Product | null;
   close: () => void;
-  onSaved: () => void;
+  onSaved: (updated: Partial<Product>) => void;
 }) {
   const { currency } = useBusinessSettings();
+  const initialPreparationUnit =
+    product?.preparationHours && Number.isInteger(product.preparationHours) ? "hours" : "minutes";
+  const [preparationUnit, setPreparationUnit] = useState(initialPreparationUnit);
+  const [preparationValue, setPreparationValue] = useState(
+    String(
+      initialPreparationUnit === "minutes"
+        ? Math.round((product?.preparationHours ?? 0) * 60)
+        : (product?.preparationHours ?? 0),
+    ),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [savedId, setSavedId] = useState(product?.id ?? "");
@@ -81,7 +91,7 @@ export function ProductEditor({
       status: String(form.get("status")) as ProductStatus,
       featured: form.get("featured") === "on",
       shoppingMode: String(form.get("shoppingMode")),
-      preparationHours: Number(form.get("preparationHours")),
+      preparationHours: Number(form.get("preparationHours")) / (form.get("preparationUnit") === "minutes" ? 60 : 1),
       taxClass: String(form.get("taxClass")),
       trackInventory: form.get("trackInventory") === "on",
       lowStockThreshold: Number(form.get("lowStockThreshold")),
@@ -114,7 +124,7 @@ export function ProductEditor({
       if (!response.ok) throw new Error(result.error ?? "Product could not be saved.");
       setSavedId(result.id);
       if (pendingImages.length) await uploadImages(result.id, name);
-      onSaved();
+      onSaved({ preparationHours: payload.preparationHours });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Product could not be saved.");
       setBusy(false);
@@ -208,14 +218,29 @@ export function ProductEditor({
             <option value="READY_TO_BAKE">Ready to Bake</option>
           </Select>
           <Input
-            label="Preparation time (hours)"
+            label="Preparation time"
             name="preparationHours"
             type="number"
             min="0"
-            max="8760"
-            defaultValue={product?.preparationHours ?? 0}
+            max={preparationUnit === "minutes" ? 525600 : 8760}
+            step={preparationUnit === "minutes" ? "1" : "any"}
+            value={preparationValue}
+            onChange={(event) => setPreparationValue(event.target.value)}
             required
           />
+          <Select
+            label="Preparation unit"
+            name="preparationUnit"
+            value={preparationUnit}
+            onChange={(event) => {
+              const unit = event.target.value === "hours" ? "hours" : "minutes";
+              setPreparationValue(String(Number(preparationValue) * (unit === "minutes" ? 60 : 1 / 60)));
+              setPreparationUnit(unit);
+            }}
+          >
+            <option value="minutes">Minutes</option>
+            <option value="hours">Hours</option>
+          </Select>
           <h3>Inventory</h3>
           <Checkbox label="Track inventory" name="trackInventory" defaultChecked={product?.trackInventory ?? true} />
           <div className="field-row">

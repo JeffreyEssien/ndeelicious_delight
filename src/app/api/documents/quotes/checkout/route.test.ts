@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ order: vi.fn(), settings: vi.fn(), payment: vi.fn(), createCheckout: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  order: vi.fn(),
+  settings: vi.fn(),
+  payment: vi.fn(),
+  createCheckout: vi.fn(),
+  retrieve: vi.fn(),
+  prepare: vi.fn(),
+  retire: vi.fn(),
+}));
 vi.mock("@/lib/security/rate-limit", () => ({ enforcePublicRateLimit: () => null }));
 vi.mock("@/lib/documents/service", () => ({
   resolveAccessToken: () => ({ kind: "QUOTE", state: "ACCEPTED", cake_order_id: "cake" }),
@@ -8,10 +16,12 @@ vi.mock("@/lib/data/settings", () => ({ getBusinessSettings: mocks.settings, get
 vi.mock("@/lib/data/catalog", () => ({ getDeliveryZones: mocks.settings }));
 vi.mock("@/lib/payments/stripe", () => ({
   createStripeCheckout: mocks.createCheckout,
+  retrieveStripeCheckout: mocks.retrieve,
   PaymentConfigurationError: class extends Error {},
 }));
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: () => ({
+    rpc: mocks.prepare,
     from: (table: string) => {
       if (table === "custom_cake_orders")
         return { select: () => ({ eq: () => ({ single: () => ({ data: { order_id: "historical" } }) }) }) };
@@ -24,6 +34,7 @@ vi.mock("@/lib/supabase/service", () => ({
             }),
           }),
           upsert: () => ({ error: null }),
+          update: () => ({ eq: () => ({ eq: mocks.retire }) }),
         };
       throw new Error(`Unexpected table ${table}`);
     },
@@ -38,6 +49,8 @@ const request = () =>
 describe("accepted quote payment snapshots", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.prepare.mockResolvedValue({ error: null });
+    mocks.retire.mockResolvedValue({ error: null });
     mocks.order.mockResolvedValue({
       data: {
         id: "historical",
@@ -64,9 +77,31 @@ describe("accepted quote payment snapshots", () => {
       expect.objectContaining({ amount: 12345, orderId: "historical" }),
     );
   });
+  it("renews a failed expired quote payment using the recorded amount", async () => {
+    const previous = await mocks.order();
+    mocks.order.mockResolvedValue({ data: { ...previous.data, status: "FAILED" } });
+    mocks.payment.mockResolvedValue({ data: { status: "FAILED", provider_payment_id: "cs_test_expired" } });
+    mocks.retrieve.mockResolvedValue({ status: "expired", paymentStatus: "unpaid" });
+    expect((await POST(request())).status).toBe(200);
+    expect(mocks.prepare).toHaveBeenCalledWith("prepare_order_payment_retry", {
+      p_order_id: "historical",
+      p_hold_minutes: 60,
+    });
+    expect(mocks.createCheckout).toHaveBeenCalledWith(expect.objectContaining({ amount: 12345 }));
+  });
   it("returns an existing pending checkout and rejects another payment after success", async () => {
     mocks.payment.mockResolvedValue({
-      data: { status: "PENDING", provider_payload: { checkout_url: "https://checkout.example.invalid/existing" } },
+      data: {
+        status: "PENDING",
+        provider_payment_id: "cs_test_current",
+        provider_payload: { checkout_url: "https://checkout.example.invalid/existing" },
+      },
+    });
+    mocks.retrieve.mockResolvedValue({
+      status: "open",
+      paymentStatus: "unpaid",
+      expiresAt: Date.now() / 1000 + 600,
+      url: "https://checkout.example.invalid/existing",
     });
     expect((await (await POST(request())).json()).checkoutUrl).toContain("existing");
     expect(mocks.createCheckout).not.toHaveBeenCalled();

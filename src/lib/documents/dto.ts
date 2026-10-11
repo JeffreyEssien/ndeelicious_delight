@@ -76,5 +76,12 @@ export function persistedDocumentToDTO(document: PersistedDocument): DocumentDTO
     accentColor: document.branding_snapshot.accentColor,
     logoUrl: document.branding_snapshot.logoUrl,
     ...presentation,
+    // Old stored invoices keep immutable amounts, but expired Stripe URLs route through renewal.
+    payNowUrl: presentation.payNowUrl?.includes("checkout.stripe.com")
+      ? (() => {
+          const session = presentation.payNowUrl.match(/cs_(?:test_|live_)?[A-Za-z0-9_]+/)?.[0];
+          return session ? `/pay?session=${encodeURIComponent(session)}` : undefined;
+        })()
+      : presentation.payNowUrl,
   };
 }

@@ -13,5 +13,14 @@ export function shoppingMode(product: Product) {
   return product.shoppingMode ?? (product.category === "READY_TO_BAKE" ? "READY_TO_BAKE" : "READY_TO_ORDER");
 }
 export function preparationLabel(product: Product) {
-  return product.preparationHours ? `Preparation: ${product.preparationHours} hours` : "Available to order";
+  if (!product.preparationHours) return "Available to order";
+  return `Preparation: ${formatPreparationTime(product.preparationHours)}`;
+}
+
+export function formatPreparationTime(hours: number) {
+  const minutes = Math.round(hours * 60);
+  const wholeHours = Math.floor(minutes / 60),
+    remaining = minutes % 60;
+  if (!wholeHours) return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  return `${wholeHours} ${wholeHours === 1 ? "hour" : "hours"}${remaining ? ` ${remaining} min` : ""}`;
 }

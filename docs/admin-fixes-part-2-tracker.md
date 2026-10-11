@@ -57,3 +57,7 @@ Database migrations must be applied before deploying code that calls new RPCs. N
 ### Migration rollout
 
 User authorized application on 2026-10-11. Migrations 0034–0038 committed atomically to `lmgwshcddlgjoanwgqnn`; prerequisites, service-role grants, anonymous/authenticated restrictions and read-only RPCs verified. Private receipt and prior function definitions retained under `.commerce-backups/admin-2026-10-11T06-01-19.993Z/`. See report for rollout details.
+
+### Supplied screenshot follow-up — 2026-10-11
+
+The newly supplied screenshots prompted additional corrections to order hierarchy, invoice composer controls, cake detail/configuration density, product cards, inventory grouping and delivery controls. Payment renewal now validates the actual Stripe session. Minutes persist via migration 0039, applied and verified. Detailed changes, actual tests and remaining live-payment limitations are recorded in [the follow-up report](mobile-payment-followup.md) and [gallery](mobile-payment-followup-evidence/README.md). Earlier screenshot-specific Blocked rows refer to the original absent numbered references; this follow-up does not invent their mapping.

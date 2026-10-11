@@ -4146,3 +4146,267 @@ html[data-theme] .admin-sidebar {
   flex-shrink: 0;
   white-space: nowrap;
 }
+
+/* Owner-facing detail pages: short primary actions, clear grouped sections. */
+.history-detail {
+  background: var(--surface);
+}
+.history-detail .order-detail-content {
+  display: grid;
+  gap: 16px;
+}
+.history-detail .order-detail-content > section,
+.history-detail .request-detail {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.history-detail h2 {
+  font-size: clamp(22px, 4vw, 30px);
+  margin: 8px 0 12px;
+  line-height: 1.2;
+}
+.history-detail h3 {
+  font-size: 16px;
+  margin: 0 0 12px;
+}
+.history-detail p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.history-detail .button {
+  min-height: 44px;
+  padding: 10px 16px;
+  font-size: 14px;
+}
+.history-detail .overline {
+  border: 0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.history-detail .order-detail-actions {
+  align-items: flex-start;
+}
+.history-detail details > summary {
+  min-height: 44px;
+  padding: 12px 0;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.history-detail .order-secondary-actions {
+  width: 100%;
+  border-top: 1px solid var(--line);
+}
+.history-detail .order-secondary-actions[open] {
+  display: grid;
+  gap: 10px;
+}
+.history-detail .order-detail-list {
+  display: grid;
+  gap: 12px;
+}
+.history-detail .order-detail-list > div {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.4fr) minmax(0, 1fr);
+  gap: 12px;
+  font-size: 14px;
+}
+.history-detail .order-detail-list dd {
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.history-detail .purchase-configuration {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 12px;
+}
+.history-detail .purchase-configuration dt {
+  color: var(--muted);
+}
+.history-detail .purchase-configuration dd {
+  margin: 3px 0 0;
+}
+.cake-communication-history {
+  margin-bottom: 16px;
+  padding: 16px;
+}
+.cake-communication-history > summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 650;
+}
+.cake-type-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin: 12px 0;
+  background: var(--surface);
+  overflow: hidden;
+}
+.cake-type-card > summary {
+  padding: 16px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+}
+.cake-type-card > summary small {
+  float: right;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.cake-type-card > article {
+  padding: 16px;
+  border-top: 1px solid var(--line);
+}
+.admin-mode .form-stack {
+  min-width: 0;
+  gap: 16px;
+}
+.admin-mode .form-stack > fieldset {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+}
+.admin-mode .form-stack > label:has(> input[type="checkbox"]),
+.cake-types-editor label:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.admin-mode .form-stack input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.admin-mode .weekday-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.admin-mode .weekday-picker label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.fulfilment-settings h2 {
+  font-size: 22px;
+}
+.fulfilment-settings > p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.inventory-product-group > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 12px 0;
+  min-height: 44px;
+}
+.inventory-product-group > summary small {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.inventory-product-group {
+  margin-top: 12px;
+  border-radius: 14px;
+}
+@media (max-width: 768px) {
+  .history-detail .order-detail-content > section,
+  .history-detail .request-detail {
+    padding: 16px;
+  }
+  .history-detail .order-detail-list > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .history-detail .order-documents-area > .button {
+    width: 100%;
+  }
+  .admin-mode .products-table tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 16px;
+    padding: 16px;
+  }
+  .admin-mode .products-table td {
+    width: auto;
+    padding: 4px 0;
+  }
+  .admin-mode .products-table td:first-child,
+  .admin-mode .products-table td:last-child {
+    grid-column: 1 / -1;
+  }
+  .admin-mode .products-table .product-cell small {
+    overflow-wrap: anywhere;
+    font-size: 11px;
+  }
+  .admin-mode .products-table .product-cell b {
+    font-size: 14px;
+  }
+  .admin-mode .products-table .status-select {
+    width: 100%;
+    min-width: 0;
+  }
+  .admin-mode .products-table .table-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .admin-mode .products-table .table-actions button {
+    min-height: 44px;
+    padding: 8px 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    text-decoration: none;
+  }
+  .inventory-product-group > summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .fulfilment-settings {
+    padding: 16px;
+  }
+  .fulfilment-settings .field-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The areas save action belongs to its own editor, never over pickup fields. */
+.admin-mode .delivery-save-bar {
+  position: static;
+  margin-top: 16px;
+  box-shadow: none;
+}
+
+.inventory-product-group > summary > span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.inventory-product-group > summary::after {
+  content: "View stock";
+  margin-left: auto;
+  color: var(--berry);
+  font-size: 13px;
+  font-weight: 650;
+}
+.inventory-product-group[open] > summary::after {
+  content: "Hide stock";
+}
+@media (max-width: 768px) {
+  .inventory-product-group > summary::after {
+    margin-left: 0;
+    padding-top: 4px;
+  }
+}

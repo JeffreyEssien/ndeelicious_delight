@@ -269,7 +269,10 @@ export function AdminPortal({
           <ProductEditor
             product={editor}
             close={() => setEditor(undefined)}
-            onSaved={() => {
+            onSaved={(updated) => {
+              setProducts((current) =>
+                current.map((product) => (product.id === editor?.id ? { ...product, ...updated } : product)),
+              );
               setEditor(undefined);
               notify("Product saved. Storefront visibility is up to date.");
               router.refresh();
@@ -634,45 +637,18 @@ function OrderDetail({
             {busy ? "Updating…" : nextAction.label}
           </Button>
         )}
-        <details>
-          <summary>Other stage actions</summary>
+        <details className="order-secondary-actions">
+          <summary>More actions</summary>
           <OrderStatusSelect value={order.status} onChange={(value) => onStatus(order.id, value)} />
+          <Button variant="secondary" disabled={busy} onClick={retryNotifications}>
+            Retry customer emails
+          </Button>
+          <Button variant="secondary" onClick={() => window.print()}>
+            Print summary
+          </Button>
         </details>
-        <Button variant="secondary" disabled={busy} onClick={retryNotifications}>
-          Retry customer emails
-        </Button>
-        <Button variant="secondary" onClick={() => window.print()}>
-          Print summary
-        </Button>
       </div>
-      <section className="order-documents-area">
-        <span className="overline">Documents</span>
-        <h3>{order.payment?.paidAt ? "Payment receipt" : "Invoice and payment request"}</h3>
-        <p>
-          {order.payment?.paidAt
-            ? "The receipt is locked to the confirmed payment record."
-            : "Issue an invoice showing the current amount due."}
-        </p>
-        <Link
-          className="button button-primary"
-          href={`/admin/documents/orders/${encodeURIComponent(order.id)}/${order.payment?.paidAt ? "receipt" : "invoice"}`}
-          target="_blank"
-        >
-          {order.payment?.paidAt ? "View receipt" : "Create invoice"}
-        </Link>
-        {order.payment?.paidAt && (
-          <details>
-            <summary>Other document</summary>
-            <Link
-              className="text-button"
-              href={`/admin/documents/orders/${encodeURIComponent(order.id)}/invoice`}
-              target="_blank"
-            >
-              View invoice
-            </Link>
-          </details>
-        )}
-      </section>
+
       <section>
         <h3>Customer and fulfilment</h3>
         <dl className="order-detail-list">
@@ -824,33 +800,65 @@ function OrderDetail({
           </details>
         )}
       </section>
+      <section className="order-documents-area">
+        <span className="overline">Documents</span>
+        <h3>{order.payment?.paidAt ? "Payment receipt" : "Invoice and payment request"}</h3>
+        <p>
+          {order.payment?.paidAt
+            ? "The receipt is locked to the confirmed payment record."
+            : "Issue an invoice showing the current amount due."}
+        </p>
+        <Link
+          className="button button-primary"
+          href={`/admin/documents/orders/${encodeURIComponent(order.id)}/${order.payment?.paidAt ? "receipt" : "invoice"}`}
+          target="_blank"
+        >
+          {order.payment?.paidAt ? "View receipt" : "Create invoice"}
+        </Link>
+        {order.payment?.paidAt && (
+          <details>
+            <summary>Other document</summary>
+            <Link
+              className="text-button"
+              href={`/admin/documents/orders/${encodeURIComponent(order.id)}/invoice`}
+              target="_blank"
+            >
+              View invoice
+            </Link>
+          </details>
+        )}
+      </section>
       <section className="no-print">
-        <h3>Internal note</h3>
-        <Textarea
-          label="Only administrators can see this"
-          rows={4}
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-        />
-        <Button disabled={busy} variant="secondary" onClick={saveNote}>
-          Save internal note
-        </Button>
+        <details>
+          <summary>Internal note</summary>
+          <Textarea
+            label="Only administrators can see this"
+            rows={4}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+          <Button disabled={busy} variant="secondary" onClick={saveNote}>
+            Save internal note
+          </Button>
+        </details>
       </section>
       <section>
-        <h3>Activity</h3>
-        <ol className="order-timeline">
-          {order.events.map((event) => (
-            <li key={event.id}>
-              <b>
-                {event.toStatus
-                  ? `${event.fromStatus?.replaceAll("_", " ")} → ${event.toStatus.replaceAll("_", " ")}`
-                  : event.eventType.replaceAll("_", " ")}
-              </b>
-              {event.note && <p>{event.note}</p>}
-              <small>{formatDate(event.createdAt, business.locale, business.timezone)}</small>
-            </li>
-          ))}
-        </ol>
+        <details>
+          <summary>Activity</summary>
+          <ol className="order-timeline">
+            {order.events.map((event) => (
+              <li key={event.id}>
+                <b>
+                  {event.toStatus
+                    ? `${event.fromStatus?.replaceAll("_", " ")} → ${event.toStatus.replaceAll("_", " ")}`
+                    : event.eventType.replaceAll("_", " ")}
+                </b>
+                {event.note && <p>{event.note}</p>}
+                <small>{formatDate(event.createdAt, business.locale, business.timezone)}</small>
+              </li>
+            ))}
+          </ol>
+        </details>
       </section>
     </div>
   );
@@ -1006,7 +1014,11 @@ function Products({
                     )}
                     <div>
                       <b>{product.name}</b>
-                      <small>{product.featured ? `Featured · ${product.slug}` : product.slug}</small>
+                      <small>
+                        {product.featured
+                          ? "Featured product"
+                          : product.shoppingMode?.replaceAll("_", " ").toLowerCase()}
+                      </small>
                     </div>
                   </div>
                 </td>
@@ -1317,7 +1329,7 @@ function DeliveryZones({
           </article>
         ))}
       </div>
-      <div className="admin-save-bar">
+      <div className="admin-save-bar delivery-save-bar">
         <span role="status">{saveState}</span>
         <Button
           disabled={busy}

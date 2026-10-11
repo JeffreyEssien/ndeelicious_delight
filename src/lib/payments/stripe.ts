@@ -85,3 +85,17 @@ export function constructStripeEvent(payload: string, signature: string) {
 }
 
 export type StripeCheckoutEvent = Stripe.Checkout.Session;
+
+// A stored checkout URL is not evidence that its session is still payable.
+export async function retrieveStripeCheckout(sessionId: string) {
+  const session = await stripeClient().checkout.sessions.retrieve(sessionId);
+  return {
+    status: session.status,
+    paymentStatus: session.payment_status,
+    url: session.url,
+    expiresAt: session.expires_at,
+  };
+}
+export function paymentEntryUrl(sessionId: string) {
+  return `${getSiteUrl()}/pay?session=${encodeURIComponent(sessionId)}`;
+}

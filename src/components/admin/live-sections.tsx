@@ -184,9 +184,8 @@ export function CakeRequests({
         </ModalOverlay>
       )}
       {detailOnly && selected.communications && selected.communications.length > 0 && (
-        <section className="admin-card">
-          <h3>Communication history</h3>
-          <p>Latest 25 quotation revisions. Delivery status records whether each email was sent.</p>
+        <details className="admin-card cake-communication-history">
+          <summary>Communication history</summary>
           <ol className="order-timeline">
             {selected.communications.map((message) => (
               <li key={message.id}>
@@ -201,11 +200,9 @@ export function CakeRequests({
               </li>
             ))}
           </ol>
-        </section>
+        </details>
       )}
-      <p className="admin-inline-state">
-        Review request → Prepare quote → Preview → Send → Customer approval → Fulfil order
-      </p>
+
       {!detailOnly && (
         <>
           <div className="cake-request-summary">
@@ -324,18 +321,29 @@ export function CakeRequests({
               </div>
             </div>
           )}
-          <Input
-            label={`Quote amount (${currency})`}
-            disabled={busy || Boolean(selected.orderId)}
-            min="0.01"
-            step="0.01"
-            type="number"
-            value={amount}
-            onChange={(e) => {
-              setAmount(e.target.value);
-              setSaveState("changed");
-            }}
-          />
+          {selected.orderId ? (
+            <p className="cake-quote-summary">
+              Agreed quote:{" "}
+              <strong>
+                {new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(
+                  (selected.quotedTotal ?? 0) / 100,
+                )}
+              </strong>
+            </p>
+          ) : (
+            <Input
+              label={`Quote amount (${currency})`}
+              disabled={busy || Boolean(selected.orderId)}
+              min="0.01"
+              step="0.01"
+              type="number"
+              value={amount}
+              onChange={(e) => {
+                setAmount(e.target.value);
+                setSaveState("changed");
+              }}
+            />
+          )}
           <p>
             {selected.email} · {selected.phone}
           </p>

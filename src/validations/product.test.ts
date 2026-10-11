@@ -75,3 +75,11 @@ it("stores explicit pack quantities and rejects zero, fractional or negative pie
       }).packQuantity,
     ).toBe(packQuantity);
 });
+
+it("persists whole-minute preparation without rounding to whole hours", () => {
+  for (const minutes of [1, 15, 45, 90, 525600]) {
+    expect(productInputSchema.parse({ ...valid, preparationHours: minutes / 60 }).preparationHours).toBe(minutes / 60);
+  }
+  for (const preparationHours of [-1, 9000, 0.001, Number.NaN])
+    expect(productInputSchema.safeParse({ ...valid, preparationHours }).success).toBe(false);
+});

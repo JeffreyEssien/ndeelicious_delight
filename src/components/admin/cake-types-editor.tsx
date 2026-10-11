@@ -15,6 +15,7 @@ export function CakeTypesEditor({
 }) {
   const [assignments, setAssignments] = useState(relationships);
   const [types, setTypes] = useState(initial);
+  const [expandedCake, setExpandedCake] = useState(initial[0]?.id ?? "");
   const [savedTypes, setSavedTypes] = useState(initial);
   const [savedAssignments, setSavedAssignments] = useState(relationships);
   const [state, setState] = useState("Saved");
@@ -114,198 +115,219 @@ export function CakeTypesEditor({
       </p>
       <fieldset disabled={busy} style={{ border: 0, padding: 0 }}>
         {types.map((type, index) => (
-          <article className="admin-card form-stack" key={type.id}>
-            <label>
-              Name
-              <input value={type.name} onChange={(e) => update(type.id, { name: e.target.value })} />
-            </label>
-            <label>
-              Starting price (CAD)
-              <input
-                type="number"
-                min="0"
-                required={type.active}
-                step="0.01"
-                value={type.basePrice == null ? "" : type.basePrice / 100}
-                onChange={(e) =>
-                  update(type.id, { basePrice: e.target.value ? Math.round(Number(e.target.value) * 100) : null })
-                }
-              />
-            </label>
-            <label>
-              Tax classification
-              <select
-                value={type.taxClass ?? "REQUIRES_REVIEW"}
-                onChange={(e) => update(type.id, { taxClass: e.target.value as CakeType["taxClass"] })}
-              >
-                <option value="REQUIRES_REVIEW">Setup required</option>
-                <option value="FULL_CAKE">Eligible full cake (zero rated)</option>
-                <option value="WEDDING_CAKE">Eligible edible wedding cake (zero rated)</option>
-                <option value="STANDARD_TAXABLE">Standard taxable</option>
-              </select>
-            </label>
-            <p>
-              {type.basePrice == null
-                ? "Setup required: enter the base price and assign choices below."
-                : "Starting price + selected extras = estimated price. Choices requiring a quote are confirmed individually."}
-            </p>
-            <details className="cake-choice-groups">
-              <summary>Choose sizes, flavours and other options</summary>
-              {["size", "flavour", "filling", "design", "occasion"].map((group) => (
-                <fieldset key={group}>
-                  <legend>
-                    {
-                      {
-                        size: "Sizes",
-                        flavour: "Flavours",
-                        filling: "Fillings",
-                        design: "Designs",
-                        occasion: "Occasions",
-                      }[group]
-                    }
-                  </legend>
-                  <button
-                    type="button"
-                    className="text-button"
-                    onClick={() => {
-                      setAssignments((current) => [
-                        ...current.filter(
-                          (link) =>
-                            link.cakeTypeId !== type.id ||
-                            !options.some((option) => option.id === link.optionId && option.type === group),
-                        ),
-                        ...options
-                          .filter((option) => option.type === group && option.active)
-                          .map((option) => ({ cakeTypeId: type.id, optionId: option.id })),
-                      ]);
-                      setState("Unsaved changes");
-                    }}
-                  >
-                    Use all available {group === "flavour" ? "flavours" : "choices"}
-                  </button>
-                  {options
-                    .filter((option) => option.type === group)
-                    .map((option) => (
-                      <label className="check-row" key={option.id}>
-                        <input
-                          type="checkbox"
-                          checked={assignments.some(
-                            (link) => link.cakeTypeId === type.id && link.optionId === option.id,
-                          )}
-                          onChange={(event) => {
-                            setAssignments((current) =>
-                              event.target.checked
-                                ? [...current, { cakeTypeId: type.id, optionId: option.id }]
-                                : current.filter((link) => link.cakeTypeId !== type.id || link.optionId !== option.id),
-                            );
-                            setState("Unsaved changes");
-                          }}
-                        />
-                        {option.name}
-                        {option.active ? "" : " (unavailable)"}
-                      </label>
-                    ))}
-                </fieldset>
-              ))}
-            </details>
-            <label>
-              Lead time
-              <input
-                type="number"
-                min={type.active ? "0.01" : "0"}
-                step="any"
-                required={type.active}
-                value={type.leadTimeValue}
-                onChange={(e) => update(type.id, { leadTimeValue: Number(e.target.value) })}
-              />
-            </label>
-            <label>
-              Lead-time unit
-              <select
-                value={type.leadTimeUnit}
-                onChange={(e) => update(type.id, { leadTimeUnit: e.target.value as CakeType["leadTimeUnit"] })}
-              >
-                <option value="hours">Hours</option>
-                <option value="days">Days</option>
-                <option value="weeks">Weeks</option>
-              </select>
-            </label>
-            {type.image && (
-              <Image
-                src={type.image}
-                alt={`${type.name || "Cake"} photo`}
-                width={180}
-                height={120}
-                unoptimized
-                style={{ objectFit: "cover", borderRadius: 8, maxWidth: "100%" }}
-              />
-            )}
-            <label>
-              Photo
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/avif"
-                onChange={(e) => {
-                  void uploadPhoto(type.id, e.target.files?.[0]);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            <p>
-              {uploading
-                ? "Uploading photo…"
-                : type.image
-                  ? "Photo selected. Save your cake to apply it."
-                  : "Choose a photo up to 5 MB."}
-            </p>
-            <details>
-              <summary>Advanced settings</summary>{" "}
+          <details
+            className="cake-type-card"
+            key={type.id}
+            open={expandedCake === type.id}
+            onToggle={(event) => {
+              if (event.currentTarget.open) setExpandedCake(type.id);
+              else if (expandedCake === type.id) setExpandedCake("");
+            }}
+          >
+            <summary>
+              <span>{type.name || "New cake"}</span>
+              <small>{type.active ? "Published" : "Draft"}</small>
+            </summary>
+            <article className="form-stack">
               <label>
-                Image URL
-                <input value={type.image} onChange={(e) => update(type.id, { image: e.target.value })} />
+                Name
+                <input value={type.name} onChange={(e) => update(type.id, { name: e.target.value })} />
               </label>
               <label>
-                URL slug
-                <input value={type.slug} onChange={(e) => update(type.id, { slug: e.target.value })} />
-              </label>
-              <label>
-                Description
-                <textarea value={type.description} onChange={(e) => update(type.id, { description: e.target.value })} />
-              </label>
-              <label>
-                Customer notice
-                <textarea
-                  value={type.customerNotice}
-                  onChange={(e) => update(type.id, { customerNotice: e.target.value })}
+                Starting price (CAD)
+                <input
+                  type="number"
+                  min="0"
+                  required={type.active}
+                  step="0.01"
+                  value={type.basePrice == null ? "" : type.basePrice / 100}
+                  onChange={(e) =>
+                    update(type.id, { basePrice: e.target.value ? Math.round(Number(e.target.value) * 100) : null })
+                  }
                 />
               </label>
-            </details>
-            <label>
-              <input
-                type="checkbox"
-                checked={type.active}
-                onChange={(e) => update(type.id, { active: e.target.checked })}
-              />{" "}
-              Published (available to customers)
-            </label>
-            <div>
-              <button type="button" disabled={index === 0} onClick={() => move(index, -1)}>
-                Move up
-              </button>{" "}
-              <button type="button" disabled={index === types.length - 1} onClick={() => move(index, 1)}>
-                Move down
-              </button>
-            </div>
-          </article>
+              <label>
+                Tax classification
+                <select
+                  value={type.taxClass ?? "REQUIRES_REVIEW"}
+                  onChange={(e) => update(type.id, { taxClass: e.target.value as CakeType["taxClass"] })}
+                >
+                  <option value="REQUIRES_REVIEW">Setup required</option>
+                  <option value="FULL_CAKE">Eligible full cake (zero rated)</option>
+                  <option value="WEDDING_CAKE">Eligible edible wedding cake (zero rated)</option>
+                  <option value="STANDARD_TAXABLE">Standard taxable</option>
+                </select>
+              </label>
+              <p>
+                {type.basePrice == null
+                  ? "Setup required: enter the base price and assign choices below."
+                  : "Starting price + selected extras = estimated price. Choices requiring a quote are confirmed individually."}
+              </p>
+              <details className="cake-choice-groups">
+                <summary>Choose sizes, flavours and other options</summary>
+                {["size", "flavour", "filling", "design", "occasion"].map((group) => (
+                  <fieldset key={group}>
+                    <legend>
+                      {
+                        {
+                          size: "Sizes",
+                          flavour: "Flavours",
+                          filling: "Fillings",
+                          design: "Designs",
+                          occasion: "Occasions",
+                        }[group]
+                      }
+                    </legend>
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => {
+                        setAssignments((current) => [
+                          ...current.filter(
+                            (link) =>
+                              link.cakeTypeId !== type.id ||
+                              !options.some((option) => option.id === link.optionId && option.type === group),
+                          ),
+                          ...options
+                            .filter((option) => option.type === group && option.active)
+                            .map((option) => ({ cakeTypeId: type.id, optionId: option.id })),
+                        ]);
+                        setState("Unsaved changes");
+                      }}
+                    >
+                      Use all available {group === "flavour" ? "flavours" : "choices"}
+                    </button>
+                    {options
+                      .filter((option) => option.type === group)
+                      .map((option) => (
+                        <label className="check-row" key={option.id}>
+                          <input
+                            type="checkbox"
+                            checked={assignments.some(
+                              (link) => link.cakeTypeId === type.id && link.optionId === option.id,
+                            )}
+                            onChange={(event) => {
+                              setAssignments((current) =>
+                                event.target.checked
+                                  ? [...current, { cakeTypeId: type.id, optionId: option.id }]
+                                  : current.filter(
+                                      (link) => link.cakeTypeId !== type.id || link.optionId !== option.id,
+                                    ),
+                              );
+                              setState("Unsaved changes");
+                            }}
+                          />
+                          {option.name}
+                          {option.active ? "" : " (unavailable)"}
+                        </label>
+                      ))}
+                  </fieldset>
+                ))}
+              </details>
+              <label>
+                Lead time
+                <input
+                  type="number"
+                  min={type.active ? "0.01" : "0"}
+                  step="any"
+                  required={type.active}
+                  value={type.leadTimeValue}
+                  onChange={(e) => update(type.id, { leadTimeValue: Number(e.target.value) })}
+                />
+              </label>
+              <label>
+                Lead-time unit
+                <select
+                  value={type.leadTimeUnit}
+                  onChange={(e) => update(type.id, { leadTimeUnit: e.target.value as CakeType["leadTimeUnit"] })}
+                >
+                  <option value="hours">Hours</option>
+                  <option value="days">Days</option>
+                  <option value="weeks">Weeks</option>
+                </select>
+              </label>
+              {type.image && (
+                <Image
+                  src={type.image}
+                  alt={`${type.name || "Cake"} photo`}
+                  width={180}
+                  height={120}
+                  unoptimized
+                  style={{ objectFit: "cover", borderRadius: 8, maxWidth: "100%" }}
+                />
+              )}
+              <label>
+                Photo
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif"
+                  onChange={(e) => {
+                    void uploadPhoto(type.id, e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              <p>
+                {uploading
+                  ? "Uploading photo…"
+                  : type.image
+                    ? "Photo selected. Save your cake to apply it."
+                    : "Choose a photo up to 5 MB."}
+              </p>
+              <details>
+                <summary>Advanced settings</summary>{" "}
+                <label>
+                  Image URL
+                  <input value={type.image} onChange={(e) => update(type.id, { image: e.target.value })} />
+                </label>
+                <label>
+                  URL slug
+                  <input value={type.slug} onChange={(e) => update(type.id, { slug: e.target.value })} />
+                </label>
+                <label>
+                  Description
+                  <textarea
+                    value={type.description}
+                    onChange={(e) => update(type.id, { description: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Customer notice
+                  <textarea
+                    value={type.customerNotice}
+                    onChange={(e) => update(type.id, { customerNotice: e.target.value })}
+                  />
+                </label>
+              </details>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={type.active}
+                  onChange={(e) => update(type.id, { active: e.target.checked })}
+                />{" "}
+                Published (available to customers)
+              </label>
+              <div>
+                <button type="button" disabled={index === 0} onClick={() => move(index, -1)}>
+                  Move up
+                </button>{" "}
+                <button type="button" disabled={index === types.length - 1} onClick={() => move(index, 1)}>
+                  Move down
+                </button>
+              </div>
+            </article>
+          </details>
         ))}
         <button
           type="button"
           className="button button-secondary"
           onClick={() => {
+            const id = crypto.randomUUID();
+            setExpandedCake(id);
             setTypes((items) => [
               ...items,
               {
-                id: crypto.randomUUID(),
+                id,
                 name: "",
                 slug: "",
                 description: "",

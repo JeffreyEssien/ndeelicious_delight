@@ -35,7 +35,12 @@ export const productInputSchema = z
     category: productCategorySchema,
     shoppingMode: z.enum(["READY_TO_ORDER", "MADE_TO_ORDER", "READY_TO_BAKE"]).default("READY_TO_ORDER"),
     taxClass: z.enum(taxClasses).default("REQUIRES_REVIEW"),
-    preparationHours: z.number().int().min(0).max(8760).default(0),
+    preparationHours: z
+      .number()
+      .min(0)
+      .max(8760)
+      .refine((hours) => Math.abs(hours * 60 - Math.round(hours * 60)) < 0.000001, "Use whole minutes.")
+      .default(0),
     price: z.number().int().min(0).max(1_000_000_000),
     discountPrice: z.number().int().min(0).max(1_000_000_000).nullable(),
     status: productStatusSchema,

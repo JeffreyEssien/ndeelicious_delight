@@ -72,17 +72,14 @@ export function DocumentComposer({ initial }: { initial: DocumentDTO }) {
       <aside className="document-editor no-print">
         <div className="document-editor-head">
           <span>Official {initial.kind.toLowerCase()}</span>
-          <h1>Prepare for printing</h1>
-          <p>Amounts, customer details, dates, and line items are locked to the permanent order and payment record.</p>
+          <h1>{initial.kind === "Invoice" ? "Invoice" : initial.kind === "Receipt" ? "Receipt" : "Quotation"}</h1>
+          <p>Review your document, then print or download it.</p>
         </div>
         <div className="document-editor-fields">
-          <fieldset className="document-integrity-summary">
-            <legend>Locked financial details</legend>
+          <div className="document-integrity-summary">
             <b>{initial.number}</b>
             <span>{initial.customer.name}</span>
-            <span>{initial.lines.length} item(s)</span>
-            <span>Financial details locked</span>
-          </fieldset>
+          </div>
           <details>
             <summary>Presentation options</summary>
             <div className="form-stack">
@@ -132,6 +129,19 @@ export function DocumentComposer({ initial }: { initial: DocumentDTO }) {
                 onChange={(event) => update({ footerMessage: event.target.value })}
               />
             </div>
+            <Button
+              variant="ghost"
+              disabled={!changed}
+              onClick={() => {
+                setPresentation(savedPresentation);
+                setChanged(false);
+              }}
+            >
+              Reset presentation
+            </Button>
+            <Button disabled={!changed || saving} onClick={save}>
+              {saving ? "Saving…" : "Save presentation"}
+            </Button>
           </details>
           <p className="document-save-state" role="status">
             {saving
@@ -142,19 +152,6 @@ export function DocumentComposer({ initial }: { initial: DocumentDTO }) {
           </p>
         </div>
         <div className="document-editor-actions">
-          <Button
-            variant="ghost"
-            disabled={!changed}
-            onClick={() => {
-              setPresentation(savedPresentation);
-              setChanged(false);
-            }}
-          >
-            Reset presentation
-          </Button>
-          <Button disabled={!changed || saving} onClick={save}>
-            {saving ? "Saving…" : "Save presentation"}
-          </Button>
           <a
             className={`button button-secondary${changed ? " is-disabled" : ""}`}
             href={`/api/admin/documents/${initial.id}/pdf`}
@@ -165,12 +162,17 @@ export function DocumentComposer({ initial }: { initial: DocumentDTO }) {
           >
             Download PDF
           </a>
-          <Button variant="secondary" disabled={!!sharing || changed} onClick={() => share("link")}>
-            {sharing === "link" ? "Copying…" : "Copy secure link"}
-          </Button>
-          <Button variant="secondary" disabled={!!sharing || changed} onClick={() => share("email")}>
-            {sharing === "email" ? "Sending…" : "Email customer"}
-          </Button>
+          <details className="document-sharing">
+            <summary>Share document</summary>
+            <div>
+              <Button variant="secondary" disabled={!!sharing || changed} onClick={() => share("link")}>
+                {sharing === "link" ? "Copying…" : "Copy secure link"}
+              </Button>
+              <Button variant="secondary" disabled={!!sharing || changed} onClick={() => share("email")}>
+                {sharing === "email" ? "Sending…" : "Email customer"}
+              </Button>
+            </div>
+          </details>
           <Button onClick={() => window.print()}>Print</Button>
         </div>
         {shareState && <p className="document-save-state">{shareState}</p>}

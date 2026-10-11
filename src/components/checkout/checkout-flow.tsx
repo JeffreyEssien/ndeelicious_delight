@@ -1,4 +1,5 @@
 "use client";
+import { formatPreparationTime } from "@/features/catalog/pricing";
 import { useCustomerText } from "@/components/customer-text-provider";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
@@ -331,8 +332,9 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
             <span className="overline">{t("Fulfilment")}</span>
             <h1>{t("How should we get it to you?")}</h1>
             <p>
-              Minimum preparation time: {Math.max(0, ...resolved.map((line) => line.p.preparationHours ?? 0))} hours.
-              The bakery will confirm your collection or delivery window.
+              Minimum preparation time:{" "}
+              {formatPreparationTime(Math.max(0, ...resolved.map((line) => line.p.preparationHours ?? 0)))}. The bakery
+              will confirm your collection or delivery window.
             </p>
             {business.deliveryEnabled && !deliveryZones.length && (
               <p>{t("Delivery is currently unavailable. You can collect your order from the bakery.")}</p>

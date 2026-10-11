@@ -65,6 +65,12 @@ test("owner configuration immediately drives cake rules and pack visibility", as
   await expect(page.getByRole("button", { name: /Birthday Cake.*Minimum lead time: 1 week/ })).toBeVisible();
   await page.goto("/admin/custom-cakes");
   await page.getByRole("tab", { name: /Configuration/ }).click();
+  await editor
+    .locator(".cake-type-card")
+    .first()
+    .evaluate((element) => {
+      (element as HTMLDetailsElement).open = true;
+    });
   await editor.locator("article").first().getByLabel("Lead time", { exact: true }).fill("4");
   await editor.getByRole("button", { name: "Save cake types" }).click();
   await expect(editor.getByRole("status")).toHaveText("Saved");
