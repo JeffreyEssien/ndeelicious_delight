@@ -21,6 +21,7 @@ export function CakeTypesEditor({
   const [state, setState] = useState("Saved");
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [dragId, setDragId] = useState("");
   const router = useRouter();
   const busy = state === "Saving…" || uploading;
   useUnsavedChanges(state !== "Saved");
@@ -63,6 +64,43 @@ export function CakeTypesEditor({
       setError(reason instanceof Error ? reason.message : "Photo upload failed. Please retry.");
     } finally {
       setUploading(false);
+    }
+  }
+  async function deleteCake(type: CakeType) {
+    const persisted = savedTypes.some((item) => item.id === type.id);
+    const forget = () => {
+      setTypes((items) => items.filter((item) => item.id !== type.id));
+      setAssignments((links) => links.filter((link) => link.cakeTypeId !== type.id));
+      if (expandedCake === type.id) setExpandedCake("");
+    };
+    if (!persisted) {
+      // Never saved — just drop the draft locally, no server round-trip.
+      forget();
+      return;
+    }
+    if (!window.confirm(`Remove “${type.name || "this cake"}” from your cakes?`)) return;
+    setState("Saving…");
+    setError("");
+    try {
+      const response = await fetch("/api/admin/mutate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "cake-delete", id: type.id }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error ?? "The cake could not be removed.");
+      forget();
+      setSavedTypes((items) => items.filter((item) => item.id !== type.id));
+      setSavedAssignments((links) => links.filter((link) => link.cakeTypeId !== type.id));
+      setState(
+        payload?.cakeDeleteOutcome === "unpublished"
+          ? "Cake hidden from customers (it has existing orders)."
+          : "Cake removed.",
+      );
+      router.refresh();
+    } catch (reason) {
+      setState("Error");
+      setError(reason instanceof Error ? reason.message : "The cake could not be removed.");
     }
   }
   async function save() {
@@ -261,24 +299,44 @@ export function CakeTypesEditor({
                   style={{ objectFit: "cover", borderRadius: 8, maxWidth: "100%" }}
                 />
               )}
-              <label>
-                Photo
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/avif"
-                  onChange={(e) => {
-                    void uploadPhoto(type.id, e.target.files?.[0]);
-                    e.target.value = "";
+              <div className="field">
+                <span>Photo</span>
+                {/** biome-ignore lint/a11y/noStaticElementInteractions: drop zone pairs with the keyboard-accessible file input inside it */}
+                <div
+                  className={`cake-photo-drop${dragId === type.id ? " is-dragging" : ""}`}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setDragId(type.id);
                   }}
-                />
-              </label>
-              <p>
-                {uploading
-                  ? "Uploading photo…"
-                  : type.image
-                    ? "Photo selected. Save your cake to apply it."
-                    : "Choose a photo up to 5 MB."}
-              </p>
+                  onDragLeave={() => setDragId((current) => (current === type.id ? "" : current))}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setDragId("");
+                    void uploadPhoto(type.id, event.dataTransfer.files?.[0]);
+                  }}
+                >
+                  <input
+                    id={`cake-photo-${type.id}`}
+                    className="sr-only"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    onChange={(event) => {
+                      void uploadPhoto(type.id, event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                  />
+                  <label htmlFor={`cake-photo-${type.id}`}>
+                    <b>Drag a photo here, or tap to upload</b>
+                    <small>
+                      {uploading
+                        ? "Uploading photo…"
+                        : type.image
+                          ? "Photo added — save your cake to apply it."
+                          : "JPEG, PNG or WebP, up to 5 MB."}
+                    </small>
+                  </label>
+                </div>
+              </div>
               <details>
                 <summary>Advanced settings</summary>{" "}
                 <label>
@@ -312,12 +370,15 @@ export function CakeTypesEditor({
                 />{" "}
                 Published (available to customers)
               </label>
-              <div>
+              <div className="cake-card-actions">
                 <button type="button" disabled={index === 0} onClick={() => move(index, -1)}>
                   Move up
-                </button>{" "}
+                </button>
                 <button type="button" disabled={index === types.length - 1} onClick={() => move(index, 1)}>
                   Move down
+                </button>
+                <button type="button" className="text-button danger-text" onClick={() => deleteCake(type)}>
+                  Delete cake
                 </button>
               </div>
             </article>

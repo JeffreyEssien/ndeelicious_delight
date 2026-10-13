@@ -24,7 +24,20 @@ export const businessSettingsSchema = z.object({
   currency: text(3)
     .length(3)
     .transform((value) => value.toUpperCase()),
-  instagramUrl: z.union([z.literal(""), z.url().max(500)]),
+  // Accepts an @handle, a bare handle, or a full link; stored as a canonical profile URL
+  // so the storefront, footer, and SEO metadata always receive a usable URL.
+  instagramUrl: text(500)
+    .transform((value) => {
+      const trimmed = value.trim();
+      if (!trimmed) return "";
+      if (/^https?:\/\//i.test(trimmed)) return trimmed;
+      return trimmed.replace(/^@/, "").replace(/\/+$/, "");
+    })
+    .refine(
+      (value) => value === "" || /^https?:\/\//i.test(value) || /^[A-Za-z0-9._]{1,60}$/.test(value),
+      "Enter your Instagram @handle or full profile link.",
+    )
+    .transform((value) => (value === "" || /^https?:\/\//i.test(value) ? value : `https://instagram.com/${value}`)),
   deliveryEnabled: z.boolean(),
   pickupEnabled: z.boolean(),
   orderMinimum: z.number().int().min(0).max(100_000_000),

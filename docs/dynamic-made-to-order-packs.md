@@ -55,8 +55,8 @@ Six representative 390px screenshots are retained below. The full 42-screen owne
 
 The skip link now appears only for keyboard focus, the Next.js development indicator is disabled, and the product editor uses the dynamic viewport height with its own scrollable content. Pack edit buttons retain their width and footer actions wrap on narrow screens. Editor evidence now captures the viewport instead of combining a fixed drawer with a full-page background. Seven focused browser checks pass at all configured widths, covering keyboard skip access, dialog focus, scrolling to Save/Cancel and viewport bounds. TypeScript, Biome and the CSS token audit also pass.
 
-1. Authorize and apply migration 0041 using the existing database migration process.
+1. Migration 0041 was authorized and applied on October 11, 2026 using `node scripts/rollout-product-packs.mjs --apply`. Transactional verification confirmed service-only RPC permissions and unchanged counts: 12 products, 35 variants and 2 orders. Previous function definitions and the migration checksum/receipt are saved under `.commerce-backups/product-packs-2026-10-11T12-20-57.884Z/`.
 2. Rebuild and deploy with the actual production environment. Do not deploy the fixture build.
 3. Complete a live payment-provider smoke test and review legacy made-to-order options that have no pack quantity. The owner can configure or disable those without deleting history.
 
-No live migration, deployment, Git commit or push was performed. Live Stripe/mail-provider behaviour and production-scale performance are not claimed verified by the isolated tests.
+Migration 0041 is now applied to the configured Supabase database. No deployment, Git commit or push was performed. Live Stripe/mail-provider behaviour and production-scale performance are not claimed verified by the isolated tests.

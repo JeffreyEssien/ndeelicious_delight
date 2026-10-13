@@ -144,7 +144,9 @@ export async function getAdminData(
     !options.section || ["analytics", "products", "coupons", "carousel", "marketing"].includes(options.section)
       ? getProducts({ includeInactive: true, client: supabase })
       : Promise.resolve([]),
-    needs("delivery", "analytics", "products", "custom-cakes") ? getDeliveryZones(supabase, true) : Promise.resolve([]),
+    needs("delivery", "analytics", "products", "custom-cakes", "cakes")
+      ? getDeliveryZones(supabase, true)
+      : Promise.resolve([]),
     options.skipHistory || options.section === "dashboard"
       ? Promise.resolve({ data: [], error: null })
       : fetchOrderRows(supabase, undefined, options.recentLimit ?? 5),
@@ -170,7 +172,7 @@ export async function getAdminData(
       : emptyResult(),
     getStorefrontContent(supabase),
     getBusinessSettings(supabase),
-    needs("custom-cakes")
+    needs("custom-cakes", "cakes")
       ? getCakeConfiguration(supabase)
       : Promise.resolve({ options: [], cakeTypes: [], relationships: [], timezone: "America/Halifax" }),
     getStoreAppearance(supabase),

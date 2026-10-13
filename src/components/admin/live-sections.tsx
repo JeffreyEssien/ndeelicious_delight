@@ -1,5 +1,5 @@
 "use client";
-import { confirmSectionChange, useUnsavedChanges } from "./use-unsaved-changes";
+import { useUnsavedChanges } from "./use-unsaved-changes";
 import { HistoryWorkspace } from "./history-workspace";
 import { BusinessDocument, type BusinessDocumentData } from "@/components/documents/business-document";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
@@ -642,60 +642,30 @@ export function CakeConfigurationEditor({ initial }: { initial: CakeConfiguratio
   );
 }
 
-export function CakeWorkspace({
-  configuration,
-}: {
-  requests: AdminCakeRequest[];
-  configuration: CakeConfigurationData;
-}) {
-  const [view, setView] = useState<"requests" | "options">("requests");
+export function CakeWorkspace(_props: { requests: AdminCakeRequest[]; configuration: CakeConfigurationData }) {
   return (
     <div className="cake-workspace">
-      <div className="admin-section-tabs" role="tablist" aria-label="Custom cake workspace">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === "requests"}
-          className={view === "requests" ? "active" : ""}
-          onClick={() => {
-            if (confirmSectionChange()) setView("requests");
-          }}
-        >
-          Customer requests
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === "options"}
-          className={view === "options" ? "active" : ""}
-          onClick={() => {
-            if (confirmSectionChange()) setView("options");
-          }}
-        >
-          My cakes & options <span>{configuration.options.filter((option) => option.active).length}</span>
-        </button>
-      </div>
-      {view === "requests" ? (
-        <HistoryWorkspace<AdminCakeRequest>
-          kind="cakes"
-          renderDetail={(request, _close, refresh) => (
-            <CakeRequests initial={[request]} detailOnly onRefresh={refresh} />
-          )}
-        />
-      ) : (
-        <>
-          <CakeTypesEditor
-            initial={configuration.cakeTypes}
-            options={configuration.options}
-            relationships={configuration.relationships ?? []}
-          />
-          <details className="admin-card">
-            <summary>Edit shared sizes, flavours and extras</summary>
-            <p>Manage the choices available across your cakes. Assign these choices to each cake above.</p>
-            <CakeConfigurationEditor initial={configuration} />
-          </details>
-        </>
-      )}
+      <HistoryWorkspace<AdminCakeRequest>
+        kind="cakes"
+        renderDetail={(request, _close, refresh) => <CakeRequests initial={[request]} detailOnly onRefresh={refresh} />}
+      />
+    </div>
+  );
+}
+
+export function CakeCatalogue({ configuration }: { configuration: CakeConfigurationData }) {
+  return (
+    <div className="cake-workspace">
+      <CakeTypesEditor
+        initial={configuration.cakeTypes}
+        options={configuration.options}
+        relationships={configuration.relationships ?? []}
+      />
+      <details className="admin-card">
+        <summary>Edit shared sizes, flavours and extras</summary>
+        <p>Manage the choices available across your cakes. Assign these choices to each cake above.</p>
+        <CakeConfigurationEditor initial={configuration} />
+      </details>
     </div>
   );
 }

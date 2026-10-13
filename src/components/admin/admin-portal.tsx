@@ -21,7 +21,7 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { Badge, Button, EmptyState, Input, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
-import { CakeWorkspace, Coupons, Reviews } from "@/components/admin/live-sections";
+import { CakeCatalogue, CakeWorkspace, Coupons, Reviews } from "@/components/admin/live-sections";
 import { ProductEditor } from "@/components/admin/product-editor";
 import { ContentSettings } from "@/components/admin/content-settings";
 import { CarouselEditor } from "@/components/admin/carousel-editor";
@@ -61,21 +61,22 @@ type Props = {
   siteUrl: string;
 };
 const titles: Record<string, string> = {
-  dashboard: "Bakery overview",
+  dashboard: "Today",
   orders: "Orders",
-  "custom-cakes": "Custom cake requests",
+  "custom-cakes": "Cake requests",
+  cakes: "Cakes",
   products: "Products",
-  inventory: "Inventory",
+  inventory: "Stock",
   customers: "Customers",
-  coupons: "Coupons & promotions",
-  reviews: "Customer reviews",
-  content: "Storefront content",
-  carousel: "Homepage carousel",
-  marketing: "Marketing studio",
-  delivery: "Delivery zones",
-  settings: "Business settings",
-  audit: "Audit log",
-  analytics: "Analytics & insights",
+  coupons: "Coupons & offers",
+  reviews: "Reviews",
+  content: "Website content",
+  carousel: "Homepage",
+  marketing: "Marketing posts",
+  delivery: "Delivery & pricing",
+  settings: "Business details",
+  audit: "Activity log",
+  analytics: "Reports",
 };
 const themes: { id: StoreTheme; name: string; description: string; colors: string[] }[] = [
   {
@@ -225,6 +226,7 @@ export function AdminPortal({
         />
       )}
       {section === "custom-cakes" && <CakeWorkspace requests={initialCakes} configuration={initialCakeConfiguration} />}
+      {section === "cakes" && <CakeCatalogue configuration={initialCakeConfiguration} />}
       {section === "products" && (
         <Products
           products={products}
@@ -443,24 +445,47 @@ function Dashboard({ summary }: { summary: DashboardSummary }) {
         <div className="admin-card attention-list">
           <div className="card-head">
             <div>
-              <h2>Needs attention</h2>
-              <p>Live operational signals</p>
+              <h2>Needs your attention</h2>
+              <p>Tap to jump straight to it</p>
             </div>
           </div>
-          <article>
-            <span className="attention-icon danger">!</span>
-            <div>
-              <b>{summary.lowStockProducts} products are running low</b>
-              <small>Update today’s quantities</small>
-            </div>
-          </article>
-          <article>
-            <span className="attention-icon warning">$</span>
-            <div>
-              <b>{summary.waitingQuotes} cake quotes waiting</b>
-              <small>Open custom cake requests</small>
-            </div>
-          </article>
+          {summary.waitingQuotes === 0 && summary.lowStockProducts === 0 ? (
+            <article>
+              <span className="attention-icon success">✓</span>
+              <div>
+                <b>You’re all caught up</b>
+                <small>No waiting quotes or low stock right now.</small>
+              </div>
+            </article>
+          ) : (
+            <>
+              {summary.waitingQuotes > 0 && (
+                <Link className="attention-row" href="/admin/custom-cakes">
+                  <span className="attention-icon warning">$</span>
+                  <div>
+                    <b>
+                      {summary.waitingQuotes} cake {summary.waitingQuotes === 1 ? "quote" : "quotes"} waiting for a price
+                    </b>
+                    <small>Send a quote so the customer can pay</small>
+                  </div>
+                  <Icon name="arrow" />
+                </Link>
+              )}
+              {summary.lowStockProducts > 0 && (
+                <Link className="attention-row" href="/admin/inventory">
+                  <span className="attention-icon danger">!</span>
+                  <div>
+                    <b>
+                      {summary.lowStockProducts} {summary.lowStockProducts === 1 ? "product is" : "products are"} running
+                      low
+                    </b>
+                    <small>Top up today’s quantities</small>
+                  </div>
+                  <Icon name="arrow" />
+                </Link>
+              )}
+            </>
+          )}
         </div>
       </div>
     </>
@@ -1055,6 +1080,26 @@ function Products({
                     <button type="button" className="text-button" onClick={() => onDuplicate(product)}>
                       Duplicate
                     </button>
+                    {product.status === "ARCHIVED" ? (
+                      <button type="button" className="text-button" onClick={() => onStatus(product.id, "DRAFT")}>
+                        Restore
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="text-button danger-text"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Remove “${product.name}” from your shop? Customers will no longer see it, and you can restore it anytime.`,
+                            )
+                          )
+                            onStatus(product.id, "ARCHIVED");
+                        }}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -1309,6 +1354,10 @@ function BusinessSettings({
   const [businessState, setBusinessState] = useState<"saved" | "unsaved" | "saving" | "failed">("saved");
   const previewTokens = resolveThemeTokens(previewTheme, { ...appearance, useCustomColors: false });
   const previewStyle = themeTokenCss(previewTokens) as CSSProperties;
+  // Show the saved Instagram URL back as a friendly @handle when it points at instagram.com.
+  const instagramDisplay = initial.instagramUrl
+    ? initial.instagramUrl.replace(/^https?:\/\/(www\.)?instagram\.com\//i, "@").replace(/\/+$/, "")
+    : "";
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusinessState("saving");
@@ -1371,7 +1420,7 @@ function BusinessSettings({
           <a href="#layout-settings">Colours & layout</a>
           <Link href="/admin/content">Website text & pages</Link>
           <Link href="/admin/delivery">Delivery areas</Link>
-          <Link href="/admin/custom-cakes">Cake builder</Link>
+          <Link href="/admin/cakes">Cakes & options</Link>
         </nav>
       </div>
       <div className="admin-card theme-settings" id="brand-settings">
@@ -1443,32 +1492,36 @@ function BusinessSettings({
         onSubmit={saveAppearance}
         onChange={() => setAppearanceState("unsaved")}
       >
-        <h2>Store colours and layout</h2>
+        <h2>Colours &amp; layout</h2>
         <p>
-          These safe controls update the customer storefront immediately. Mobile layouts remain optimized automatically.
+          Most owners just pick a theme above — it sets beautiful colours for you. Only turn on custom colours if you
+          want exact shades. Your changes go live right away and stay mobile-friendly.
         </p>
         <label className="check-row">
           <input name="useCustomColors" type="checkbox" defaultChecked={appearance.useCustomColors} />
-          <span>Use the custom colours below instead of the selected preset</span>
+          <span>Use my own custom colours instead of the chosen theme</span>
         </label>
-        <div className="field-row">
-          <Input name="background" label="Page background" type="color" defaultValue={appearance.colors.background} />
-          <Input name="surface" label="Cards and panels" type="color" defaultValue={appearance.colors.surface} />
-        </div>
-        <div className="field-row">
-          <Input name="text" label="Main text" type="color" defaultValue={appearance.colors.text} />
-          <Input name="mutedText" label="Supporting text" type="color" defaultValue={appearance.colors.mutedText} />
-        </div>
-        <div className="field-row">
-          <Input name="primary" label="Primary brand colour" type="color" defaultValue={appearance.colors.primary} />
-          <Input
-            name="primaryDark"
-            label="Dark brand colour"
-            type="color"
-            defaultValue={appearance.colors.primaryDark}
-          />
-          <Input name="accent" label="Accent colour" type="color" defaultValue={appearance.colors.accent} />
-        </div>
+        <fieldset className="colour-group">
+          <legend>Your brand colours</legend>
+          <small className="field-hint">The main colour for buttons and highlights. This is the one customers notice.</small>
+          <div className="field-row">
+            <Input name="primary" label="Brand colour" type="color" defaultValue={appearance.colors.primary} />
+            <Input name="primaryDark" label="Brand colour (darker)" type="color" defaultValue={appearance.colors.primaryDark} />
+            <Input name="accent" label="Accent" type="color" defaultValue={appearance.colors.accent} />
+          </div>
+        </fieldset>
+        <fieldset className="colour-group">
+          <legend>Page &amp; text colours</legend>
+          <small className="field-hint">Background and text shades. The defaults suit most bakeries.</small>
+          <div className="field-row">
+            <Input name="background" label="Page background" type="color" defaultValue={appearance.colors.background} />
+            <Input name="surface" label="Cards &amp; panels" type="color" defaultValue={appearance.colors.surface} />
+          </div>
+          <div className="field-row">
+            <Input name="text" label="Main text" type="color" defaultValue={appearance.colors.text} />
+            <Input name="mutedText" label="Supporting text" type="color" defaultValue={appearance.colors.mutedText} />
+          </div>
+        </fieldset>
         <label className="field">
           <span>Content width</span>
           <select name="contentWidth" defaultValue={appearance.contentWidth}>
@@ -1524,19 +1577,32 @@ function BusinessSettings({
         <Input name="businessName" label="Business name" defaultValue={initial.businessName} />
         <Input name="contactEmail" label="Contact email" type="email" defaultValue={initial.contactEmail} />
         <Input name="phone" label="Phone" defaultValue={initial.phone} />
-        <Input
-          name="whatsapp"
-          label="WhatsApp link or international number"
-          placeholder="https://wa.me/19025551234"
-          defaultValue={initial.whatsapp}
-        />
+        <div className="field-with-hint">
+          <Input
+            name="whatsapp"
+            label="WhatsApp number"
+            placeholder="+1 902 555 1234"
+            defaultValue={initial.whatsapp}
+          />
+          <small className="field-hint">
+            Your WhatsApp number with country code. You can also paste a wa.me link if you prefer.
+          </small>
+        </div>
         <Input name="address" label="Address" defaultValue={initial.address} />
         <Input name="city" label="City" defaultValue={initial.city ?? ""} />
         <Input name="province" label="Province or territory code" maxLength={2} defaultValue={initial.province} />
         <Input name="postalCode" label="Business postal code" maxLength={7} defaultValue={initial.postalCode} />
         <input name="country" type="hidden" value="CA" />
         <Textarea name="openingHours" label="Opening hours" defaultValue={initial.openingHours} rows={3} />
-        <Input name="instagramUrl" label="Instagram URL" type="url" defaultValue={initial.instagramUrl} />
+        <div className="field-with-hint">
+          <Input
+            name="instagramUrl"
+            label="Instagram"
+            placeholder="@yourbakery"
+            defaultValue={instagramDisplay}
+          />
+          <small className="field-hint">Just your @handle — or paste your full profile link.</small>
+        </div>
         <Input name="currency" label="Currency" maxLength={3} defaultValue={initial.currency} />
         <Input name="locale" label="Locale" defaultValue={initial.locale} />
         <Input name="timezone" label="Timezone" defaultValue={initial.timezone} />

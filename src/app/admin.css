@@ -56,8 +56,22 @@
 .admin-sidebar nav {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 20px;
   margin-top: 16px;
+}
+.admin-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.admin-nav-heading {
+  margin: 0 0 4px;
+  padding: 0 14px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8f827c;
 }
 .admin-sidebar nav a {
   min-height: 44px;
@@ -673,6 +687,50 @@
 .attention-list article small {
   color: var(--muted);
   font-size: 10px;
+}
+.attention-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 20px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  transition: background 150ms ease, padding 150ms ease;
+}
+.attention-row:last-child {
+  border-bottom: 0;
+}
+.attention-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.attention-row b {
+  font-size: 12px;
+}
+.attention-row small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.attention-row > svg {
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+  flex: none;
+  color: var(--muted);
+  transition: transform 150ms ease, color 150ms ease;
+}
+.attention-row:hover {
+  background: color-mix(in srgb, var(--berry) 5%, transparent);
+  border-radius: 12px;
+  padding-inline: 12px;
+  margin-inline: 8px;
+}
+.attention-row:hover > svg {
+  transform: translateX(3px);
+  color: var(--berry);
 }
 .attention-icon {
   width: 34px;
@@ -3074,6 +3132,9 @@ html[data-theme] .admin-sidebar {
   pointer-events: none;
 }
 
+.admin-bottom-nav {
+  display: none;
+}
 @media (max-width: 800px) {
   .desktop-admin-sidebar {
     display: none;
@@ -3083,6 +3144,53 @@ html[data-theme] .admin-sidebar {
     overflow-y: auto;
     overscroll-behavior: contain;
     padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+  .admin-bottom-nav {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 50;
+    display: flex;
+    justify-content: space-around;
+    gap: 2px;
+    padding: 6px 6px max(6px, env(safe-area-inset-bottom));
+    background: rgba(40, 34, 32, 0.96);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid #49403c;
+  }
+  .admin-bottom-nav a,
+  .admin-bottom-nav button {
+    flex: 1;
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: #bfb5af;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 150ms ease, background 150ms ease;
+  }
+  .admin-bottom-nav a svg,
+  .admin-bottom-nav button svg {
+    width: 22px;
+    height: 22px;
+  }
+  .admin-bottom-nav a.active {
+    color: #fff;
+    background: #3b3330;
+  }
+  .admin-bottom-nav a:active,
+  .admin-bottom-nav button:active {
+    background: #4a413d;
+  }
+  .admin-content main {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
   }
   .admin-drawer {
     width: min(100%, 680px);
@@ -4276,6 +4384,67 @@ html[data-theme] .admin-sidebar {
 .cake-type-card > article {
   padding: 16px;
   border-top: 1px solid var(--line);
+}
+.cake-photo-drop {
+  border: 1.5px dashed var(--line);
+  border-radius: 12px;
+  background: var(--bg, var(--surface));
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.cake-photo-drop.is-dragging {
+  border-color: var(--berry);
+  background: color-mix(in srgb, var(--berry) 8%, transparent);
+}
+.cake-photo-drop label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+}
+.cake-photo-drop label b {
+  font-size: 14px;
+}
+.cake-photo-drop label small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.cake-photo-drop:focus-within {
+  border-color: var(--berry);
+}
+.cake-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+.cake-card-actions .danger-text {
+  margin-left: auto;
+}
+.field-with-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.field-hint {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.colour-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.colour-group legend {
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 700;
 }
 .admin-mode .form-stack {
   min-width: 0;

@@ -80,7 +80,7 @@ test("capture original admin interfaces from immutable source", async ({ page, c
   await page.goto("/admin/custom-cakes");
   await expect(page.getByRole("heading", { name: /cake for/ })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("cake-requests-before.png"), fullPage: true });
-  await page.getByRole("tab", { name: /Configuration/ }).click();
+  await page.goto("/admin/cakes");
   await page.screenshot({ path: testInfo.outputPath("cake-management-before.png"), fullPage: true });
   await page.goto("/admin/inventory");
   await page.screenshot({ path: testInfo.outputPath("inventory-before.png"), fullPage: true });

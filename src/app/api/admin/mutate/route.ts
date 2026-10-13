@@ -33,6 +33,7 @@ const schema = z.discriminatedUnion("action", [
       .optional(),
     cakeTypes: cakeTypesSchema,
   }),
+  z.object({ action: z.literal("cake-delete"), id: z.uuid() }),
   z.object({
     action: z.literal("product-status"),
     id: z.uuid(),
@@ -212,6 +213,13 @@ function auditDescriptor(input: AdminMutation): {
         entityId: "all",
         target: { type: "cake-types" },
       };
+    case "cake-delete":
+      return {
+        action: "CAKE_TYPE_DELETED",
+        entityType: "cake_types",
+        entityId: input.id,
+        target: { type: "cake-types" },
+      };
     case "cake-options":
       return {
         action: "CAKE_OPTIONS_CHANGED",
@@ -264,6 +272,7 @@ export async function POST(request: Request) {
   let quoteDeliveryId: string | undefined;
   let quoteDocumentId: string | undefined;
   let reviewedQuoteRevision: number | undefined;
+  let cakeDeleteOutcome: "deleted" | "unpublished" | undefined;
   if (input.action === "product-status")
     ({ error } = await supabase
       .from("products")
@@ -357,6 +366,17 @@ export async function POST(request: Request) {
       p_assignments: input.assignments ?? null,
     }));
   }
+  if (input.action === "cake-delete") {
+    const removal = await supabase.from("cake_types").delete().eq("id", input.id);
+    if (removal.error) {
+      // A cake linked to existing customer orders cannot be hard-deleted without
+      // losing that order history, so hide it from customers instead.
+      if (removal.error.code === "23503") {
+        ({ error } = await supabase.from("cake_types").update({ active: false }).eq("id", input.id));
+        if (!error) cakeDeleteOutcome = "unpublished";
+      } else error = removal.error;
+    } else cakeDeleteOutcome = "deleted";
+  }
   if (input.action === "cake-options") {
     const options = input.options.map((option) => ({
       ...option,
@@ -446,6 +466,7 @@ export async function POST(request: Request) {
   return Response.json({
     ok: true,
     ...(savedIds ? { savedIds } : {}),
+    ...(cakeDeleteOutcome ? { cakeDeleteOutcome } : {}),
     ...(quoteDeliveryId ? { deliveryStatus: "PENDING", documentId: quoteDocumentId } : {}),
   });
 }
