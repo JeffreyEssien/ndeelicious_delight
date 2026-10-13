@@ -253,8 +253,7 @@ test("cake navigation clears the previous amount and preview approval", async ({
   await page.goBack();
   await expect(amount).toHaveValue("100");
   await expect(page.getByRole("button", { name: "Send revised quote", exact: true })).toBeDisabled();
-  await page.goto("/admin/custom-cakes");
-  await page.getByRole("tab", { name: /My cakes & options/ }).click();
+  await page.goto("/admin/cakes");
   await page.evaluate(() => {
     (document.activeElement as HTMLElement)?.blur();
     window.scrollTo(0, 0);
