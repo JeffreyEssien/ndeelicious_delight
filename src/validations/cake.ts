@@ -10,11 +10,12 @@ export const cakeConfigurationSchema = z.object({
       design: z.uuid().optional(),
     })
     .optional(),
-  occasion: z.string().min(1),
+  // Size and flavour are the only required choices; occasion, filling and design are optional.
+  occasion: z.string().max(200),
   size: z.string().min(1),
   flavour: z.string().min(1),
-  filling: z.string().min(1),
-  design: z.string().min(1),
+  filling: z.string().max(200),
+  design: z.string().max(200),
   colours: z.string().max(120),
   inscription: z.string().max(45),
   deliveryDate: z.iso.date(),

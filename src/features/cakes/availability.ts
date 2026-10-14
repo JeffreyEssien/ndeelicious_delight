@@ -45,7 +45,9 @@ export function cakeAvailability(input: {
   if (!candidates.length)
     throw new FulfilmentError(
       "CAKE_AVAILABILITY_SETUP_REQUIRED",
-      "Cake fulfilment is unavailable for this date. Check the bakery schedule or contact us.",
+      modes.length === 0
+        ? "Online ordering isn’t available yet — pickup and delivery still need to be set up. Please contact us to place this order."
+        : "No pickup or delivery slot is available for this date. Try another date, or contact us.",
     );
   if (input.requestedDate && input.requestedDate < candidates[0].date)
     throw new FulfilmentError("INVALID_CAKE_DATE", `Choose a date on or after ${candidates[0].date}.`);

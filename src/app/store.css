@@ -641,13 +641,18 @@
   gap: 8px;
 }
 .socials a {
-  width: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   height: 40px;
-  display: grid;
-  place-items: center;
+  padding: 0 14px;
   border: 1px solid #4c433e;
-  border-radius: 50%;
-  font-size: 11px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+.socials svg {
+  width: 17px;
+  height: 17px;
 }
 .footer-grid h3 {
   margin-bottom: 20px;
@@ -729,6 +734,40 @@
   box-shadow: var(--shadow);
   font-size: 12px;
   font-weight: 800;
+}
+.whatsapp-fab svg {
+  width: 26px;
+  height: 26px;
+}
+.find-us-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.find-us-card h3 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+.find-us-card p {
+  margin: 0;
+}
+.find-us-hours {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.cake-type-group-title {
+  margin: 22px 0 10px;
+  font-size: 15px;
+}
+.cake-type-group:first-child .cake-type-group-title {
+  margin-top: 0;
 }
 .story-section {
   display: grid;

@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/icons";
 import type { Product } from "@/types";
 import type { StoreCarousel } from "@/types/content";
 import { getDefaultPurchasableVariant, getPurchasableVariants } from "@/features/catalog/availability";
+import { categoryLabel } from "@/features/catalog/pricing";
 import { canAutoplay, carouselIndex } from "@/features/catalog/carousel-state";
 
 export function ProductCarousel({
@@ -143,7 +144,7 @@ export function ProductCarousel({
           </span>
         </Link>
         <article className="carousel-copy">
-          <span>{t(product.category.replaceAll("_", " "))}</span>
+          <span>{t(categoryLabel(product.category))}</span>
           <h3>{product.name}</h3>
           <p>{product.shortDescription || product.description}</p>
           {settings.showPrices && (

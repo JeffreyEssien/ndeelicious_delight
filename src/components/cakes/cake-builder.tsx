@@ -43,12 +43,14 @@ export function CakeBuilder({
   configuration,
   initialSelection,
   budgetPreset,
+  collections = [],
 }: {
   configuration: CakeConfigurationData;
   initialSelection?: Partial<
     Pick<CakeConfiguration, "cakeTypeId" | "occasion" | "size" | "flavour" | "filling" | "design" | "optionIds">
   >;
   budgetPreset?: { title: string; body: string };
+  collections?: { id: string; name: string }[];
 }) {
   const t = useCustomerText("cake builder");
 
@@ -200,8 +202,9 @@ export function CakeBuilder({
         return false;
       }
     }
+    // Only Size (step 1) and Flavour (step 2) are required; every other choice is optional.
     const key = keys[step];
-    if (key && !config[key] && ![6, 7].includes(step)) {
+    if (key && !config[key] && [1, 2].includes(step)) {
       setError("Choose an option to continue.");
       return false;
     }
@@ -312,24 +315,45 @@ export function CakeBuilder({
             <div>
               <h2>Choose your cake type</h2>
               <p className="stage-intro">Preparation time depends on the cake you choose.</p>
-              <div className="choice-grid">
-                {configuration.cakeTypes
-                  .filter((type) => type.active)
-                  .map((type) => (
-                    <button
-                      type="button"
-                      key={type.id}
-                      aria-pressed={config.cakeTypeId === type.id}
-                      className={config.cakeTypeId === type.id ? "selected" : ""}
-                      onClick={() => choose("cakeTypeId", type.id)}
-                    >
-                      <b>{type.name}</b>
-                      <small>{type.description}</small>
-                      <strong>Minimum lead time: {leadTimeLabel(type)}</strong>
-                      <small>{type.customerNotice}</small>
-                    </button>
-                  ))}
-              </div>
+              {(() => {
+                const active = configuration.cakeTypes.filter((type) => type.active);
+                const groups = [
+                  ...collections.map((group) => ({
+                    key: group.id,
+                    name: group.name,
+                    cakes: active.filter((type) => type.collectionId === group.id),
+                  })),
+                  {
+                    key: "other",
+                    name: "More cakes",
+                    cakes: active.filter(
+                      (type) => !type.collectionId || !collections.some((group) => group.id === type.collectionId),
+                    ),
+                  },
+                ].filter((group) => group.cakes.length);
+                const showHeadings = groups.length > 1;
+                return groups.map((group) => (
+                  <div className="cake-type-group" key={group.key}>
+                    {showHeadings && <h3 className="cake-type-group-title">{group.name}</h3>}
+                    <div className="choice-grid">
+                      {group.cakes.map((type) => (
+                        <button
+                          type="button"
+                          key={type.id}
+                          aria-pressed={config.cakeTypeId === type.id}
+                          className={config.cakeTypeId === type.id ? "selected" : ""}
+                          onClick={() => choose("cakeTypeId", type.id)}
+                        >
+                          <b>{type.name}</b>
+                          <small>{type.description}</small>
+                          <strong>Minimum lead time: {leadTimeLabel(type)}</strong>
+                          <small>{type.customerNotice}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ));
+              })()}
               {!configuration.cakeTypes.some((type) => type.active) && (
                 <p>Custom cake types are being prepared. Please contact the bakery.</p>
               )}

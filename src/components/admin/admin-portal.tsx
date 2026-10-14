@@ -18,11 +18,13 @@ import type {
 } from "@/lib/data/admin";
 import type { DeliveryZone, OrderStatus, Product, ProductStatus } from "@/types";
 import { formatDate, formatMoney } from "@/lib/format";
+import { categoryLabel } from "@/features/catalog/pricing";
 import { Badge, Button, EmptyState, Input, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
 import { CakeCatalogue, CakeWorkspace, Coupons, Reviews } from "@/components/admin/live-sections";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
+import { CategoriesManager } from "@/components/admin/categories-manager";
 import { ProductEditor } from "@/components/admin/product-editor";
 import { ContentSettings } from "@/components/admin/content-settings";
 import { CarouselEditor } from "@/components/admin/carousel-editor";
@@ -66,6 +68,7 @@ const titles: Record<string, string> = {
   orders: "Orders",
   "custom-cakes": "Cake requests",
   cakes: "Cakes",
+  categories: "Categories",
   products: "Products",
   inventory: "Stock",
   customers: "Customers",
@@ -234,6 +237,7 @@ export function AdminPortal({
       )}
       {section === "custom-cakes" && <CakeWorkspace requests={initialCakes} configuration={initialCakeConfiguration} />}
       {section === "cakes" && <CakeCatalogue configuration={initialCakeConfiguration} />}
+      {section === "categories" && <CategoriesManager />}
       {section === "products" && (
         <Products
           products={products}
@@ -1064,7 +1068,7 @@ function Products({
                     </div>
                   </div>
                 </td>
-                <td>{product.category.replaceAll("_", " ")}</td>
+                <td>{categoryLabel(product.category)}</td>
                 <td>{money(product.price)}</td>
                 <td>
                   <b className={product.stockQuantity <= product.lowStockThreshold ? "danger-text" : ""}>

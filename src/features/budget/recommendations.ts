@@ -22,6 +22,8 @@ export type CakeRecommendationBand = {
 };
 
 const cakeSteps: CakeOptionType[] = ["occasion", "size", "flavour", "filling", "design"];
+// A cake only needs a size and a flavour to be sellable; the rest are optional extras.
+const requiredCakeSteps: CakeOptionType[] = ["size", "flavour"];
 
 export function availableProductPrice(product: Product) {
   return productStartingPrice(product);
@@ -86,7 +88,7 @@ export function cakeRecommendations(input: {
   for (const cakeType of input.cakeTypes) {
     if (!cakeType.active || cakeType.basePrice == null || leadTimeHours(cakeType) <= 0) continue;
     const allowed = optionsForCakeType(input, cakeType.id);
-    if (cakeSteps.some((step) => !allowed.some((option) => option.type === step))) continue;
+    if (requiredCakeSteps.some((step) => !allowed.some((option) => option.type === step))) continue;
     let candidates: { total: number; selections: Partial<Record<CakeOptionType, CakeOption>>; quote: boolean }[] = [
       { total: cakeType.basePrice, selections: {}, quote: false },
     ];
@@ -94,6 +96,7 @@ export function cakeRecommendations(input: {
       const choices = allowed
         .filter((option) => option.type === step)
         .sort((a, b) => a.priceAdjustment - b.priceAdjustment || a.id.localeCompare(b.id));
+      if (!choices.length) continue; // Optional category with no options — don't wipe the candidates.
       candidates = candidates
         .flatMap((candidate) =>
           choices.map((option) => ({
@@ -182,7 +185,7 @@ export function cakeBudgetState(
   const configured = active.filter(
     (type) =>
       type.basePrice != null &&
-      cakeSteps.every((step) => optionsForCakeType(input, type.id).some((option) => option.type === step)),
+      requiredCakeSteps.every((step) => optionsForCakeType(input, type.id).some((option) => option.type === step)),
   );
   if (!configured.length) return "INCOMPLETE";
   if (cakeRecommendations({ ...input, limit: 1 }).length) return "AVAILABLE";

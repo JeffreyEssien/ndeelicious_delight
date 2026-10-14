@@ -1,6 +1,6 @@
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 import { invalidateStorefrontCache } from "@/lib/cache/storefront";
-import { productSaveArguments, productSaveError } from "@/lib/data/product-write";
+import { applyProductCollection, productSaveArguments, productSaveError } from "@/lib/data/product-write";
 import { categorySlug, productInputSchema } from "@/validations/product";
 
 type Context = { params: Promise<{ id: string }> };
@@ -28,6 +28,7 @@ export async function PATCH(request: Request, context: Context) {
     const result = productSaveError(error);
     return Response.json({ error: result.error }, { status: result.status });
   }
+  await applyProductCollection(auth.db, id, parsed.data.category, parsed.data.collectionId);
   invalidateStorefrontCache();
   return Response.json({ ok: true, id });
 }

@@ -1,4 +1,21 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProductInput } from "@/validations/product";
+
+// Set the product's sub-category after the save RPC runs. Guarded so a category can only
+// receive sub-categories that belong to it.
+export async function applyProductCollection(
+  db: SupabaseClient,
+  productId: string,
+  category: string,
+  collectionId: string | null | undefined,
+) {
+  let value = collectionId?.length ? collectionId : null;
+  if (value) {
+    const { data } = await db.from("collections").select("parent").eq("id", value).maybeSingle();
+    if (!data || data.parent !== category) value = null;
+  }
+  await db.from("products").update({ collection_id: value }).eq("id", productId);
+}
 
 export function productRow(input: ProductInput, categoryId: string) {
   return {

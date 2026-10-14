@@ -7,6 +7,7 @@ import { ProductCarousel } from "@/components/product/product-carousel";
 import { ContentLines } from "@/components/ui/content-lines";
 import { Icon } from "@/components/ui/icons";
 import { getProducts } from "@/lib/data/catalog";
+import { isProductPurchasable } from "@/features/catalog/availability";
 import { getApprovedReviews } from "@/lib/data/reviews";
 import { getBusinessSettings, getStoreCarousel, getStorefrontContent } from "@/lib/data/settings";
 
@@ -23,7 +24,12 @@ export default async function Home() {
     getStoreCarousel(),
   ]);
   const home = content.home;
-  const featured = products.filter((product) => product.featured).slice(0, 4);
+  // Lead with the owner's featured picks, then top up with other available products so
+  // the row never looks sparse when only a couple are flagged as featured.
+  const featured = [
+    ...products.filter((product) => product.featured),
+    ...products.filter((product) => !product.featured && isProductPurchasable(product)),
+  ].slice(0, 4);
   const gallery = products.flatMap((product) => product.images ?? []).slice(0, 4);
   const review = reviews[0];
   return (
@@ -182,6 +188,32 @@ export default async function Home() {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+      )}
+      {(business.address || business.city) && (
+        <section className="section site-container find-us">
+          <div className="section-head">
+            <div>
+              <span className="overline">{t("Visit us")}</span>
+              <h2>{t("Find us in Halifax")}</h2>
+            </div>
+            <p>{t("Collect your order from the bakery, or come say hello.")}</p>
+          </div>
+          <div className="find-us-card">
+            <div>
+              <h3>{business.businessName}</h3>
+              <p>{[business.address, business.city, business.province].filter(Boolean).join(", ")}</p>
+              {business.openingHours && <p className="find-us-hours">{business.openingHours}</p>}
+            </div>
+            <a
+              className="button button-secondary"
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([business.address, business.city, business.province].filter(Boolean).join(", "))}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("Get directions")} <Icon name="arrow" />
+            </a>
           </div>
         </section>
       )}

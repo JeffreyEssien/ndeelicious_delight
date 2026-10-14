@@ -118,7 +118,7 @@ test("owner delivery configuration persists and rejects duplicate postal prefixe
   await page.getByLabel("Postal code", { exact: true }).fill("b3h2y5");
   await page.getByLabel("Street address", { exact: true }).fill("Fixture address");
   await page.getByLabel("City", { exact: true }).fill("Halifax");
-  await expect(page.getByText(/Earliest available:/)).toBeVisible();
+  await expect(page.getByText(/Earliest (pickup|delivery):/)).toBeVisible();
   await page.locator("details.checkout-summary").evaluate((element) => element.setAttribute("open", ""));
   await expect(page.locator(".total-row dd")).toHaveText("$45.60");
   await expect(page.getByRole("combobox", { name: /Province/ })).toHaveCount(0);

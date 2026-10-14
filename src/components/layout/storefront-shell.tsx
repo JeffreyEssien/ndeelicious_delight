@@ -1,6 +1,7 @@
 import { getCustomerText } from "@/lib/customer-text";
 import { whatsappUrl } from "@/lib/contact";
 import { CartDrawer } from "@/components/cart/cart-drawer";
+import { Icon } from "@/components/ui/icons";
 import { getBusinessSettings, getStorefrontContent } from "@/lib/data/settings";
 import { Footer } from "./footer";
 import { Header } from "./header";
@@ -29,7 +30,7 @@ export async function StorefrontShell({ children }: { children: React.ReactNode 
           rel={"noreferrer"}
           aria-label={t("Chat with {value1} on WhatsApp", { value1: business.businessName })}
         >
-          {t("wa")}
+          <Icon name="whatsapp" />
         </a>
       )}
     </>

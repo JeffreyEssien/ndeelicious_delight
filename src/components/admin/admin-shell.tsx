@@ -26,6 +26,7 @@ const navGroups: NavGroup[] = [
     heading: "Catalogue",
     links: [
       { label: "Products", href: "/admin/products", icon: "box" },
+      { label: "Categories", href: "/admin/categories", icon: "grid" },
       { label: "Cakes", href: "/admin/cakes", icon: "heart" },
       { label: "Stock", href: "/admin/inventory", icon: "grid" },
       { label: "Customers", href: "/admin/customers", icon: "user" },

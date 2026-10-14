@@ -22,6 +22,7 @@ vi.mock("@/lib/auth/admin-request", () => ({
         rpc: mocks.rpc,
         from: () => ({
           upsert: mocks.upsert,
+          select: () => ({ eq: async () => ({ data: [] }) }),
           update: (value: unknown) => {
             mocks.update(value);
             return { eq: mocks.eq };

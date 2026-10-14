@@ -4857,6 +4857,39 @@ html[data-theme] .admin-sidebar {
   color: var(--muted);
   font-size: 12px;
 }
+.categories-manager {
+  display: grid;
+  gap: 16px;
+}
+.categories-intro {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.category-group {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+}
+.category-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.category-row .field {
+  flex: 1 1 220px;
+}
+.category-row .danger-text {
+  margin-left: auto;
+}
+.category-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
 .admin-confirm {
   position: fixed;
   z-index: 60;

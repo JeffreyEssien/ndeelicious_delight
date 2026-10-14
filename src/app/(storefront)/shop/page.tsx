@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Catalogue } from "@/components/product/catalogue";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getCakeConfiguration, getStorefrontContent } from "@/lib/data/settings";
+import { getCollections } from "@/lib/data/catalog";
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getCustomerText("page titles");
   return {
@@ -14,12 +15,13 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ShopPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; maxPrice?: string; mode?: string }>;
+  searchParams: Promise<{ category?: string; maxPrice?: string; mode?: string; collection?: string }>;
 }) {
-  const [params, content, cakeConfiguration] = await Promise.all([
+  const [params, content, cakeConfiguration, collections] = await Promise.all([
     searchParams,
     getStorefrontContent(),
     getCakeConfiguration(),
+    getCollections(),
   ]);
   const category = params.category as "PASTRIES" | "READY_TO_BAKE" | "CUSTOM_CAKES" | undefined;
   const maximumPrice =
@@ -37,10 +39,11 @@ export default async function ShopPage({
       <section className="site-container catalogue-section">
         <Catalogue
           initialCategory={category}
-          initialMode={params.mode}
           maximumPrice={maximumPrice}
           cakeConfiguration={cakeConfiguration}
           budgetContent={content.shopBudget}
+          collections={collections}
+          initialCollection={params.collection}
         />
       </section>
     </>

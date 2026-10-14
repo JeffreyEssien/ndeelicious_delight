@@ -12,7 +12,7 @@ import {
   isVariantInventoryTracked,
   variantQuantityLimit,
 } from "@/features/catalog/availability";
-import { variantPrice, preparationLabel } from "@/features/catalog/pricing";
+import { variantPrice } from "@/features/catalog/pricing";
 import { earliestFulfilment } from "@/features/fulfilment/schedule";
 import { trackCommerceEvent } from "@/lib/analytics/client";
 
@@ -113,9 +113,7 @@ export function ProductPurchase({ product }: { product: Product }) {
           <span>{t("Select an available pack to continue.")}</span>
         )}
       </div>
-      <p className="stock-note">
-        {preparationLabel(product)} · {availabilityLabel}
-      </p>
+      <p className="stock-note">{availabilityLabel}</p>
       <div className="purchase-row">
         <fieldset className="quantity large" aria-label={t(sellingPacks ? "Quantity of packs" : "Quantity of items")}>
           <button

@@ -2,14 +2,12 @@
 import { useCustomerText } from "@/components/customer-text-provider";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
 import type { Product } from "@/types";
 import { useMoney } from "@/components/providers";
 import { useCart } from "@/components/providers";
 import { useWishlist } from "@/components/wishlist";
 import { Badge } from "@/components/ui/primitives";
-import { ModalOverlay } from "@/components/ui/modal-overlay";
-import { productStartingPrice, preparationLabel, variantPrice } from "@/features/catalog/pricing";
+import { productStartingPrice, categoryLabel, variantPrice } from "@/features/catalog/pricing";
 import { Icon } from "@/components/ui/icons";
 import {
   getPublishedVariants,
@@ -23,7 +21,6 @@ export function ProductCard({ product, eager = false }: { product: Product; eage
   const formatMoney = useMoney();
   const cart = useCart();
   const wishlist = useWishlist();
-  const [quick, setQuick] = useState(false);
   const unavailable = !isProductPurchasable(product);
   const defaultVariant = getDefaultPurchasableVariant(product);
   const madeToOrder = product.shoppingMode === "MADE_TO_ORDER";
@@ -95,13 +92,10 @@ export function ProductCard({ product, eager = false }: { product: Product; eage
         >
           <Icon name="heart" />
         </button>
-        <button type="button" className="quick-view-trigger" onClick={() => setQuick(true)}>
-          {t("Quick view")}
-        </button>
       </div>
       <div className="product-meta">
         <div>
-          <span>{madeToOrder ? t("Made to Order") : t(product.category.replaceAll("_", " "))}</span>
+          <span>{madeToOrder ? t("Made to Order") : t(categoryLabel(product.category))}</span>
           <Link href={`/product/${product.slug}`}>
             <h3>{product.name}</h3>
           </Link>
@@ -109,70 +103,9 @@ export function ProductCard({ product, eager = false }: { product: Product; eage
             {hasDifferentPrices ? "From " : ""}
             {formatMoney(productStartingPrice(product))}
           </p>
-          <small>{preparationLabel(product)}</small>
         </div>
         {action()}
       </div>
-      {quick && (
-        <ModalOverlay open onClose={() => setQuick(false)} className="quick-view" ariaLabel={product.name}>
-          <button
-            type="button"
-            className="icon-button quick-view-close"
-            onClick={() => setQuick(false)}
-            aria-label={t("Close")}
-          >
-            <Icon name="close" />
-          </button>
-          <div className="quick-view-media">
-            {product.image ? (
-              <Image src={product.image} alt={product.name} fill sizes="(max-width:720px) 100vw, 380px" />
-            ) : (
-              <span className="missing-image">{t("No image uploaded")}</span>
-            )}
-          </div>
-          <div className="quick-view-body">
-            <span className="overline">
-              {madeToOrder ? t("Made to Order") : t(product.category.replaceAll("_", " "))}
-            </span>
-            <h2>{product.name}</h2>
-            <p className="quick-view-price">
-              {hasDifferentPrices ? "From " : ""}
-              {formatMoney(productStartingPrice(product))}
-            </p>
-            {product.shortDescription && <p className="quick-view-desc">{product.shortDescription}</p>}
-            <div className="quick-view-actions">
-              {unavailable ? (
-                <span className="quick-view-soldout">{t("Sold out")}</span>
-              ) : defaultVariant && hasUnambiguousVariant && !madeToOrder ? (
-                <button
-                  type="button"
-                  className="button button-primary"
-                  onClick={() => {
-                    cart.add(product, defaultVariant.id);
-                    setQuick(false);
-                  }}
-                >
-                  {t("Add to basket")}
-                </button>
-              ) : (
-                <Link className="button button-primary" href={`/product/${product.slug}`}>
-                  {t("Select options")}
-                </Link>
-              )}
-              <Link className="button button-secondary" href={`/product/${product.slug}`}>
-                {t("View details")}
-              </Link>
-            </div>
-            <button
-              type="button"
-              className={`text-button quick-view-save ${saved ? "is-active" : ""}`}
-              onClick={() => wishlist.toggle(product.id)}
-            >
-              <Icon name="heart" /> {saved ? t("Saved to favourites") : t("Save to favourites")}
-            </button>
-          </div>
-        </ModalOverlay>
-      )}
     </article>
   );
 }

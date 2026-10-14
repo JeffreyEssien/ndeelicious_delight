@@ -5,6 +5,7 @@ import Image from "next/image";
 import { CakeBuilder } from "@/components/cakes/cake-builder";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getCakeConfiguration, getStorefrontContent } from "@/lib/data/settings";
+import { getCollections } from "@/lib/data/catalog";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getCustomerText("page titles");
@@ -19,10 +20,11 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [content, configuration, params] = await Promise.all([
+  const [content, configuration, params, collections] = await Promise.all([
     getStorefrontContent(),
     getCakeConfiguration(),
     searchParams,
+    getCollections(),
   ]);
   const recommendedOption = (type: "occasion" | "size" | "flavour" | "filling" | "design") => {
     const id = params[`${type}Id`];
@@ -51,6 +53,7 @@ export default async function Page({
       <section className="site-container builder-wrap">
         <CakeBuilder
           configuration={configuration}
+          collections={collections.filter((collection) => collection.parent === "CUSTOM_CAKES")}
           initialSelection={
             params.recommended === "1"
               ? {

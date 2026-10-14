@@ -5,6 +5,8 @@ import type { CakeOption } from "@/types/content";
 import { CommerceError } from "@/features/checkout/pricing";
 
 const pricedCakeSteps = ["occasion", "size", "flavour", "filling", "design"] as const;
+// Only these choices are mandatory; the rest are optional and simply priced if chosen.
+const requiredCakeSteps: ReadonlySet<(typeof pricedCakeSteps)[number]> = new Set(["size", "flavour"]);
 
 export function calculateCakeConfigurationPrice(
   config: Pick<CakeConfiguration, (typeof pricedCakeSteps)[number] | "optionIds">,
@@ -16,27 +18,30 @@ export function calculateCakeConfigurationPrice(
       "CAKE_SETUP_REQUIRED",
       "This cake type needs a base price. Contact the bakery for a quote.",
     );
-  for (const key of pricedCakeSteps)
-    if (!config[key]) throw new CommerceError("INCOMPLETE_CAKE", `Choose a ${key} for your cake.`);
   const selected = pricedCakeSteps.map((type) => {
+    const value = config[type];
+    if (!value) {
+      if (requiredCakeSteps.has(type)) throw new CommerceError("INCOMPLETE_CAKE", `Choose a ${type} for your cake.`);
+      return undefined; // Optional choice the customer skipped — contributes no price.
+    }
     const id = config.optionIds?.[type];
     const matches = options.filter(
       (option) =>
         option.type === type &&
         option.active &&
-        (id ? option.id === id && option.name === config[type] : option.name === config[type]),
+        (id ? option.id === id && option.name === value : option.name === value),
     );
-    return matches.length === 1 ? matches[0] : undefined;
+    if (matches.length !== 1)
+      throw new CommerceError("INVALID_CAKE_OPTION", "One of the selected cake options is unavailable.");
+    return matches[0];
   });
-  if (selected.some((option) => !option))
-    throw new CommerceError("INVALID_CAKE_OPTION", "One of the selected cake options is unavailable.");
   const total = selected.reduce((sum, option) => sum + (option?.priceAdjustment ?? 0), cakeType.basePrice);
   if (!Number.isSafeInteger(total) || total < 0 || total > 2147483647)
     throw new CommerceError("INVALID_CAKE_PRICE", "This cake price needs review.");
   return {
     total,
     quoteRequired: selected.some((option) => option?.quoteRequired),
-    selected: selected as CakeOption[],
+    selected: selected.filter((option): option is CakeOption => Boolean(option)),
   };
 }
 

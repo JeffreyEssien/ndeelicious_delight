@@ -130,7 +130,7 @@ test("arbitrary packs persist, preserve prices and work across all themes", asyn
     await editor.locator(".pack-editor-card").first().scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath(`${theme}-owner-packs.png`) });
     await page.keyboard.press("Escape");
-    await page.goto("/shop?mode=MADE_TO_ORDER");
+    await page.goto("/shop");
     const card = page
       .locator(".catalogue-results .product-card:visible")
       .filter({ hasText: "Classic Butter Croissant" });
@@ -196,7 +196,7 @@ test("one pack still requires selection and larger lists use an accessible selec
   await editor.locator(".pack-editor-card").last().getByRole("button", { name: "Retire", exact: true }).click();
   await editor.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(editor).not.toBeVisible();
-  await page.goto("/shop?mode=MADE_TO_ORDER");
+  await page.goto("/shop");
   await expect(
     page
       .locator(".product-card")
@@ -302,7 +302,7 @@ test("empty drafts, publication errors, duplication, loading and sold-out prices
   await expect(editor.locator(".pack-editor-card")).toHaveCount(2);
   await expect(editor.locator(".pack-editor-card").last()).toContainText("Party box of 15");
   await page.keyboard.press("Escape");
-  await page.goto("/shop?mode=MADE_TO_ORDER");
+  await page.goto("/shop");
   const card = page
     .locator(".catalogue-results .product-card:visible")
     .filter({ hasText: "Dynamic made-to-order draft" });
