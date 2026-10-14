@@ -92,11 +92,13 @@ function ContentField({
   value,
   path,
   onChange,
+  hideLegend = false,
 }: {
   name: string;
   value: JsonValue;
   path: Path;
   onChange: (path: Path, value: JsonValue) => void;
+  hideLegend?: boolean;
 }) {
   if (typeof value === "string") {
     const props = {
@@ -114,7 +116,7 @@ function ContentField({
   if (Array.isArray(value)) {
     return (
       <fieldset className="content-array">
-        <legend>{humanize(name)}</legend>
+        {!hideLegend && <legend>{humanize(name)}</legend>}
         {value.map((item, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: Content items have no persisted IDs and all inputs are controlled.
           <div className="content-array-item" key={`${name}-${index}`}>
@@ -184,6 +186,38 @@ function ContentField({
   );
 }
 
+// Each top-level group of a page (hero, categories, …) becomes its own collapsible
+// card so the owner focuses on one piece at a time instead of a wall of fields.
+function ContentBlock({
+  name,
+  value,
+  path,
+  onChange,
+  open,
+}: {
+  name: string;
+  value: JsonValue;
+  path: Path;
+  onChange: (path: Path, value: JsonValue) => void;
+  open: boolean;
+}) {
+  const groupPath = [...path, name];
+  return (
+    <details className="content-block" open={open}>
+      <summary>{humanize(name)}</summary>
+      <div className="content-block-body">
+        {isObject(value) ? (
+          Object.entries(value).map(([key, item]) => (
+            <ContentField key={key} name={key} value={item} path={[...groupPath, key]} onChange={onChange} />
+          ))
+        ) : (
+          <ContentField name={name} value={value} path={groupPath} onChange={onChange} hideLegend />
+        )}
+      </div>
+    </details>
+  );
+}
+
 export function ContentSettings({ initial }: { initial: StorefrontContent }) {
   const [content, setContent] = useState(initial);
   const [wordingGroup, setWordingGroup] = useState(Object.keys(initial.customerText)[0]);
@@ -216,86 +250,82 @@ export function ContentSettings({ initial }: { initial: StorefrontContent }) {
       notify(payload?.error ?? "Content could not be saved.");
     }
   }
+  const dirty = saveState === "unsaved" || saveState === "failed";
   return (
     <div className="content-settings">
-      <div className="admin-card content-settings-intro">
-        <div>
-          <h2>Customer-facing words and links</h2>
-          <p>Edit every storefront section here. Saving makes the changes visible to customers immediately.</p>
-        </div>
-        <Button disabled={busy} onClick={save}>
-          {busy ? "Saving…" : "Save all content"}
-        </Button>
+      <div className="admin-card content-picker">
+        <label className="field">
+          <span>Which part of your website do you want to edit?</span>
+          <select value={section} onChange={(event) => setSection(event.target.value)}>
+            {Object.keys(content).map((key) => (
+              <option key={key} value={key}>
+                {sectionNames[key] ?? humanize(key)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="field-hint">Make your edits below, then publish. Changes go live for customers right away.</p>
       </div>
-      <div className="content-editor-layout">
-        <nav className="admin-card content-page-nav" aria-label="Website pages">
-          {Object.keys(content).map((key) => (
-            <button key={key} type="button" className={section === key ? "active" : ""} onClick={() => setSection(key)}>
-              {sectionNames[key] ?? humanize(key)}
-            </button>
-          ))}
-        </nav>
-        <section className="admin-card content-section">
-          <div className="content-section-heading">
-            <span className="overline">Editing</span>
-            <h2>{sectionNames[section] ?? humanize(section)}</h2>
-            <p>These words and links are shown directly to customers.</p>
-          </div>
-          {section === "customerText" ? (
-            <>
-              <label className="field">
-                Screen or email group
-                <select value={wordingGroup} onChange={(event) => setWordingGroup(event.target.value)}>
-                  {Object.keys(content.customerText).map((group) => (
-                    <option key={group} value={group}>
-                      {humanize(group)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Input
-                label="Find wording in this group"
-                value={wordingSearch}
-                onChange={(event) => setWordingSearch(event.target.value)}
-              />
-              <p>
-                Keep placeholders such as {"{value1}"} in the text. They insert customer and order details
-                automatically.
-              </p>
-              {Object.entries(content.customerText[wordingGroup] ?? {})
-                .filter(([key, value]) => `${key} ${value}`.toLowerCase().includes(wordingSearch.toLowerCase()))
-                .map(([key, value]) => (
-                  <ContentField
-                    key={key}
-                    name={key}
-                    value={value}
-                    path={["customerText", wordingGroup, key]}
-                    onChange={update}
-                  />
+      <section className="admin-card content-section">
+        <h2 className="content-section-title">{sectionNames[section] ?? humanize(section)}</h2>
+        {section === "customerText" ? (
+          <>
+            <label className="field">
+              <span>Screen or email</span>
+              <select value={wordingGroup} onChange={(event) => setWordingGroup(event.target.value)}>
+                {Object.keys(content.customerText).map((group) => (
+                  <option key={group} value={group}>
+                    {humanize(group)}
+                  </option>
                 ))}
-            </>
-          ) : (
-            <ContentField
-              name={section}
-              value={content[section as keyof StorefrontContent] as JsonValue}
-              path={[section]}
-              onChange={update}
+              </select>
+            </label>
+            <Input
+              label="Search this group"
+              placeholder="Find a word or label"
+              value={wordingSearch}
+              onChange={(event) => setWordingSearch(event.target.value)}
             />
-          )}
-        </section>
-      </div>
+            <p className="field-hint">
+              Keep placeholders like {"{value1}"} in the text — they fill in customer and order details automatically.
+            </p>
+            {Object.entries(content.customerText[wordingGroup] ?? {})
+              .filter(([key, value]) => `${key} ${value}`.toLowerCase().includes(wordingSearch.toLowerCase()))
+              .map(([key, value]) => (
+                <ContentField
+                  key={key}
+                  name={key}
+                  value={value}
+                  path={["customerText", wordingGroup, key]}
+                  onChange={update}
+                />
+              ))}
+          </>
+        ) : isObject(content[section as keyof StorefrontContent] as JsonValue) ? (
+          Object.entries(content[section as keyof StorefrontContent] as JsonObject).map(([key, value], index) => (
+            <ContentBlock key={key} name={key} value={value} path={[section]} onChange={update} open={index === 0} />
+          ))
+        ) : (
+          <ContentField
+            name={section}
+            value={content[section as keyof StorefrontContent] as JsonValue}
+            path={[section]}
+            onChange={update}
+          />
+        )}
+      </section>
       <div className="admin-save-bar content-save-bar">
         <span role="status">
           {saveState === "saved"
-            ? "Saved — the storefront is up to date."
+            ? "Saved — your website is up to date."
             : saveState === "saving"
-              ? "Saving…"
+              ? "Publishing…"
               : saveState === "failed"
-                ? "Save failed — retry when ready."
-                : "Unsaved changes — review and publish when ready."}
+                ? "Couldn’t publish — try again."
+                : "You have unsaved changes."}
         </span>
-        <Button disabled={busy} onClick={save}>
-          {busy ? "Publishing…" : "Publish website text"}
+        <Button disabled={busy || !dirty} onClick={save}>
+          {busy ? "Publishing…" : "Publish changes"}
         </Button>
       </div>
     </div>

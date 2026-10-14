@@ -22,6 +22,7 @@ import { Badge, Button, EmptyState, Input, Textarea } from "@/components/ui/prim
 import { Icon } from "@/components/ui/icons";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
 import { CakeCatalogue, CakeWorkspace, Coupons, Reviews } from "@/components/admin/live-sections";
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { ProductEditor } from "@/components/admin/product-editor";
 import { ContentSettings } from "@/components/admin/content-settings";
 import { CarouselEditor } from "@/components/admin/carousel-editor";
@@ -136,6 +137,12 @@ export function AdminPortal({
   const { theme, setTheme } = useStoreTheme();
   useEffect(() => setProducts(initialProducts), [initialProducts]);
   useEffect(() => setZones(initialZones), [initialZones]);
+  // Seed the product search from a global-search deep link (?q=…).
+  useEffect(() => {
+    if (section !== "products") return;
+    const seeded = new URLSearchParams(window.location.search).get("q");
+    if (seeded) setQuery(seeded);
+  }, [section]);
   async function productStatus(id: string, value: ProductStatus) {
     const before = products;
     setProducts((v) => v.map((p) => (p.id === id ? { ...p, status: value } : p)));
@@ -983,6 +990,7 @@ function Products({
   onDuplicate: (product: Product) => void;
 }) {
   const money = useMoney();
+  const [removeTarget, setRemoveTarget] = useState<Product | null>(null);
   const visible = products.filter(
     (p) =>
       (status === "ALL" || p.status === status) &&
@@ -1013,6 +1021,16 @@ function Products({
         setStatus={setStatus}
         options={["ALL", "ACTIVE", "OUT_OF_STOCK", "DRAFT", "ARCHIVED"]}
       />
+      {visible.length === 0 ? (
+        <EmptyState
+          title={query || status !== "ALL" ? "No products match" : "No products yet"}
+          body={
+            query || status !== "ALL"
+              ? "Try a different search or status filter."
+              : "Add your first product to start selling."
+          }
+        />
+      ) : (
       <div className="admin-card table-scroll mobile-card-table products-table">
         <table className="admin-table">
           <thead>
@@ -1088,14 +1106,7 @@ function Products({
                       <button
                         type="button"
                         className="text-button danger-text"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Remove “${product.name}” from your shop? Customers will no longer see it, and you can restore it anytime.`,
-                            )
-                          )
-                            onStatus(product.id, "ARCHIVED");
-                        }}
+                        onClick={() => setRemoveTarget(product)}
                       >
                         Remove
                       </button>
@@ -1107,6 +1118,23 @@ function Products({
           </tbody>
         </table>
       </div>
+      )}
+      <ConfirmDialog
+        open={removeTarget !== null}
+        tone="danger"
+        title="Remove this product?"
+        body={
+          removeTarget
+            ? `“${removeTarget.name}” will be hidden from customers. You can restore it anytime from the Archived filter.`
+            : ""
+        }
+        confirmLabel="Remove from shop"
+        onConfirm={() => {
+          if (removeTarget) onStatus(removeTarget.id, "ARCHIVED");
+          setRemoveTarget(null);
+        }}
+        onCancel={() => setRemoveTarget(null)}
+      />
     </>
   );
 }
@@ -1494,13 +1522,15 @@ function BusinessSettings({
       >
         <h2>Colours &amp; layout</h2>
         <p>
-          Most owners just pick a theme above — it sets beautiful colours for you. Only turn on custom colours if you
-          want exact shades. Your changes go live right away and stay mobile-friendly.
+          Most owners just pick a theme above — it sets beautiful colours for you. Everything below is optional and
+          already set to sensible defaults. Changes go live right away and stay mobile-friendly.
         </p>
-        <label className="check-row">
-          <input name="useCustomColors" type="checkbox" defaultChecked={appearance.useCustomColors} />
-          <span>Use my own custom colours instead of the chosen theme</span>
-        </label>
+        <details className="settings-advanced">
+          <summary>Advanced: exact colours &amp; layout</summary>
+          <label className="check-row">
+            <input name="useCustomColors" type="checkbox" defaultChecked={appearance.useCustomColors} />
+            <span>Use my own custom colours instead of the chosen theme</span>
+          </label>
         <fieldset className="colour-group">
           <legend>Your brand colours</legend>
           <small className="field-hint">The main colour for buttons and highlights. This is the one customers notice.</small>
@@ -1554,6 +1584,7 @@ function BusinessSettings({
             <option value="4">4 products</option>
           </select>
         </label>
+        </details>
         <span className="document-save-state" role="status">
           {appearanceState === "saved"
             ? "Appearance saved"
@@ -1578,57 +1609,20 @@ function BusinessSettings({
         <Input name="contactEmail" label="Contact email" type="email" defaultValue={initial.contactEmail} />
         <Input name="phone" label="Phone" defaultValue={initial.phone} />
         <div className="field-with-hint">
-          <Input
-            name="whatsapp"
-            label="WhatsApp number"
-            placeholder="+1 902 555 1234"
-            defaultValue={initial.whatsapp}
-          />
+          <Input name="whatsapp" label="WhatsApp number" placeholder="+1 902 555 1234" defaultValue={initial.whatsapp} />
           <small className="field-hint">
             Your WhatsApp number with country code. You can also paste a wa.me link if you prefer.
           </small>
         </div>
-        <Input name="address" label="Address" defaultValue={initial.address} />
-        <Input name="city" label="City" defaultValue={initial.city ?? ""} />
-        <Input name="province" label="Province or territory code" maxLength={2} defaultValue={initial.province} />
-        <Input name="postalCode" label="Business postal code" maxLength={7} defaultValue={initial.postalCode} />
-        <input name="country" type="hidden" value="CA" />
-        <Textarea name="openingHours" label="Opening hours" defaultValue={initial.openingHours} rows={3} />
         <div className="field-with-hint">
-          <Input
-            name="instagramUrl"
-            label="Instagram"
-            placeholder="@yourbakery"
-            defaultValue={instagramDisplay}
-          />
+          <Input name="instagramUrl" label="Instagram" placeholder="@yourbakery" defaultValue={instagramDisplay} />
           <small className="field-hint">Just your @handle — or paste your full profile link.</small>
         </div>
-        <Input name="currency" label="Currency" maxLength={3} defaultValue={initial.currency} />
-        <Input name="locale" label="Locale" defaultValue={initial.locale} />
-        <Input name="timezone" label="Timezone" defaultValue={initial.timezone} />
-        <Input
-          name="orderMinimum"
-          label={`Store-wide minimum order (${initial.currency})`}
-          type="number"
-          min="0"
-          defaultValue={initial.orderMinimum / 100}
-        />
-        <h3>Tax</h3>
-        <label className="check-row">
-          <input name="taxEnabled" type="checkbox" defaultChecked={initial.taxEnabled} />
-          <span>Calculate tax at checkout</span>
-        </label>
-        <Input name="taxLabel" label="Tax label" defaultValue={initial.taxLabel} />
-        <Input
-          name="taxRegistrationNumber"
-          label="GST/HST registration number"
-          defaultValue={initial.taxRegistrationNumber}
-        />
-        <input name="taxRate" type="hidden" value="14" />
-        <p>
-          Nova Scotia HST is 14% on eligible taxable lines. Product classification and pack quantity determine each
-          line’s treatment. Delivery treatment is configured in Delivery → Advanced tax settings.
-        </p>
+        <Input name="address" label="Address" defaultValue={initial.address} />
+        <Input name="city" label="City" defaultValue={initial.city ?? ""} />
+        <input name="country" type="hidden" value="CA" />
+        <Textarea name="openingHours" label="Opening hours" defaultValue={initial.openingHours} rows={3} />
+        <h3>Ordering</h3>
         <label className="check-row">
           <input name="deliveryEnabled" type="checkbox" defaultChecked={initial.deliveryEnabled} />
           <span>Offer delivery at checkout</span>
@@ -1637,6 +1631,42 @@ function BusinessSettings({
           <input name="pickupEnabled" type="checkbox" defaultChecked={initial.pickupEnabled} />
           <span>Offer bakery pickup at checkout</span>
         </label>
+        <Input
+          name="orderMinimum"
+          label={`Smallest order you’ll accept (${initial.currency})`}
+          type="number"
+          min="0"
+          defaultValue={initial.orderMinimum / 100}
+        />
+        <details className="settings-advanced">
+          <summary>Advanced: region &amp; currency</summary>
+          <p className="field-hint">
+            These already match a Halifax, Nova Scotia bakery. Only change them if your business is set up differently.
+          </p>
+          <Input name="province" label="Province or territory code" maxLength={2} defaultValue={initial.province} />
+          <Input name="postalCode" label="Business postal code" maxLength={7} defaultValue={initial.postalCode} />
+          <Input name="currency" label="Currency" maxLength={3} defaultValue={initial.currency} />
+          <Input name="locale" label="Locale" defaultValue={initial.locale} />
+          <Input name="timezone" label="Timezone" defaultValue={initial.timezone} />
+        </details>
+        <details className="settings-advanced">
+          <summary>Tax settings</summary>
+          <label className="check-row">
+            <input name="taxEnabled" type="checkbox" defaultChecked={initial.taxEnabled} />
+            <span>Calculate tax at checkout</span>
+          </label>
+          <Input name="taxLabel" label="Tax label" defaultValue={initial.taxLabel} />
+          <Input
+            name="taxRegistrationNumber"
+            label="GST/HST registration number"
+            defaultValue={initial.taxRegistrationNumber}
+          />
+          <input name="taxRate" type="hidden" value="14" />
+          <p className="field-hint">
+            Nova Scotia HST is 14% on eligible taxable lines. Product classification and pack quantity determine each
+            line’s treatment. Delivery treatment is configured in Delivery → Advanced tax settings.
+          </p>
+        </details>
         <span className="document-save-state" role="status">
           {businessState === "saved"
             ? "Business settings saved"

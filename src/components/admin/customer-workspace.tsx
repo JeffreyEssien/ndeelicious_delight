@@ -11,6 +11,14 @@ export function CustomerWorkspace() {
   const [result, setResult] = useState<{ rows: Customer[]; total: number }>();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  // Seed the search from a global-search deep link (?q=…).
+  useEffect(() => {
+    const seeded = new URLSearchParams(window.location.search).get("q");
+    if (seeded) {
+      setQuery(seeded);
+      setFilters((current) => ({ ...current, q: seeded }));
+    }
+  }, []);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);

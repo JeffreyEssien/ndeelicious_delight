@@ -186,23 +186,7 @@ export function Catalogue({
             </button>
           </div>
           <section className="sidebar-budget" aria-labelledby={"sidebar-budget-title"}>
-            <span className="overline">{budgetContent.eyebrow}</span>
             <h3 id="sidebar-budget-title">{budgetContent.headline}</h3>
-            <p>{budgetContent.body}</p>
-            <form onSubmit={applyBudget}>
-              <Input
-                label={`${budgetContent.inputLabel} (${business.currency})`}
-                type="number"
-                min="1"
-                step="0.01"
-                value={budgetInput}
-                placeholder={budgetContent.inputPlaceholder}
-                error={t(budgetError)}
-                onChange={(event) => setBudgetInput(event.target.value)}
-              />
-              <Button type="submit">{budgetContent.buttonLabel}</Button>
-            </form>
-            <p className="sidebar-budget-note">{budgetContent.moneyNote}</p>
             <div className="sidebar-budget-presets">
               {presets.map((preset) => (
                 <button
@@ -221,6 +205,20 @@ export function Catalogue({
                 </button>
               ))}
             </div>
+            <form onSubmit={applyBudget} className="sidebar-budget-form">
+              <p className="sidebar-budget-or">{t("Or enter your own amount")}</p>
+              <Input
+                label={`${budgetContent.inputLabel} (${business.currency})`}
+                type="number"
+                min="1"
+                step="0.01"
+                value={budgetInput}
+                placeholder={budgetContent.inputPlaceholder}
+                error={t(budgetError)}
+                onChange={(event) => setBudgetInput(event.target.value)}
+              />
+              <Button type="submit">{budgetContent.buttonLabel}</Button>
+            </form>
             {budget && (
               <button
                 type="button"

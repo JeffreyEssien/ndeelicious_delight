@@ -4,6 +4,7 @@ import { useUnsavedChanges } from "./use-unsaved-changes";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cakeTypesSchema, type CakeType } from "@/validations/cake-type";
+import { ConfirmDialog } from "./confirm-dialog";
 export function CakeTypesEditor({
   initial,
   options,
@@ -22,6 +23,7 @@ export function CakeTypesEditor({
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [dragId, setDragId] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<CakeType | null>(null);
   const router = useRouter();
   const busy = state === "Saving…" || uploading;
   useUnsavedChanges(state !== "Saved");
@@ -66,19 +68,22 @@ export function CakeTypesEditor({
       setUploading(false);
     }
   }
-  async function deleteCake(type: CakeType) {
-    const persisted = savedTypes.some((item) => item.id === type.id);
-    const forget = () => {
-      setTypes((items) => items.filter((item) => item.id !== type.id));
-      setAssignments((links) => links.filter((link) => link.cakeTypeId !== type.id));
-      if (expandedCake === type.id) setExpandedCake("");
-    };
-    if (!persisted) {
-      // Never saved — just drop the draft locally, no server round-trip.
-      forget();
+  function forgetCake(id: string) {
+    setTypes((items) => items.filter((item) => item.id !== id));
+    setAssignments((links) => links.filter((link) => link.cakeTypeId !== id));
+    if (expandedCake === id) setExpandedCake("");
+  }
+  function requestDelete(type: CakeType) {
+    // An unsaved draft never reached the server — just drop it, no confirmation needed.
+    if (!savedTypes.some((item) => item.id === type.id)) {
+      forgetCake(type.id);
       return;
     }
-    if (!window.confirm(`Remove “${type.name || "this cake"}” from your cakes?`)) return;
+    setDeleteTarget(type);
+  }
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    const type = deleteTarget;
     setState("Saving…");
     setError("");
     try {
@@ -89,9 +94,10 @@ export function CakeTypesEditor({
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error ?? "The cake could not be removed.");
-      forget();
+      forgetCake(type.id);
       setSavedTypes((items) => items.filter((item) => item.id !== type.id));
       setSavedAssignments((links) => links.filter((link) => link.cakeTypeId !== type.id));
+      setDeleteTarget(null);
       setState(
         payload?.cakeDeleteOutcome === "unpublished"
           ? "Cake hidden from customers (it has existing orders)."
@@ -99,6 +105,7 @@ export function CakeTypesEditor({
       );
       router.refresh();
     } catch (reason) {
+      setDeleteTarget(null);
       setState("Error");
       setError(reason instanceof Error ? reason.message : "The cake could not be removed.");
     }
@@ -148,10 +155,16 @@ export function CakeTypesEditor({
     <section className="admin-card cake-types-editor">
       <h2>My cakes</h2>
       <p>
-        Create a draft, choose its available flavours and sizes, then publish when pricing, preparation time and tax
-        setup are confirmed.
+        Add a cake, set its price and preparation time, then publish. Every cake automatically offers all your sizes and
+        flavours — you only adjust that if a particular cake is different.
       </p>
       <fieldset disabled={busy} style={{ border: 0, padding: 0 }}>
+        {types.length === 0 && (
+          <p className="cake-empty-hint">
+            No cakes yet. Tap “Quick add cake” below to create your first one — it’s ready to publish as soon as you add
+            a price.
+          </p>
+        )}
         {types.map((type, index) => (
           <details
             className="cake-type-card"
@@ -203,11 +216,14 @@ export function CakeTypesEditor({
               </details>
               <p>
                 {type.basePrice == null
-                  ? "Setup required: enter the base price and assign choices below."
-                  : "Starting price + selected extras = estimated price. Choices requiring a quote are confirmed individually."}
+                  ? "Add a starting price to publish this cake."
+                  : "Starting price + any selected extras = estimated price. Choices needing a quote are confirmed individually."}
               </p>
               <details className="cake-choice-groups">
-                <summary>Customer choices · sizes, flavours and extras</summary>
+                <summary>Limit sizes, flavours &amp; extras (optional)</summary>
+                <p className="cake-choice-note">
+                  Every active choice is included by default. Untick anything this cake shouldn’t offer.
+                </p>
                 {["size", "flavour", "filling", "design", "occasion"].map((group) => (
                   <fieldset key={group}>
                     <legend>
@@ -377,42 +393,50 @@ export function CakeTypesEditor({
                 <button type="button" disabled={index === types.length - 1} onClick={() => move(index, 1)}>
                   Move down
                 </button>
-                <button type="button" className="text-button danger-text" onClick={() => deleteCake(type)}>
+                <button type="button" className="text-button danger-text" onClick={() => requestDelete(type)}>
                   Delete cake
                 </button>
               </div>
             </article>
           </details>
         ))}
-        <button
-          type="button"
-          className="button button-secondary"
-          onClick={() => {
-            const id = crypto.randomUUID();
-            setExpandedCake(id);
-            setTypes((items) => [
-              ...items,
-              {
-                id,
-                name: "",
-                slug: "",
-                description: "",
-                leadTimeValue: 0,
-                leadTimeUnit: "days",
-                active: false,
-                sortOrder: items.length,
-                image: "",
-                customerNotice: "",
-              },
-            ]);
-            setState("Unsaved changes");
-          }}
-        >
-          Quick add cake
-        </button>
-        <button type="button" className="button button-primary" onClick={save}>
-          Save cake types
-        </button>
+        <div className="cake-editor-actions">
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() => {
+              const id = crypto.randomUUID();
+              setExpandedCake(id);
+              setTypes((items) => [
+                ...items,
+                {
+                  id,
+                  name: "",
+                  slug: "",
+                  description: "",
+                  leadTimeValue: 0,
+                  leadTimeUnit: "days",
+                  active: false,
+                  sortOrder: items.length,
+                  image: "",
+                  customerNotice: "",
+                },
+              ]);
+              // Offer every active choice by default so a new cake is sellable without the
+              // owner having to open the choices section and tick anything.
+              setAssignments((current) => [
+                ...current,
+                ...options.filter((option) => option.active).map((option) => ({ cakeTypeId: id, optionId: option.id })),
+              ]);
+              setState("Unsaved changes");
+            }}
+          >
+            Quick add cake
+          </button>
+          <button type="button" className="button button-primary" onClick={save}>
+            Save cake types
+          </button>
+        </div>
       </fieldset>
       <p role="status">{state}</p>
       {error && (
@@ -420,6 +444,20 @@ export function CakeTypesEditor({
           {error}
         </p>
       )}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        tone="danger"
+        busy={state === "Saving…"}
+        title="Delete this cake?"
+        body={
+          deleteTarget
+            ? `“${deleteTarget.name || "This cake"}” will be removed. If it has existing customer orders it will be hidden from customers instead, so their history stays intact.`
+            : ""
+        }
+        confirmLabel="Delete cake"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </section>
   );
 }
