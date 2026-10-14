@@ -51,7 +51,7 @@ test("owner configuration immediately drives cake rules and pack visibility", as
     await card.getByLabel("Starting price (CAD)").fill("2");
     await card.getByText(/Tax settings/).click();
     await card.getByLabel("Tax classification").selectOption("FULL_CAKE");
-    await card.getByText("Customer choices · sizes, flavours and extras", { exact: true }).click();
+    await card.getByText("Limit sizes, flavours & extras (optional)", { exact: true }).click();
     for (const checkbox of await card.locator("fieldset input[type=checkbox]").all()) await checkbox.check();
     await card.getByLabel("Published (available to customers)", { exact: true }).check();
   }

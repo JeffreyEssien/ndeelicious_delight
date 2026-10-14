@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/icons";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
+import { GlobalSearch } from "./global-search";
+import { NotificationBell } from "./notification-bell";
 
 type NavLink = { label: string; href: string; icon: string };
 type NavGroup = { heading: string; links: NavLink[] };
@@ -146,8 +148,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           >
             <Icon name="menu" />
           </button>
-          <span />
-          <div>
+          <GlobalSearch />
+          <div className="admin-topbar-actions">
+            <NotificationBell />
             <a href="/" target="_blank" rel="noopener">
               View storefront ↗
             </a>

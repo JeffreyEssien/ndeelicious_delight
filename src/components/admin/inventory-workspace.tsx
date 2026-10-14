@@ -6,42 +6,37 @@ import type { Product } from "@/types";
 import { Button, EmptyState, Input, Select } from "@/components/ui/primitives";
 
 type Variant = Product["variants"][number];
-function Adjustment({ product, variant, onSaved }: { product: Product; variant: Variant; onSaved: () => void }) {
-  const [mode, setMode] = useState("add");
-  const [quantity, setQuantity] = useState("");
+// Inline stock editing: show the current number, nudge it with −/+ or type a new one,
+// and Save only lights up when it actually changed. No modes, no popup.
+function StockRow({ product, variant, onSaved }: { product: Product; variant: Variant; onSaved: () => void }) {
+  const current = variant.stockQuantity;
+  const [value, setValue] = useState(String(current));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [saved, setSaved] = useState<number>();
   const [conflict, setConflict] = useState(false);
-  const current = saved ?? variant.stockQuantity;
-  const amount = Number(quantity);
-  const result = mode === "add" ? current + amount : mode === "remove" ? current - amount : amount;
-  const valid = quantity !== "" && Number.isInteger(amount) && amount >= 0 && result >= 0 && result <= 2147483647;
+  const amount = Number(value);
+  const valid = value !== "" && Number.isInteger(amount) && amount >= 0 && amount <= 2147483647;
+  const changed = valid && amount !== current;
+  const nudge = (delta: number) => {
+    setMessage("");
+    setValue((previous) => String(Math.max(0, (Number(previous) || 0) + delta)));
+  };
   async function save() {
-    if (busy || !valid || conflict) return;
-    if (!window.confirm(`${product.name} · ${variant.name}: change stock from ${current} to ${result}?`)) return;
+    if (busy || !changed || conflict) return;
     setBusy(true);
     setMessage("");
     try {
       const response = await fetch("/api/admin/inventory/adjust", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          productId: product.id,
-          variantId: variant.id,
-          expected: current,
-          mode,
-          quantity: amount,
-        }),
+        body: JSON.stringify({ productId: product.id, variantId: variant.id, expected: current, mode: "set", quantity: amount }),
       });
       const payload = await response.json();
       if (!response.ok) {
         setConflict(response.status === 409);
         throw new Error(payload.error);
       }
-      setSaved(payload.quantity);
-      setQuantity("");
-      setMessage("Stock saved.");
+      setMessage("Saved ✓");
       onSaved();
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : "Stock could not be saved. Retry.");
@@ -49,59 +44,53 @@ function Adjustment({ product, variant, onSaved }: { product: Product; variant: 
       setBusy(false);
     }
   }
+  const status = current === 0 ? "out" : current <= product.lowStockThreshold ? "low" : "ok";
   return (
     <form
-      className="inventory-adjustment"
+      className="stock-row"
       onSubmit={(event) => {
         event.preventDefault();
         void save();
       }}
     >
-      <div>
+      <div className="stock-row-id">
         <b>{variant.name}</b>
         <small>{variant.sku || "No SKU"}</small>
-        <span>
-          Current quantity: <strong>{current}</strong>
-        </span>
+        {status !== "ok" && <span className={`stock-tag ${status}`}>{status === "out" ? "Out of stock" : "Running low"}</span>}
       </div>
-      <Select
-        label="Adjustment"
-        value={mode}
-        disabled={busy}
-        onChange={(e) => {
-          setMode(e.target.value);
-          setMessage("");
-        }}
-      >
-        <option value="add">Add quantity</option>
-        <option value="remove">Remove quantity</option>
-        <option value="set">Set exact quantity</option>
-      </Select>
-      <Input
-        label="Quantity"
-        type="number"
-        min="0"
-        max="2147483647"
-        step="1"
-        value={quantity}
-        disabled={busy}
-        onChange={(e) => {
-          setQuantity(e.target.value);
-          setMessage("");
-        }}
-      />
-      <div>
-        <span>
-          Result: <strong>{valid ? result : "—"}</strong>
-        </span>
-        <Button type="submit" disabled={busy || !valid || conflict || result === current}>
-          {busy ? "Saving…" : "Confirm adjustment"}
-        </Button>
+      <div className="stock-stepper">
+        <button type="button" onClick={() => nudge(-1)} disabled={busy || amount <= 0} aria-label={`Remove one ${variant.name}`}>
+          −
+        </button>
+        <input
+          type="number"
+          min="0"
+          max="2147483647"
+          step="1"
+          inputMode="numeric"
+          aria-label={`${variant.name} quantity in stock`}
+          value={value}
+          disabled={busy}
+          onChange={(event) => {
+            setValue(event.target.value);
+            setMessage("");
+          }}
+        />
+        <button type="button" onClick={() => nudge(1)} disabled={busy} aria-label={`Add one ${variant.name}`}>
+          +
+        </button>
       </div>
-      {message && <p role="status">{message}</p>}
+      <Button type="submit" variant={changed ? "primary" : "secondary"} disabled={busy || !changed || conflict}>
+        {busy ? "Saving…" : "Save"}
+      </Button>
+      {message && (
+        <p className="stock-row-status" role="status">
+          {message}
+        </p>
+      )}
       {conflict && (
         <Button variant="secondary" onClick={onSaved}>
-          Refresh inventory
+          Refresh stock
         </Button>
       )}
     </form>
@@ -113,35 +102,21 @@ export function InventoryWorkspace({ onEdit }: { onEdit: (product: Product) => v
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [size, setSize] = useState(25);
+  const size = 25;
   const [sort, setSort] = useState("name");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
   const [view, setView] = useState("ATTENTION");
-  const tracked = (p: Product) =>
-    p.variants.some((v) => v.active !== false && isVariantInventoryTracked(p, v)) &&
-    !["DRAFT", "ARCHIVED"].includes(p.status);
   const active = (p: Product) => p.variants.filter((v) => v.active);
-  const low = (p: Product) =>
-    tracked(p) &&
-    active(p).some(
-      (v) => isVariantInventoryTracked(p, v) && v.stockQuantity > 0 && v.stockQuantity <= p.lowStockThreshold,
-    );
-  const out = (p: Product) =>
-    tracked(p) && active(p).some((v) => isVariantInventoryTracked(p, v) && v.stockQuantity === 0);
-  const categories: Record<string, { label: string; matches: (p: Product) => boolean }> = {
-    ATTENTION: { label: "Needs attention", matches: (p) => low(p) || out(p) },
-    LOW: { label: "Low stock", matches: low },
-    OUT: { label: "Out of stock", matches: out },
-    ALL: { label: "All tracked stock", matches: tracked },
-    UNTRACKED: {
-      label: "Not tracked / made to order",
-      matches: (p) => !p.variants.some((v) => v.active !== false && isVariantInventoryTracked(p, v)),
-    },
-    INACTIVE: { label: "Inactive products", matches: (p) => ["DRAFT", "ARCHIVED"].includes(p.status) },
-  };
+  // Three plain tabs. The server still understands the other filters; we just don't
+  // clutter the owner's view with them.
+  const categories: Array<{ key: string; label: string }> = [
+    { key: "ATTENTION", label: "Needs attention" },
+    { key: "ALL", label: "All stock" },
+    { key: "UNTRACKED", label: "Made to order" },
+  ];
   // biome-ignore lint/correctness/useExhaustiveDependencies: revision reloads after an adjustment or explicit retry.
   useEffect(() => {
     const controller = new AbortController();
@@ -175,35 +150,34 @@ export function InventoryWorkspace({ onEdit }: { onEdit: (product: Product) => v
 
   return (
     <div className="inventory-workspace">
-      <nav className="history-categories" aria-label="Inventory categories">
-        {Object.entries(categories).map(([key, category]) => (
+      <nav className="history-categories" aria-label="Stock views">
+        {categories.map((category) => (
           <button
             type="button"
-            key={key}
-            aria-pressed={view === key}
+            key={category.key}
+            aria-pressed={view === category.key}
             onClick={() => {
-              setView(key);
+              setView(category.key);
               setPage(1);
             }}
           >
             {category.label}
-            <span>{counts[key] ?? 0}</span>
+            <span>{counts[category.key] ?? 0}</span>
           </button>
         ))}
       </nav>
-      <InventoryBulk onSaved={refresh} />
-      <Input
-        label="Search stock"
-        placeholder="Product, variant, SKU or category"
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setPage(1);
-        }}
-      />
-      <div className="history-filter-actions">
+      <div className="inventory-controls">
+        <Input
+          label="Search stock"
+          placeholder="Search by product, option or SKU"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setPage(1);
+          }}
+        />
         <Select
-          label="Sort stock"
+          label="Sort by"
           value={sort}
           onChange={(event) => {
             setSort(event.target.value);
@@ -211,76 +185,70 @@ export function InventoryWorkspace({ onEdit }: { onEdit: (product: Product) => v
           }}
         >
           <option value="name">Product name</option>
-          <option value="quantity">Lowest quantity</option>
+          <option value="quantity">Lowest stock first</option>
         </Select>
-        <Select
-          label="Per page"
-          value={size}
-          onChange={(event) => {
-            setSize(Number(event.target.value));
-            setPage(1);
-          }}
-        >
-          {[25, 50, 100].map((value) => (
-            <option key={value}>{value}</option>
-          ))}
-        </Select>
-        <Button onClick={refresh}>Refresh inventory</Button>
       </div>
       {loading && <p role="status">Loading stock…</p>}
       {error && (
         <div role="alert">
           <p>{error}</p>
-          <Button onClick={refresh}>Retry</Button>
+          <Button onClick={refresh}>Try again</Button>
         </div>
       )}
       {!loading && !error && !visible.length && (
-        <EmptyState title="No products in this view" body="Try another category or search." />
+        <EmptyState
+          title="Nothing here"
+          body={view === "ATTENTION" ? "Great — nothing is low or out of stock." : "Try another view or search."}
+        />
       )}
       {!error &&
-        visible.map((p) => (
-          <details className="admin-card inventory-product-group" key={p.id}>
-            <summary>
-              <b>{p.name}</b>
-              <span>
-                {active(p).length} available variants ·{" "}
-                {!p.variants.some((v) => isVariantInventoryTracked(p, v))
-                  ? "Made to order"
-                  : `${active(p).reduce((sum, v) => sum + v.stockQuantity, 0)} units on hand`}
-              </span>
-            </summary>
-            <Button variant="ghost" onClick={() => onEdit(p)}>
-              Edit product settings
-            </Button>
-            {!p.variants.some((v) => isVariantInventoryTracked(p, v)) ? (
-              <p>This product is made to order. Stock shortages do not apply.</p>
-            ) : (
-              p.variants.map((v) => (
-                <div key={`${v.id}-${v.stockQuantity}`}>
-                  <p>{!v.active && "Inactive variant — hidden from customers"}</p>
-                  {isVariantInventoryTracked(p, v) ? (
-                    <Adjustment product={p} variant={v} onSaved={refresh} />
+        visible.map((p) => {
+          const madeToOrder = !p.variants.some((v) => isVariantInventoryTracked(p, v));
+          return (
+            <details className="admin-card inventory-product-group" key={p.id} open={view === "ATTENTION"}>
+              <summary>
+                <b>{p.name}</b>
+                <span>
+                  {madeToOrder
+                    ? "Made to order"
+                    : `${active(p).reduce((sum, v) => sum + v.stockQuantity, 0)} in stock · ${active(p).length} ${
+                        active(p).length === 1 ? "option" : "options"
+                      }`}
+                </span>
+              </summary>
+              {madeToOrder ? (
+                <p className="inventory-note">Made to order — there’s no stock to count here.</p>
+              ) : (
+                p.variants.map((v) =>
+                  isVariantInventoryTracked(p, v) ? (
+                    <StockRow key={`${v.id}-${v.stockQuantity}`} product={p} variant={v} onSaved={refresh} />
                   ) : (
-                    <p>{v.name}: prepared to order; stock is not tracked.</p>
-                  )}
-                </div>
-              ))
-            )}
-          </details>
-        ))}
-      {!loading && !error && (
+                    <p className="inventory-note" key={v.id}>
+                      {v.name}: made to order{v.active ? "" : " · hidden from customers"}
+                    </p>
+                  ),
+                )
+              )}
+              <Button variant="ghost" onClick={() => onEdit(p)}>
+                Edit product
+              </Button>
+            </details>
+          );
+        })}
+      {!loading && !error && total > size && (
         <div className="history-pagination">
           <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>
             Previous
           </Button>
           <span>
-            {total} products · Page {page} of {Math.max(1, Math.ceil(total / size))}
+            Page {page} of {Math.max(1, Math.ceil(total / size))}
           </span>
           <Button variant="secondary" disabled={page * size >= total} onClick={() => setPage((value) => value + 1)}>
             Next
           </Button>
         </div>
       )}
+      <InventoryBulk onSaved={refresh} />
     </div>
   );
 }

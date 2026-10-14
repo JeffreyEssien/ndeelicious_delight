@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useCart, useProducts } from "@/components/providers";
+import { useWishlist } from "@/components/wishlist";
 import { Icon } from "@/components/ui/icons";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
 import { BrandLogo } from "@/components/layout/brand-logo";
@@ -16,6 +17,7 @@ export function Header({ content, business }: { content: StorefrontContent["glob
   const path = usePathname();
   const cart = useCart();
   const products = useProducts();
+  const wishlist = useWishlist();
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState(false);
   const [query, setQuery] = useState("");
@@ -76,6 +78,14 @@ export function Header({ content, business }: { content: StorefrontContent["glob
             <button type="button" className="icon-button" onClick={() => setSearch(true)} aria-label={t("Search")}>
               <Icon name="search" />
             </button>
+            <Link
+              href="/wishlist"
+              className="icon-button wishlist-link"
+              aria-label={t("Favourites, {value1} saved", { value1: wishlist.count })}
+            >
+              <Icon name="heart" />
+              {wishlist.count > 0 && <b className="wishlist-count">{wishlist.count}</b>}
+            </Link>
             <Link href="/contact" className="icon-button desktop-only" aria-label={t("Contact")}>
               <Icon name="user" />
             </Link>
