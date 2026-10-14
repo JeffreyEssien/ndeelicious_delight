@@ -1,5 +1,4 @@
 "use client";
-import { formatPreparationTime } from "@/features/catalog/pricing";
 import { variantPrice } from "@/features/catalog/pricing";
 import { useCustomerText } from "@/components/customer-text-provider";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
@@ -100,6 +99,13 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
     fulfilmentError = reason instanceof Error ? reason.message : "Fulfilment setup is required.";
   }
   const money = (value: number) => formatMoney(value, business.currency, business.locale);
+  const formatClock = (value: string) => {
+    const [hour, minute] = value.split(":").map(Number);
+    const period = hour >= 12 ? "PM" : "AM";
+    return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${period}`;
+  };
+  const pickupHours = business.fulfilmentSchedule?.pickupHours;
+  const pickupWindow = pickupHours ? `${formatClock(pickupHours.start)}–${formatClock(pickupHours.end)}` : "";
   useEffect(() => {
     if (cart.count > 0) trackCommerceEvent("CHECKOUT_STARTED");
   }, [cart.count]);
@@ -332,11 +338,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
           <div className="checkout-panel">
             <span className="overline">{t("Fulfilment")}</span>
             <h1>{t("How should we get it to you?")}</h1>
-            <p>
-              Minimum preparation time:{" "}
-              {formatPreparationTime(Math.max(0, ...resolved.map((line) => line.p.preparationHours ?? 0)))}. The bakery
-              will confirm your collection or delivery window.
-            </p>
+            <p>{t("Choose pickup or delivery below — we’ll show you the earliest time we can have your order ready.")}</p>
             {business.deliveryEnabled && !deliveryZones.length && (
               <p>{t("Delivery is currently unavailable. You can collect your order from the bakery.")}</p>
             )}
@@ -370,7 +372,12 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                 </button>
               )}
             </div>
-            {earliestLabel && <p>Earliest available: {earliestLabel}</p>}
+            {earliestLabel && (
+              <p>
+                {fulfilment === "pickup" ? "Earliest pickup" : "Earliest delivery"}: {earliestLabel}
+                {fulfilment === "pickup" && pickupWindow ? ` · collect between ${pickupWindow}` : ""}
+              </p>
+            )}
             {freeDeliveryRemaining !== null && (
               <p>
                 {freeDeliveryRemaining === 0

@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useUnsavedChanges } from "./use-unsaved-changes";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cakeTypesSchema, type CakeType } from "@/validations/cake-type";
 import { ConfirmDialog } from "./confirm-dialog";
@@ -16,6 +16,13 @@ export function CakeTypesEditor({
 }) {
   const [assignments, setAssignments] = useState(relationships);
   const [types, setTypes] = useState(initial);
+  const [collections, setCollections] = useState<{ id: string; parent: string; name: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/admin/collections", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : { collections: [] }))
+      .then((payload) => setCollections((payload.collections ?? []).filter((c: { parent: string }) => c.parent === "CUSTOM_CAKES")))
+      .catch(() => {});
+  }, []);
   const [expandedCake, setExpandedCake] = useState("");
   const [savedTypes, setSavedTypes] = useState(initial);
   const [savedAssignments, setSavedAssignments] = useState(relationships);
@@ -184,6 +191,22 @@ export function CakeTypesEditor({
                 Name
                 <input value={type.name} onChange={(e) => update(type.id, { name: e.target.value })} />
               </label>
+              {collections.length > 0 && (
+                <label>
+                  Sub-category
+                  <select
+                    value={type.collectionId ?? ""}
+                    onChange={(e) => update(type.id, { collectionId: e.target.value })}
+                  >
+                    <option value="">No sub-category</option>
+                    {collections.map((collection) => (
+                      <option key={collection.id} value={collection.id}>
+                        {collection.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label>
                 Starting price (CAD)
                 <input

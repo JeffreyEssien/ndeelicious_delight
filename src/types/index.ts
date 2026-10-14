@@ -1,6 +1,7 @@
 import type { TaxClass } from "@/features/tax/types";
 
 export type Category = "CUSTOM_CAKES" | "PASTRIES" | "READY_TO_BAKE";
+export type Collection = { id: string; parent: Category; name: string; slug: string; sortOrder: number };
 export type ProductStatus = "ACTIVE" | "OUT_OF_STOCK" | "DRAFT" | "ARCHIVED";
 
 export type Product = {
@@ -14,6 +15,7 @@ export type Product = {
   shortDescription: string;
   description: string;
   category: Category;
+  collectionId?: string;
   price: number;
   discountPrice?: number;
   compareAtPrice?: number;

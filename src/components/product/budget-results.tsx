@@ -9,7 +9,7 @@ import {
   cakeRecommendationHref,
   cakeBudgetState,
 } from "@/features/budget/recommendations";
-import { preparationLabel, shoppingMode } from "@/features/catalog/pricing";
+import { shoppingMode } from "@/features/catalog/pricing";
 import { leadTimeLabel } from "@/features/cakes/lead-time";
 import type { Product } from "@/types";
 import type { CakeConfigurationData } from "@/types/content";
@@ -103,9 +103,7 @@ export function BudgetResults({
                     View
                   </Link>
                 </div>
-                <small>
-                  {money(maximum - price)} remaining · {preparationLabel(product)}
-                </small>
+                <small>{money(maximum - price)} remaining</small>
               </div>
             </article>
           ))}

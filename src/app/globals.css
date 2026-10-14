@@ -410,7 +410,8 @@ h2 {
   min-height: auto;
   padding: 8px 0;
   border-radius: 0;
-  border-bottom: 1px solid var(--ink);
+  font-weight: 500;
+  opacity: 0.85;
 }
 .inline-link {
   display: inline-flex;
@@ -1013,116 +1014,6 @@ h2 {
 }
 .wishlist-heart.is-active svg {
   fill: currentColor;
-}
-.quick-view-trigger {
-  position: absolute;
-  z-index: 2;
-  right: 10px;
-  bottom: 10px;
-  left: 10px;
-  padding: 9px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 700;
-  box-shadow: 0 3px 10px rgba(30, 20, 15, 0.14);
-  opacity: 0;
-  transform: translateY(6px);
-  cursor: pointer;
-  transition: opacity 180ms ease, transform 180ms ease;
-}
-.product-photo-wrap:hover .quick-view-trigger,
-.quick-view-trigger:focus-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-@media (hover: none) {
-  .quick-view-trigger {
-    opacity: 1;
-    transform: none;
-  }
-}
-.quick-view {
-  position: fixed;
-  z-index: 60;
-  top: 50%;
-  left: 50%;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  width: min(720px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
-  transform: translate(-50%, -50%);
-}
-.quick-view-close {
-  position: absolute;
-  z-index: 1;
-  top: 10px;
-  right: 10px;
-  background: rgba(255, 255, 255, 0.92);
-  border-radius: 50%;
-}
-.quick-view-media {
-  position: relative;
-  min-height: 320px;
-  background: #e9e2dc;
-}
-.quick-view-media img {
-  object-fit: cover;
-}
-.quick-view-body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 28px;
-}
-.quick-view-body h2 {
-  margin: 0;
-  font-size: 24px;
-}
-.quick-view-price {
-  margin: 0;
-  color: var(--berry);
-  font-size: 18px;
-  font-weight: 800;
-}
-.quick-view-desc {
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.5;
-}
-.quick-view-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 8px;
-}
-.quick-view-save {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.quick-view-save svg {
-  width: 16px;
-}
-.quick-view-save.is-active {
-  color: var(--berry);
-}
-.quick-view-save.is-active svg {
-  fill: currentColor;
-}
-@media (max-width: 720px) {
-  .quick-view {
-    grid-template-columns: 1fr;
-  }
-  .quick-view-media {
-    min-height: 220px;
-  }
 }
 .wishlist-link {
   position: relative;

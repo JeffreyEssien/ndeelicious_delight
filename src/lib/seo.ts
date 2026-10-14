@@ -1,4 +1,5 @@
 import { isProductPurchasable } from "@/features/catalog/availability";
+import { categoryLabel } from "@/features/catalog/pricing";
 import type { Product } from "@/types";
 import type { BusinessSettings } from "@/types/content";
 
@@ -82,7 +83,7 @@ export function productJsonLd({
     url: productUrl,
     ...(images.length ? { image: images } : {}),
     ...(product.sku ? { sku: product.sku } : {}),
-    category: product.category.replaceAll("_", " ").toLowerCase(),
+    category: categoryLabel(product.category).toLowerCase(),
     brand: { "@id": `${siteUrl}/#organization` },
     offers: {
       "@type": "Offer",

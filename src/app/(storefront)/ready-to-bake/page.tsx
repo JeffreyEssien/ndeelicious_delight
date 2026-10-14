@@ -74,7 +74,6 @@ export default async function Page() {
               </li>
             ))}
           </ul>
-          <p>{t("For purchases made in store, contact that retailer with your receipt for support.")}</p>
         </section>
       )}
     </>

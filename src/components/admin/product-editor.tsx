@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import type { Product, ProductImage, ProductStatus, ProductVariant } from "@/types";
 import { Button, Checkbox, Input, Select, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
@@ -52,6 +52,15 @@ export function ProductEditor({
     product?.discountPrice === undefined ? "" : String(product.discountPrice / 100),
   );
   const [editingPack, setEditingPack] = useState<string | null>(null);
+  const [category, setCategory] = useState<string>(product?.category ?? "PASTRIES");
+  const [collectionId, setCollectionId] = useState(product?.collectionId ?? "");
+  const [collections, setCollections] = useState<{ id: string; parent: string; name: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/admin/collections", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : { collections: [] }))
+      .then((payload) => setCollections(payload.collections ?? []))
+      .catch(() => {});
+  }, []);
   const effectiveBase = Math.round(Number(discount || price) * 100);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -157,6 +166,7 @@ export function ProductEditor({
         expectedStockQuantity: variant.expectedStockQuantity,
       })),
       images: images.map((image, index) => ({ id: image.id, altText: image.altText, sortOrder: index })),
+      collectionId: collectionId || null,
     };
 
     try {
@@ -204,11 +214,32 @@ export function ProductEditor({
             required
           />
           <Textarea label="Full description" name="description" defaultValue={product?.description} rows={5} required />
-          <Select label="Category" name="category" defaultValue={product?.category ?? "PASTRIES"}>
-            <option value="PASTRIES">Fresh pastries</option>
+          <Select
+            label="Category"
+            name="category"
+            value={category}
+            onChange={(event) => {
+              setCategory(event.target.value);
+              setCollectionId("");
+            }}
+          >
+            <option value="PASTRIES">Ready to order</option>
             <option value="READY_TO_BAKE">Ready to bake</option>
             <option value="CUSTOM_CAKES">Custom cakes</option>
           </Select>
+          <label className="field">
+            <span>Sub-category</span>
+            <select value={collectionId} onChange={(event) => setCollectionId(event.target.value)}>
+              <option value="">No sub-category</option>
+              {collections
+                .filter((collection) => collection.parent === category)
+                .map((collection) => (
+                  <option key={collection.id} value={collection.id}>
+                    {collection.name}
+                  </option>
+                ))}
+            </select>
+          </label>
         </div>
 
         <div className="product-editor-section">
@@ -456,7 +487,7 @@ export function ProductEditor({
                     checked={variant.active ?? true}
                     onChange={(event) => patchPack(index, { active: event.target.checked })}
                   />
-                  <details>
+                  <details open>
                     <summary>Inventory & SKU</summary>
                     <Checkbox
                       label="Track stock for this pack"

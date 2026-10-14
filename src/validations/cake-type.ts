@@ -18,6 +18,7 @@ export const cakeTypeSchema = z
     sortOrder: z.number().int().min(0),
     image: z.string().max(2000),
     customerNotice: z.string().trim().max(1000),
+    collectionId: z.union([z.uuid(), z.literal(""), z.null()]).optional(),
   })
   .superRefine((value, ctx) => {
     if (value.active && value.basePrice == null)

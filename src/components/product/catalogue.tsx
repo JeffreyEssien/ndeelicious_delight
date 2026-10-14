@@ -5,7 +5,7 @@ import { useCustomerText } from "@/components/customer-text-provider";
 import { type FormEvent, useMemo, useState } from "react";
 import { useBusinessSettings, useMoney, useProducts } from "@/components/providers";
 import { BudgetResults } from "./budget-results";
-import { shoppingMode, productStartingPrice } from "@/features/catalog/pricing";
+import { productStartingPrice } from "@/features/catalog/pricing";
 import { ProductGrid } from "./product-grid";
 import { Icon } from "@/components/ui/icons";
 import { Button, EmptyState, Input, Pagination } from "@/components/ui/primitives";
@@ -16,7 +16,7 @@ import {
   productsInBudget,
 } from "@/features/budget/recommendations";
 import { isProductPurchasable } from "@/features/catalog/availability";
-import type { Category } from "@/types";
+import type { Category, Collection } from "@/types";
 import type { CakeConfigurationData, StorefrontContent } from "@/types/content";
 
 type Sort = "featured" | "newest" | "low" | "high";
@@ -26,13 +26,15 @@ export function Catalogue({
   maximumPrice,
   cakeConfiguration,
   budgetContent,
-  initialMode,
+  collections = [],
+  initialCollection,
 }: {
   initialCategory?: Category;
-  initialMode?: string;
   maximumPrice?: number;
   cakeConfiguration: CakeConfigurationData;
   budgetContent: StorefrontContent["shopBudget"];
+  collections?: Collection[];
+  initialCollection?: string;
 }) {
   const t = useCustomerText("catalogue");
 
@@ -44,7 +46,7 @@ export function Catalogue({
   const money = useMoney();
   const business = useBusinessSettings();
   const [category, setCategory] = useState<Category | "ALL">(initialCategory ?? "ALL");
-  const [mode, setMode] = useState(initialMode ?? params.get("mode") ?? "ALL");
+  const [collection, setCollection] = useState<string>(initialCollection ?? "ALL");
   const [available, setAvailable] = useState(false);
   const [sort, setSort] = useState<Sort>("featured");
   const [query, setQuery] = useState("");
@@ -60,13 +62,13 @@ export function Catalogue({
       products.filter(
         (product) =>
           (category === "ALL" || product.category === category) &&
-          (mode === "ALL" || shoppingMode(product) === mode) &&
+          (collection === "ALL" || product.collectionId === collection) &&
           (!available || isProductPurchasable(product)) &&
           `${product.name} ${product.shortDescription} ${product.description} ${product.category}`
             .toLowerCase()
             .includes(query.toLowerCase()),
       ),
-    [category, mode, available, query, products],
+    [category, collection, available, query, products],
   );
   const items = useMemo(
     () =>
@@ -111,35 +113,6 @@ export function Catalogue({
 
   return (
     <>
-      <fieldset className="shopping-modes" aria-label="Shop by preparation">
-        {[
-          ["ALL", "All treats"],
-          ["READY_TO_ORDER", "Ready to Order"],
-          ["MADE_TO_ORDER", "Made to Order"],
-          ["READY_TO_BAKE", "Ready to Bake"],
-        ].map(([value, label]) => (
-          <button
-            type="button"
-            key={value}
-            aria-pressed={mode === value}
-            onClick={() => {
-              setMode(value);
-              const url = new URL(window.location.href);
-              url.searchParams.set("mode", value);
-              window.history.replaceState(null, "", url);
-              reset();
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </fieldset>
-      {mode === "READY_TO_BAKE" && (
-        <p className="shopping-mode-benefit">
-          Fresh from your oven, without the prep. Prepared by Ndeelicious for baking at home, with storage and
-          preparation instructions on each product.
-        </p>
-      )}
       <div className="catalogue-tools">
         <div className="catalogue-search">
           <Icon name="search" />
@@ -238,9 +211,9 @@ export function Catalogue({
             <legend>{t("Category")}</legend>
             {[
               ["ALL", t("All treats")],
-              ["PASTRIES", t("Fresh pastries")],
+              ["PASTRIES", t("Ready to order")],
               ["READY_TO_BAKE", t("Ready to bake")],
-              ["CUSTOM_CAKES", t("Celebration cakes")],
+              ["CUSTOM_CAKES", t("Custom cakes")],
             ].map(([value, label]) => (
               <label key={value}>
                 <input
@@ -249,6 +222,7 @@ export function Catalogue({
                   checked={category === value}
                   onChange={() => {
                     setCategory(value as Category | "ALL");
+                    setCollection("ALL");
                     reset();
                   }}
                 />
@@ -256,6 +230,39 @@ export function Catalogue({
               </label>
             ))}
           </fieldset>
+          {category !== "ALL" && collections.some((item) => item.parent === category) && (
+            <fieldset>
+              <legend>{t("Sub-category")}</legend>
+              <label>
+                <input
+                  type="radio"
+                  name="collection"
+                  checked={collection === "ALL"}
+                  onChange={() => {
+                    setCollection("ALL");
+                    reset();
+                  }}
+                />
+                <span>{t("All")}</span>
+              </label>
+              {collections
+                .filter((item) => item.parent === category)
+                .map((item) => (
+                  <label key={item.id}>
+                    <input
+                      type="radio"
+                      name="collection"
+                      checked={collection === item.id}
+                      onChange={() => {
+                        setCollection(item.id);
+                        reset();
+                      }}
+                    />
+                    <span>{item.name}</span>
+                  </label>
+                ))}
+            </fieldset>
+          )}
           <fieldset>
             <legend>{t("Availability")}</legend>
             <label>

@@ -41,6 +41,19 @@ export const Icon = ({ name, ...props }: Props & { name: string }) => {
     plus: <path d="M12 5v14M5 12h14" />,
     minus: <path d="M5 12h14" />,
     heart: <path d="M20 9c0 5-8 10-8 10S4 14 4 9a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9Z" />,
+    instagram: (
+      <>
+        <rect x="4" y="4" width="16" height="16" rx="5" />
+        <circle cx="12" cy="12" r="3.5" />
+        <circle cx="17" cy="7" r="1" fill="currentColor" stroke="none" />
+      </>
+    ),
+    whatsapp: (
+      <>
+        <path d="M20 11.5a7.5 7.5 0 0 1-11 6.6L4.5 19.5l1.4-4.4A7.5 7.5 0 1 1 20 11.5Z" />
+        <path d="M9 9.2c0 3 2.3 5.3 5.3 5.3l.8-1.3-1.7-.8-.7.7a3.6 3.6 0 0 1-1.8-1.8l.7-.7-.8-1.7-1.3.8" />
+      </>
+    ),
     bell: (
       <>
         <path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" />

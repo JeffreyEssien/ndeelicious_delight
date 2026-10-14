@@ -1,5 +1,15 @@
 import type { Product, ProductVariant } from "@/types";
 import { getPurchasableVariants, getPublishedVariants } from "./availability";
+
+// Customer-facing names for the three product groups.
+const categoryNames: Record<string, string> = {
+  PASTRIES: "Ready to order",
+  READY_TO_BAKE: "Ready to bake",
+  CUSTOM_CAKES: "Custom cakes",
+};
+export function categoryLabel(category: string) {
+  return categoryNames[category] ?? category.replaceAll("_", " ");
+}
 export function variantPrice(product: Product, variant: ProductVariant) {
   return (product.discountPrice ?? product.price) + variant.priceAdjustment;
 }

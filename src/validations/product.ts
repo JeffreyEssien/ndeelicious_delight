@@ -56,6 +56,7 @@ export const productInputSchema = z
     preparationInstructions: optionalText(2_000),
     variants: z.array(productVariantInputSchema).max(100),
     images: z.array(productImageInputSchema).max(12),
+    collectionId: z.union([z.uuid(), z.literal(""), z.null()]).optional(),
   })
   .superRefine((product, context) => {
     const base = product.discountPrice ?? product.price;

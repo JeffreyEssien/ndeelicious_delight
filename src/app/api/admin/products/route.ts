@@ -1,6 +1,6 @@
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 import { invalidateStorefrontCache } from "@/lib/cache/storefront";
-import { productSaveArguments, productSaveError } from "@/lib/data/product-write";
+import { applyProductCollection, productSaveArguments, productSaveError } from "@/lib/data/product-write";
 import { categorySlug, productInputSchema } from "@/validations/product";
 
 export async function POST(request: Request) {
@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     const result = productSaveError(error);
     return Response.json({ error: result.error }, { status: result.status });
   }
+  await applyProductCollection(auth.db, id, parsed.data.category, parsed.data.collectionId);
   invalidateStorefrontCache();
   return Response.json({ ok: true, id }, { status: 201 });
 }

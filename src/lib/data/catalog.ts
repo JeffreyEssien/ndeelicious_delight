@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import { isVariantInventoryTracked } from "@/features/catalog/availability";
-import type { Product, ProductImage, ProductVariant } from "@/types";
+import type { Collection, Product, ProductImage, ProductVariant } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -19,6 +19,7 @@ type ProductRow = {
   discount_price: number | null;
   status: Product["status"];
   featured: boolean;
+  collection_id: string | null;
   track_inventory: boolean;
   stock_quantity: number;
   low_stock_threshold: number;
@@ -84,6 +85,7 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
     shortDescription: row.short_description,
     description: row.description,
     category: categoryMap[relation?.slug ?? ""] ?? "PASTRIES",
+    collectionId: row.collection_id ?? undefined,
     price: row.base_price,
     discountPrice: row.discount_price ?? undefined,
     sku: row.sku ?? undefined,
@@ -107,7 +109,7 @@ async function loadProducts(options: { includeInactive?: boolean; client?: Supab
   let query = supabase
     .from("products")
     .select(`
-      id,slug,name,short_description,description,sku,shopping_mode,preparation_hours,tax_class,base_price,discount_price,status,featured,
+      id,slug,name,short_description,description,sku,shopping_mode,preparation_hours,tax_class,base_price,discount_price,status,featured,collection_id,
       track_inventory,stock_quantity,low_stock_threshold,ingredients,allergens,storage_instructions,preparation_instructions,
       categories(id,slug),product_variants(id,name,sku,price_adjustment,pack_quantity,sort_order,track_inventory,retired_at,stock_quantity,active),
       product_images(id,url,alt_text,sort_order,storage_path)
@@ -155,6 +157,23 @@ export function getProducts(options: { includeInactive?: boolean; client?: Supab
 
 export async function getProduct(slug: string) {
   return (await getProducts()).find((product) => product.slug === slug);
+}
+
+export async function getCollections(client?: SupabaseClient): Promise<Collection[]> {
+  const supabase = client ?? (await createClient());
+  const { data } = await supabase
+    .from("collections")
+    .select("id,parent,name,slug,sort_order")
+    .eq("active", true)
+    .order("parent")
+    .order("sort_order");
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    parent: row.parent as Collection["parent"],
+    name: row.name,
+    slug: row.slug,
+    sortOrder: row.sort_order,
+  }));
 }
 
 async function loadDeliveryZones(client?: SupabaseClient, includeInactive = false) {

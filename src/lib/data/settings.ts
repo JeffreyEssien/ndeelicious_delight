@@ -197,6 +197,7 @@ export async function getCakeConfiguration(client?: SupabaseClient): Promise<Cak
       sortOrder: row.sort_order,
       image: row.image ?? "",
       customerNotice: row.customer_notice ?? "",
+      collectionId: row.collection_id ?? undefined,
     })),
   };
 }

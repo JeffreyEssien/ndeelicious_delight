@@ -98,7 +98,7 @@ test("cake type controls the earliest bakery date", async ({ page }) => {
 });
 
 test("made-to-order pack selection and budget prices agree", async ({ page }) => {
-  await page.goto("/shop?mode=MADE_TO_ORDER");
+  await page.goto("/shop");
   await page.getByRole("link", { name: "Classic Butter Croissant", exact: true }).first().click();
   for (const [name, price] of [
     ["Pack of 3", "$15.00"],
@@ -108,7 +108,7 @@ test("made-to-order pack selection and budget prices agree", async ({ page }) =>
     await page.getByRole("radio", { name: new RegExp(name) }).check();
     await expect(page.getByRole("button", { name: /Add to basket/ })).toContainText(price);
   }
-  await page.goto("/shop?maxPrice=30&mode=MADE_TO_ORDER");
+  await page.goto("/shop?maxPrice=30");
   const results = page.getByRole("region", { name: "Budget results" });
   await expect(results.getByText("Pack of 3", { exact: true })).toBeVisible();
   await expect(results.getByText("Pack of 6", { exact: true })).toBeVisible();

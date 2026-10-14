@@ -4,6 +4,7 @@ import { whatsappUrl } from "@/lib/contact";
 import Link from "next/link";
 import { NewsletterForm } from "./newsletter-form";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { Icon } from "@/components/ui/icons";
 import type { BusinessSettings, StorefrontContent } from "@/types/content";
 export function Footer({ content, business }: { content: StorefrontContent["global"]; business: BusinessSettings }) {
   const t = useCustomerText("footer");
@@ -19,13 +20,15 @@ export function Footer({ content, business }: { content: StorefrontContent["glob
           <p>{content.footerDescription}</p>
           <div className="socials">
             {business.instagramUrl && (
-              <a href={business.instagramUrl} aria-label={t("Instagram")}>
-                {t("ig")}
+              <a href={business.instagramUrl} target="_blank" rel="noreferrer">
+                <Icon name="instagram" />
+                <span>{t("Instagram")}</span>
               </a>
             )}
             {whatsapp && (
-              <a href={whatsapp} aria-label={t("WhatsApp")}>
-                {t("wa")}
+              <a href={whatsapp} target="_blank" rel="noreferrer">
+                <Icon name="whatsapp" />
+                <span>{t("WhatsApp")}</span>
               </a>
             )}
           </div>

@@ -365,6 +365,15 @@ export async function POST(request: Request) {
       p_types: input.cakeTypes,
       p_assignments: input.assignments ?? null,
     }));
+    if (!error) {
+      // Cakes live under the Custom cakes group, so only accept its sub-categories.
+      const { data: valid } = await supabase.from("collections").select("id").eq("parent", "CUSTOM_CAKES");
+      const validIds = new Set((valid ?? []).map((row) => row.id));
+      for (const type of input.cakeTypes) {
+        const collectionId = type.collectionId && validIds.has(type.collectionId) ? type.collectionId : null;
+        await supabase.from("cake_types").update({ collection_id: collectionId }).eq("id", type.id);
+      }
+    }
   }
   if (input.action === "cake-delete") {
     const removal = await supabase.from("cake_types").delete().eq("id", input.id);
@@ -445,6 +454,8 @@ export async function POST(request: Request) {
     }
   if (error) {
     if (input.action === "cake-quote") return Response.json({ error: error.message }, { status: 409 });
+    if (input.action === "cake-types" && error.message.includes("before publishing"))
+      return Response.json({ error: error.message }, { status: 400 });
     if (error.message.includes("LINKED_ORDER_STATUS_AUTHORITATIVE"))
       return Response.json(
         { error: "Update this cake from its linked order. The payment and order stages control its progress." },
