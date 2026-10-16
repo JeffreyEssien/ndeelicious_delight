@@ -8,6 +8,8 @@ import { ContentLines } from "@/components/ui/content-lines";
 import { Icon } from "@/components/ui/icons";
 import { getProducts } from "@/lib/data/catalog";
 import { isProductPurchasable } from "@/features/catalog/availability";
+import { Stockists } from "@/components/layout/stockists";
+import { NewsletterForm } from "@/components/layout/newsletter-form";
 import { getApprovedReviews } from "@/lib/data/reviews";
 import { getBusinessSettings, getStoreCarousel, getStorefrontContent } from "@/lib/data/settings";
 
@@ -31,7 +33,6 @@ export default async function Home() {
     ...products.filter((product) => !product.featured && isProductPurchasable(product)),
   ].slice(0, 4);
   const gallery = products.flatMap((product) => product.images ?? []).slice(0, 4);
-  const review = reviews[0];
   return (
     <>
       <section className="hero">
@@ -156,17 +157,6 @@ export default async function Home() {
           </div>
         </div>
       </section>
-      {review && (
-        <section className="testimonials section">
-          <div className="site-container">
-            <span className="quote">“</span>
-            <blockquote>{review.body}</blockquote>
-            <p>
-              <b>{review.customerName}</b>
-            </p>
-          </div>
-        </section>
-      )}
       {!!gallery.length && (
         <section className="section gallery-section">
           <div className="site-container">
@@ -217,6 +207,42 @@ export default async function Home() {
           </div>
         </section>
       )}
+      {Boolean(content.readyToBake.stockists?.length) && (
+        <section className="section site-container find-stores">
+          <div className="section-head">
+            <div>
+              <span className="overline">{t("Also in stores")}</span>
+              <h2>{t("Find our ready-to-bake in stores")}</h2>
+            </div>
+            <p>{t("Our frozen pies and sausage rolls are stocked across Halifax and Dartmouth.")}</p>
+          </div>
+          <Stockists stockists={content.readyToBake.stockists ?? []} />
+        </section>
+      )}
+      {reviews.length > 0 && (
+        <section className="section section-tint testimonials-section">
+          <div className="site-container">
+            <div className="section-head">
+              <div>
+                <span className="overline">{t("Loved by locals")}</span>
+                <h2>{t("Tales of taste & joy")}</h2>
+              </div>
+            </div>
+            <div className="testimonial-grid">
+              {reviews.slice(0, 3).map((item) => (
+                <blockquote key={item.id} className="testimonial-card">
+                  <span className="quote">“</span>
+                  <p>{item.body}</p>
+                  <cite>
+                    {item.customerName}
+                    {item.rating ? ` · ${"★".repeat(item.rating)}` : ""}
+                  </cite>
+                </blockquote>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
       <section className="values site-container">
         {home.values.map((value, index) => (
           <div key={value.title}>
@@ -225,6 +251,16 @@ export default async function Home() {
             <p>{value.body}</p>
           </div>
         ))}
+      </section>
+      <section className="newsletter-band">
+        <div className="site-container">
+          <div>
+            <span className="overline">{t("Stay in the loop")}</span>
+            <h2>{content.global.newsletterTitle}</h2>
+            <p>{content.global.newsletterText}</p>
+          </div>
+          <NewsletterForm />
+        </div>
       </section>
     </>
   );

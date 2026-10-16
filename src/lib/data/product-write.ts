@@ -41,6 +41,8 @@ export function productRow(input: ProductInput, categoryId: string) {
     allergens: input.allergens,
     storage_instructions: input.storageInstructions || null,
     preparation_instructions: input.preparationInstructions || null,
+    option_groups: input.optionGroups ?? [],
+    cake_layers: input.cakeLayers ?? {},
     updated_at: new Date().toISOString(),
   };
 }

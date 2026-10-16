@@ -13,8 +13,10 @@ type DraftVariant = Omit<ProductVariant, "id"> & {
   key: string;
   sellingPrice: number;
   expectedStockQuantity?: number;
+  layers?: number;
 };
 type PendingImage = { key: string; file: File; altText: string };
+type DraftOptionGroup = { key: string; id: string; name: string; choicesText: string; required: boolean };
 
 function slugify(value: string) {
   return value
@@ -28,10 +30,14 @@ export function ProductEditor({
   product,
   close,
   onSaved,
+  flavourLibrary = [],
+  fillingLibrary = [],
 }: {
   product: Product | null;
   close: () => void;
   onSaved: (updated: Partial<Product>) => void;
+  flavourLibrary?: string[];
+  fillingLibrary?: string[];
 }) {
   const { currency } = useBusinessSettings();
   const initialPreparationUnit =
@@ -44,15 +50,16 @@ export function ProductEditor({
         : (product?.preparationHours ?? 0),
     ),
   );
-  const [mode, setMode] = useState(
-    product?.shoppingMode ?? (product?.category === "READY_TO_BAKE" ? "READY_TO_BAKE" : "READY_TO_ORDER"),
-  );
   const [price, setPrice] = useState(String((product?.price ?? 0) / 100));
   const [discount, setDiscount] = useState(
     product?.discountPrice === undefined ? "" : String(product.discountPrice / 100),
   );
   const [editingPack, setEditingPack] = useState<string | null>(null);
   const [category, setCategory] = useState<string>(product?.category ?? "PASTRIES");
+  // Behaviour follows the category: Ready to bake is bake-at-home, everything else is made to order.
+  const mode = category === "READY_TO_BAKE" ? "READY_TO_BAKE" : "MADE_TO_ORDER";
+  // Cakes are made-to-order but sold by size (the "pack quantity" is the serving count).
+  const isCake = category === "CUSTOM_CAKES";
   const [collectionId, setCollectionId] = useState(product?.collectionId ?? "");
   const [collections, setCollections] = useState<{ id: string; parent: string; name: string }[]>([]);
   useEffect(() => {
@@ -73,6 +80,7 @@ export function ProductEditor({
           sellingPrice: variantPrice(product, variant),
           expectedStockQuantity: variant.stockQuantity,
           active: variant.active ?? true,
+          layers: product.cakeLayers?.[variant.id] ?? 1,
         }))
       : [
           {
@@ -88,6 +96,38 @@ export function ProductEditor({
   );
   const [images, setImages] = useState<ProductImage[]>(product?.images ?? []);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [optionGroups, setOptionGroups] = useState<DraftOptionGroup[]>(
+    (product?.optionGroups ?? []).map((group) => ({
+      key: group.id,
+      id: group.id,
+      name: group.name,
+      choicesText: group.choices.join("\n"),
+      required: group.required,
+    })),
+  );
+
+  // Cakes pick their flavours/fillings from the shared library (stored as option groups named
+  // "Flavour"/"Filling"); non-cakes keep the free-text option groups above.
+  const initialGroupChoices = (name: string) =>
+    product?.optionGroups?.find((group) => group.name === name)?.choices ?? [];
+  const [cakeFlavours, setCakeFlavours] = useState<string[]>(initialGroupChoices("Flavour"));
+  const [cakeFillings, setCakeFillings] = useState<string[]>(initialGroupChoices("Filling"));
+  function toggleIn(list: string[], value: string) {
+    return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+  }
+
+  function addOptionGroup() {
+    setOptionGroups((current) => [
+      ...current,
+      { key: crypto.randomUUID(), id: crypto.randomUUID(), name: "", choicesText: "", required: true },
+    ]);
+  }
+  function patchOptionGroup(index: number, patch: Partial<DraftOptionGroup>) {
+    setOptionGroups((current) => current.map((group, i) => (i === index ? { ...group, ...patch } : group)));
+  }
+  function removeOptionGroup(index: number) {
+    setOptionGroups((current) => current.filter((_, i) => i !== index));
+  }
 
   function patchPack(index: number, patch: Partial<DraftVariant>) {
     setVariants((current) => current.map((v, i) => (i === index ? { ...v, ...patch } : v)));
@@ -142,7 +182,7 @@ export function ProductEditor({
       discountPrice: form.get("discountPrice") ? Math.round(Number(form.get("discountPrice")) * 100) : null,
       status: String(form.get("status")) as ProductStatus,
       featured: form.get("featured") === "on",
-      shoppingMode: String(form.get("shoppingMode")),
+      shoppingMode: mode,
       preparationHours: Number(form.get("preparationHours")) / (form.get("preparationUnit") === "minutes" ? 60 : 1),
       taxClass: String(form.get("taxClass")),
       trackInventory: form.get("trackInventory") === "on",
@@ -166,6 +206,27 @@ export function ProductEditor({
         expectedStockQuantity: variant.expectedStockQuantity,
       })),
       images: images.map((image, index) => ({ id: image.id, altText: image.altText, sortOrder: index })),
+      optionGroups: isCake
+        ? [
+            { id: "flavour", name: "Flavour", required: true, choices: cakeFlavours },
+            { id: "filling", name: "Filling", required: true, choices: cakeFillings },
+          ].filter((group) => group.choices.length)
+        : optionGroups
+            .map((group) => ({
+              id: group.id,
+              name: group.name.trim(),
+              required: group.required,
+              choices: group.choicesText
+                .split("\n")
+                .map((choice) => choice.trim())
+                .filter(Boolean),
+            }))
+            .filter((group) => group.name && group.choices.length),
+      cakeLayers: isCake
+        ? Object.fromEntries(
+            variants.filter((variant) => variant.id).map((variant) => [variant.id, Math.max(1, variant.layers ?? 1)]),
+          )
+        : {},
       collectionId: collectionId || null,
     };
 
@@ -219,7 +280,14 @@ export function ProductEditor({
             name="category"
             value={category}
             onChange={(event) => {
-              setCategory(event.target.value);
+              const nextCategory = event.target.value;
+              const oldMode = category === "READY_TO_BAKE" ? "READY_TO_BAKE" : "MADE_TO_ORDER";
+              const newMode = nextCategory === "READY_TO_BAKE" ? "READY_TO_BAKE" : "MADE_TO_ORDER";
+              if (newMode === "MADE_TO_ORDER" && oldMode !== newMode)
+                setVariants((current) => current.map((v) => ({ ...v, sellingPrice: effectiveBase + v.priceAdjustment })));
+              if (oldMode === "MADE_TO_ORDER" && newMode !== oldMode)
+                setVariants((current) => current.map((v) => ({ ...v, priceAdjustment: v.sellingPrice - effectiveBase })));
+              setCategory(nextCategory);
               setCollectionId("");
             }}
           >
@@ -288,31 +356,6 @@ export function ProductEditor({
             Confirm CRA classification, serving size and packaging. Sweet servings qualify for the six-or-more rule only
             when sold together without individual taxable packaging.
           </p>
-          <Select
-            label="Shopping mode"
-            name="shoppingMode"
-            value={mode}
-            onChange={(event) => {
-              const next = event.target.value as NonNullable<Product["shoppingMode"]>;
-              if (next === "MADE_TO_ORDER" && mode !== next) {
-                setVariants((current) =>
-                  !product && current.length === 1 && current[0].key === "standard"
-                    ? []
-                    : current.map((v) => ({ ...v, sellingPrice: effectiveBase + v.priceAdjustment })),
-                );
-              }
-              if (mode === "MADE_TO_ORDER" && next !== mode) {
-                setVariants((current) =>
-                  current.map((v) => ({ ...v, priceAdjustment: v.sellingPrice - effectiveBase })),
-                );
-              }
-              setMode(next);
-            }}
-          >
-            <option value="READY_TO_ORDER">Ready to Order</option>
-            <option value="MADE_TO_ORDER">Made to Order</option>
-            <option value="READY_TO_BAKE">Ready to Bake</option>
-          </Select>
           <Input
             label="Preparation time"
             name="preparationHours"
@@ -361,11 +404,13 @@ export function ProductEditor({
         <div className="product-editor-section">
           <div className="editor-section-head">
             <div>
-              <h3>{mode === "MADE_TO_ORDER" ? "Pack options" : "Variants / packs"}</h3>
+              <h3>{isCake ? "Sizes" : mode === "MADE_TO_ORDER" ? "Pack options" : "Variants / packs"}</h3>
               <p className="field-help">
-                {mode === "MADE_TO_ORDER"
-                  ? "Choose any pack size and set its selling price. Stock is optional and counts packs, not pieces."
-                  : "Manage product choices and their stock."}
+                {isCake
+                  ? "Add each size and set its selling price. “Serves” is the guest count for that size."
+                  : mode === "MADE_TO_ORDER"
+                    ? "Choose any pack size and set its selling price. Stock is optional and counts packs, not pieces."
+                    : "Manage product choices and their stock."}
               </p>
             </div>
             <Button
@@ -390,10 +435,10 @@ export function ProductEditor({
               }}
             >
               <Icon name="plus" />
-              {mode === "MADE_TO_ORDER" ? "Add pack" : "Add variant"}
+              {isCake ? "Add size" : mode === "MADE_TO_ORDER" ? "Add pack" : "Add variant"}
             </Button>
           </div>
-          {mode === "MADE_TO_ORDER" && (
+          {mode === "MADE_TO_ORDER" && !isCake && (
             <Button
               variant="secondary"
               onClick={() =>
@@ -419,7 +464,11 @@ export function ProductEditor({
             </Button>
           )}
           {!variants.length && (
-            <p className="empty-state">No packs yet. Add any size, then enter its name and price before publishing.</p>
+            <p className="empty-state">
+              {isCake
+                ? "No sizes yet. Add a size, then enter its name and price before publishing."
+                : "No packs yet. Add any size, then enter its name and price before publishing."}
+            </p>
           )}
           {variants.map((variant, index) => (
             <div className="pack-editor-card" key={variant.key}>
@@ -427,7 +476,11 @@ export function ProductEditor({
                 <div>
                   <strong>{variant.name || "New pack"}</strong>
                   <p>
-                    {variant.packQuantity ? `${variant.packQuantity} pieces · ` : "Size not set · "}
+                    {variant.packQuantity
+                      ? `${isCake ? "Serves " : ""}${variant.packQuantity}${isCake ? "" : " pieces"} · `
+                      : isCake
+                        ? "Serves not set · "
+                        : "Size not set · "}
                     {currency}{" "}
                     {(mode === "MADE_TO_ORDER"
                       ? variant.sellingPrice / 100
@@ -454,7 +507,7 @@ export function ProductEditor({
                   />
                   <div className="field-row">
                     <Input
-                      label="Pieces per pack"
+                      label={isCake ? "Serves (guests)" : "Pieces per pack"}
                       type="number"
                       min="1"
                       step="1"
@@ -482,6 +535,17 @@ export function ProductEditor({
                       }
                     />
                   </div>
+                  {isCake && (
+                    <Input
+                      label="Layers"
+                      type="number"
+                      min="1"
+                      max="12"
+                      step="1"
+                      value={variant.layers ?? 1}
+                      onChange={(event) => patchPack(index, { layers: Math.max(1, Number(event.target.value) || 1) })}
+                    />
+                  )}
                   <Checkbox
                     label="Published (available to customers)"
                     checked={variant.active ?? true}
@@ -570,6 +634,98 @@ export function ProductEditor({
             </div>
           ))}
         </div>
+
+        {isCake ? (
+          <div className="product-editor-section">
+            <div className="editor-section-head">
+              <div>
+                <h3>Flavours &amp; fillings</h3>
+                <p className="field-help">
+                  Tick the flavours and fillings this cake offers. The customer picks one per layer (layers are set on
+                  each size above). Manage the master lists in “Flavours &amp; sizes”.
+                </p>
+              </div>
+            </div>
+            <div className="cake-library-pickers">
+              <fieldset>
+                <legend>Flavours</legend>
+                {flavourLibrary.length ? (
+                  flavourLibrary.map((name) => (
+                    <Checkbox
+                      key={name}
+                      label={name}
+                      checked={cakeFlavours.includes(name)}
+                      onChange={() => setCakeFlavours((current) => toggleIn(current, name))}
+                    />
+                  ))
+                ) : (
+                  <p className="field-help">No flavours yet — add some in “Flavours &amp; sizes”.</p>
+                )}
+              </fieldset>
+              <fieldset>
+                <legend>Fillings</legend>
+                {fillingLibrary.length ? (
+                  fillingLibrary.map((name) => (
+                    <Checkbox
+                      key={name}
+                      label={name}
+                      checked={cakeFillings.includes(name)}
+                      onChange={() => setCakeFillings((current) => toggleIn(current, name))}
+                    />
+                  ))
+                ) : (
+                  <p className="field-help">No fillings yet — add some in “Flavours &amp; sizes”.</p>
+                )}
+              </fieldset>
+            </div>
+          </div>
+        ) : (
+          <div className="product-editor-section">
+            <div className="editor-section-head">
+              <div>
+                <h3>Options &amp; flavours</h3>
+                <p className="field-help">
+                  Dropdowns the customer picks on the product page. Size and price stay in{" "}
+                  {mode === "MADE_TO_ORDER" ? "Pack options" : "Variants / packs"} above. These choices don’t change the
+                  price.
+                </p>
+              </div>
+              <Button type="button" variant="secondary" onClick={addOptionGroup}>
+                Add option group
+              </Button>
+            </div>
+            {optionGroups.map((group, index) => (
+              <div className="option-group-editor" key={group.key}>
+                <Input
+                  label="Option name"
+                  value={group.name}
+                  placeholder="Topping"
+                  onChange={(event) => patchOptionGroup(index, { name: event.target.value })}
+                />
+                <Textarea
+                  label="Choices (one per line)"
+                  rows={4}
+                  value={group.choicesText}
+                  placeholder={"Small\nLarge"}
+                  onChange={(event) => patchOptionGroup(index, { choicesText: event.target.value })}
+                />
+                <div className="option-group-actions">
+                  <Checkbox
+                    label="Required"
+                    checked={group.required}
+                    onChange={(event) => patchOptionGroup(index, { required: event.target.checked })}
+                  />
+                  <button type="button" className="text-button" onClick={() => removeOptionGroup(index)}>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+            {!optionGroups.length && (
+              <p className="field-help">No options yet. Add one if this product needs customer choices.</p>
+            )}
+          </div>
+        )}
 
         <div className="product-editor-section">
           <h3>Images</h3>

@@ -56,6 +56,7 @@ const querySchema = z
       .default(""),
     payment: z.enum(["", "UNPAID", "PENDING", "SUCCEEDED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED"]).default(""),
     fulfilment: z.enum(["", "pickup", "delivery"]).default(""),
+    productType: z.enum(["", "custom-cakes", "pastries", "ready-to-bake"]).default(""),
     from: date.optional(),
     to: date.optional(),
     sort: z.enum(["newest", "oldest", "total-asc", "total-desc", "deadline"]).default("newest"),

@@ -107,6 +107,7 @@ export type AdminOrder = Order & {
     finalPrice: number;
     packQuantity?: number | null;
     configuration?: Record<string, string>;
+    selections?: { group: string; value: string }[];
   }>;
   events: Array<{
     id: string;
@@ -314,6 +315,7 @@ function mapOrderRows(orderResult: Pick<Awaited<ReturnType<typeof fetchOrderRows
       finalPrice: item.final_price,
       packQuantity: item.product_snapshot?.packQuantity as number | null | undefined,
       configuration: item.product_snapshot?.configuration as Record<string, string> | undefined,
+      selections: item.product_snapshot?.selections as { group: string; value: string }[] | undefined,
     })),
     events: (row.order_events ?? [])
       .sort((a, b) => b.created_at.localeCompare(a.created_at))

@@ -14,12 +14,16 @@ export function ContactForm() {
     e.preventDefault();
     setBusy(true);
     setError("");
-    const form = new FormData(e.currentTarget);
+    const fields = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>;
+    const data = {
+      ...fields,
+      name: `${fields.firstName ?? ""} ${fields.lastName ?? ""}`.trim(),
+    };
     try {
       const response = await fetch("/api/contact", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(Object.fromEntries(form)),
+        body: JSON.stringify(data),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error);
@@ -46,9 +50,10 @@ export function ContactForm() {
   return (
     <form className="form-stack contact-form" onSubmit={submit}>
       <div className="field-row">
-        <Input label={t("Your name")} name="name" required />
-        <Input label={t("Email address")} name="email" type="email" required />
+        <Input label={t("First name")} name="firstName" placeholder={t("First name")} required />
+        <Input label={t("Last name")} name="lastName" placeholder={t("Last name")} required />
       </div>
+      <Input label={t("Email address")} name="email" type="email" required />
       <Input label={t("Phone number (optional)")} name="phone" type="tel" />
       <Select label={t("What can we help with?")} name="subject">
         <option>{t("General question")}</option>

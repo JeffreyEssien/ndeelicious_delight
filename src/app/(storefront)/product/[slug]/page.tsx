@@ -7,6 +7,8 @@ import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { ProductGrid } from "@/components/product/product-grid";
 import { formatMoney } from "@/lib/format";
+import { getPurchasableVariants } from "@/features/catalog/availability";
+import { variantPrice } from "@/features/catalog/pricing";
 import { getProduct, getProducts } from "@/lib/data/catalog";
 import { Badge } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
@@ -50,6 +52,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     getBusinessSettings(),
   ]);
   const related = products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 3);
+  // Show a price range across the purchasable sizes (e.g. cakes) when they differ.
+  const variantPrices = getPurchasableVariants(product).map((variant) => variantPrice(product, variant));
+  const minPrice = variantPrices.length ? Math.min(...variantPrices) : product.price;
+  const maxPrice = variantPrices.length ? Math.max(...variantPrices) : product.price;
   const siteUrl = getSiteUrl();
   const structuredData = [productJsonLd({ product, business, siteUrl }), productBreadcrumbJsonLd(product, siteUrl)];
   return (
@@ -69,7 +75,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           {product.badge && <Badge tone={"berry"}>{product.badge}</Badge>}
           <h1>{product.name}</h1>
           <div className="product-price">
-            {formatMoney(product.price, business.currency, business.locale)}
+            {minPrice === maxPrice
+              ? formatMoney(minPrice, business.currency, business.locale)
+              : `${formatMoney(minPrice, business.currency, business.locale)} – ${formatMoney(maxPrice, business.currency, business.locale)}`}
             {t(" ")}
             {product.compareAtPrice && <s>{formatMoney(product.compareAtPrice, business.currency, business.locale)}</s>}
           </div>

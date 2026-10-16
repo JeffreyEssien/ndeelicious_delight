@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { CartLine, DeliveryZone, Product } from "@/types";
+import type { CartLine, CartSelection, DeliveryZone, Product } from "@/types";
 import type { BusinessSettings } from "@/types/content";
 import { formatMoney } from "@/lib/format";
 import type { StoreTheme, ThemeTokens } from "@/lib/theme/tokens";
@@ -14,14 +14,21 @@ import { trackCommerceEvent } from "@/lib/analytics/client";
 
 type Toast = { id: number; message: string };
 export type { StoreTheme } from "@/lib/theme/tokens";
+
+// Two lines of the same product + variant but with different cake selections (e.g. different
+// per-layer flavours) are distinct basket entries, so identity includes the selections.
+export function lineKey(line: Pick<CartLine, "productId" | "variantId" | "selections">) {
+  return `${line.productId}::${line.variantId}::${JSON.stringify(line.selections ?? [])}`;
+}
+
 type CartValue = {
   lines: CartLine[];
   count: number;
   open: boolean;
   setOpen: (v: boolean) => void;
-  add: (product: Product, variantId?: string, quantity?: number) => void;
-  update: (productId: string, variantId: string, quantity: number) => void;
-  remove: (productId: string, variantId: string) => void;
+  add: (product: Product, variantId?: string, quantity?: number, selections?: CartSelection[]) => void;
+  update: (key: string, quantity: number) => void;
+  remove: (key: string) => void;
   clear: () => void;
   subtotal: number;
 };
@@ -78,7 +85,7 @@ export function Providers({
       count: lines.reduce((n, l) => n + l.quantity, 0),
       open,
       setOpen,
-      add(product, variantId, quantity = 1) {
+      add(product, variantId, quantity = 1, selections) {
         if (product.shoppingMode === "MADE_TO_ORDER" && !variantId) {
           notify("Choose your pack before adding this product.");
           return;
@@ -93,48 +100,64 @@ export function Providers({
           );
           return;
         }
+        // Cakes expand flavour/filling into per-layer pickers, so their selection group names
+        // ("Layer 1 flavour"…) don't match the stored group names — the product page already
+        // enforces the required pickers, so here we just require that some selection was made.
+        const requiredGroups = (product.optionGroups ?? []).filter((group) => group.required);
+        if (product.category === "CUSTOM_CAKES") {
+          if (requiredGroups.length && !selections?.some((s) => s.value)) {
+            notify("Choose your flavours before adding this cake.");
+            return;
+          }
+        } else {
+          const missing = requiredGroups.find((group) => !selections?.some((s) => s.group === group.name && s.value));
+          if (missing) {
+            notify(`Choose ${missing.name} before adding this product.`);
+            return;
+          }
+        }
         const limit = variantQuantityLimit(product, variant);
         if (limit < 1) {
           notify("This option is currently unavailable.");
           return;
         }
-        const selectedVariantId = variant.id;
+        const chosen = selections?.length ? selections : undefined;
+        const key = lineKey({ productId: product.id, variantId: variant.id, selections: chosen });
         setLines((current) => {
-          const found = current.find((l) => l.productId === product.id && l.variantId === selectedVariantId);
+          const found = current.find((l) => lineKey(l) === key);
           return found
             ? current.map((l) => (l === found ? { ...l, quantity: Math.min(limit, l.quantity + quantity) } : l))
             : [
                 ...current,
                 {
                   productId: product.id,
-                  variantId: selectedVariantId,
+                  variantId: variant.id,
                   quantity: Math.min(limit, Math.max(1, quantity)),
+                  selections: chosen,
                 },
               ];
         });
         trackCommerceEvent("ADD_TO_CART", {
           productId: product.id,
-          metadata: { variantId: selectedVariantId, quantity: Math.min(limit, Math.max(1, quantity)) },
+          metadata: { variantId: variant.id, quantity: Math.min(limit, Math.max(1, quantity)) },
         });
         notify("Added to your basket.");
       },
-      update(productId, variantId, quantity) {
-        const product = products.find((item) => item.id === productId);
-        const variant = product?.variants.find((item) => item.id === variantId);
-        const limit = product && variant ? variantQuantityLimit(product, variant) : 0;
-        setLines((v) =>
-          quantity < 1 || limit < 1
-            ? v.filter((l) => !(l.productId === productId && l.variantId === variantId))
-            : v.map((l) =>
-                l.productId === productId && l.variantId === variantId
-                  ? { ...l, quantity: Math.max(1, Math.min(limit, quantity)) }
-                  : l,
-              ),
-        );
+      update(key, quantity) {
+        setLines((v) => {
+          const line = v.find((l) => lineKey(l) === key);
+          if (!line) return v;
+          const product = products.find((item) => item.id === line.productId);
+          const variant = product?.variants.find((item) => item.id === line.variantId);
+          const limit = product && variant ? variantQuantityLimit(product, variant) : 0;
+          return quantity < 1 || limit < 1
+            ? v.filter((l) => lineKey(l) !== key)
+            : v.map((l) => (lineKey(l) === key ? { ...l, quantity: Math.max(1, Math.min(limit, quantity)) } : l));
+        });
       },
-      remove(productId, variantId) {
-        setLines((v) => v.filter((l) => !(l.productId === productId && l.variantId === variantId)));
-        trackCommerceEvent("REMOVE_FROM_CART", { productId, metadata: { variantId } });
+      remove(key) {
+        setLines((v) => v.filter((l) => lineKey(l) !== key));
+        trackCommerceEvent("REMOVE_FROM_CART", { metadata: { key } });
         notify("Removed from your basket.");
       },
       clear() {

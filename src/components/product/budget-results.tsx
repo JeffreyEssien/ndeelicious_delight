@@ -10,7 +10,6 @@ import {
   cakeBudgetState,
 } from "@/features/budget/recommendations";
 import { shoppingMode } from "@/features/catalog/pricing";
-import { leadTimeLabel } from "@/features/cakes/lead-time";
 import type { Product } from "@/types";
 import type { CakeConfigurationData } from "@/types/content";
 export function BudgetResults({
@@ -130,8 +129,7 @@ export function BudgetResults({
                   </Link>
                 </div>
                 <small>
-                  {cake.pricingMode === "EXACT_PRICE" ? "Starting configuration" : "Final design requires a quote"} ·
-                  Minimum lead time: {leadTimeLabel(cake.cakeType)}
+                  {cake.pricingMode === "EXACT_PRICE" ? "Starting configuration" : "Final design requires a quote"}
                 </small>
               </div>
             </article>

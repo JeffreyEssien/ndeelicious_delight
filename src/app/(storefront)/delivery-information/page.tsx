@@ -95,7 +95,7 @@ export default async function Page() {
                   {business.fulfilmentSchedule.sameDayEnabled
                     ? `Same-day orders close at ${business.fulfilmentSchedule.sameDayCutoff} in eligible areas.`
                     : "Same-day delivery is unavailable."}{" "}
-                  Times are in America/Halifax. Item preparation time also applies.
+                  Times are in America/Halifax. Each order shows its earliest available date at checkout.
                 </p>
                 {business.fulfilmentSchedule.blackouts
                   .filter((day) => day.active)
@@ -113,7 +113,7 @@ export default async function Page() {
             <article key={step.title}>
               <span>{String(index + 1).padStart(2, "0")}</span>
               <h3>{step.title}</h3>
-              <p>{step.body.replace(t("current bakery setting"), t("Preparation time shown for each cake type"))}</p>
+              <p>{step.body.replace(t("current bakery setting"), t("the earliest available date shown at checkout"))}</p>
             </article>
           ))}
         </div>

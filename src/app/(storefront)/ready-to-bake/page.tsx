@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ContentLines } from "@/components/ui/content-lines";
+import { Stockists } from "@/components/layout/stockists";
 import { getProducts } from "@/lib/data/catalog";
 import { getStorefrontContent } from "@/lib/data/settings";
 
@@ -67,13 +68,7 @@ export default async function Page() {
               "Meat pies, chicken pies and beef sausage rolls, frozen and ready to bake. Contact each store for current stock, prices and opening hours.",
             )}
           </p>
-          <ul>
-            {page.stockists?.map((store) => (
-              <li key={store.url}>
-                <a href={store.url}>{store.name}</a> — {store.city}
-              </li>
-            ))}
-          </ul>
+          <Stockists stockists={page.stockists ?? []} />
         </section>
       )}
     </>

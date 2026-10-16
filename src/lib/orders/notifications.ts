@@ -79,7 +79,7 @@ async function deliver(db: SupabaseClient, notificationId: string) {
   const { data: order, error: orderError } = await db
     .from("orders")
     .select(
-      "order_number,customer_name,fulfilment,delivery_address_snapshot,order_items(product_name,variant_name,quantity)",
+      "order_number,customer_name,fulfilment,delivery_address_snapshot,order_items(product_name,variant_name,quantity,product_snapshot)",
     )
     .eq("id", notification.order_id)
     .single();
@@ -93,10 +93,13 @@ async function deliver(db: SupabaseClient, notificationId: string) {
   }
   const { t, frame } = await getCustomerEmailText(db);
   const summary = (order.order_items ?? [])
-    .map(
-      (item) =>
-        `<li>${escapeHtml(item.product_name)} · ${escapeHtml(item.variant_name ?? t("Standard"))} × ${item.quantity}</li>`,
-    )
+    .map((item) => {
+      const selections = (item.product_snapshot?.selections ?? []) as { group: string; value: string }[];
+      const detail = selections.length
+        ? `<br><small>${selections.map((s) => `${escapeHtml(s.group)}: ${escapeHtml(s.value)}`).join(" · ")}</small>`
+        : "";
+      return `<li>${escapeHtml(item.product_name)} · ${escapeHtml(item.variant_name ?? t("Standard"))} × ${item.quantity}${detail}</li>`;
+    })
     .join("");
   const fulfilment =
     order.fulfilment === "pickup"

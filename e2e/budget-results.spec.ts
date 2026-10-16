@@ -74,29 +74,6 @@ for (const width of [320, 360, 375, 390, 430]) {
   });
 }
 
-test("cake type controls the earliest bakery date", async ({ page }) => {
-  await page.clock.install({ time: new Date("2026-10-07T12:00:00Z") });
-  await page.goto("/custom-cakes");
-  await page.getByRole("button", { name: /Wedding Cake/ }).click();
-  await expect(page.getByText("Minimum lead time: 3 weeks").first()).toBeVisible();
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are we celebrating?", exact: true })).toBeVisible();
-  for (const name of ["Birthday", "6 inch", "Vanilla", "Buttercream", "Classic finish"]) {
-    await page
-      .locator(".builder-stage")
-      .getByRole("button", { name: new RegExp(name) })
-      .first()
-      .click();
-    await page.getByRole("button", { name: "Continue", exact: true }).click();
-  }
-  await page.getByLabel("Colour palette").fill("Ivory");
-  for (let i = 0; i < 3; i++) await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.getByLabel("Collection or delivery date")).toHaveAttribute("min", "2026-10-28");
-  await page.getByLabel("Collection or delivery date").fill("2026-10-20");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.locator(".builder-stage .form-error")).toContainText("Earliest date: 2026-10-28");
-});
-
 test("made-to-order pack selection and budget prices agree", async ({ page }) => {
   await page.goto("/shop");
   await page.getByRole("link", { name: "Classic Butter Croissant", exact: true }).first().click();

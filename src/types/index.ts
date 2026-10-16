@@ -34,7 +34,11 @@ export type Product = {
   allergens: string[];
   storageInstructions?: string;
   preparationInstructions?: string;
+  optionGroups?: CakeOptionGroup[];
+  cakeLayers?: Record<string, number>;
 };
+
+export type CakeOptionGroup = { id: string; name: string; choices: string[]; required: boolean };
 
 export type ProductImage = {
   id: string;
@@ -55,7 +59,13 @@ export type ProductVariant = {
   stockQuantity: number;
   active?: boolean;
 };
-export type CartLine = { productId: string; variantId: string; quantity: number };
+export type CartSelection = { group: string; value: string };
+export type CartLine = {
+  productId: string;
+  variantId: string;
+  quantity: number;
+  selections?: CartSelection[];
+};
 export type Fulfilment = "delivery" | "pickup";
 export type DeliveryZone = {
   postalCodePrefixes?: string[];

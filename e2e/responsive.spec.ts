@@ -13,7 +13,6 @@ const customerRoutes = [
   "/cart",
   "/checkout",
   "/custom-cakes",
-  "/custom-cakes/build-your-cake",
   "/track-order",
 ];
 
@@ -242,15 +241,6 @@ test.describe("responsive customer system", () => {
     const summary = page.locator("details.checkout-summary");
     await expect(summary).not.toHaveAttribute("open", "");
     await expect(summary.locator(".checkout-summary-content")).toBeHidden();
-  });
-
-  test("mobile cake builder keeps its compact price context", async ({ page }, testInfo) => {
-    test.skip((testInfo.project.use.viewport?.width ?? 1440) > 430, "Mobile cake-builder coverage.");
-    await page.goto("/custom-cakes/build-your-cake");
-    await settle(page);
-    await expect(page.locator(".cake-summary-mobile")).toBeVisible();
-    await expect(page.locator(".builder-nav")).toBeVisible();
-    await expectNoPageOverflow(page);
   });
 
   test("a twelve-thumbnail PDP rail scrolls without widening the page", async ({ page }, testInfo) => {

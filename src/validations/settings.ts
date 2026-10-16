@@ -120,7 +120,15 @@ export const storefrontContentSchema = z.object({
     section: sectionHeadingSchema,
     steps: z.array(titleBodySchema).max(12),
     stockists: z
-      .array(z.object({ name: text(120), city: text(120), url: href }))
+      .array(
+        z.object({
+          name: text(120),
+          city: text(120),
+          url: href,
+          address: text(200).optional(),
+          phone: text(40).optional(),
+        }),
+      )
       .max(20)
       .optional(),
   }),

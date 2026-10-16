@@ -16,6 +16,7 @@ const defaults: Filters = {
   stage: "",
   payment: "",
   fulfilment: "",
+  productType: "",
   from: "",
   to: "",
   sort: "newest",
@@ -265,6 +266,16 @@ export function HistoryWorkspace<T>({
                   <option value="">All methods</option>
                   <option value="pickup">Pickup</option>
                   <option value="delivery">Delivery</option>
+                </Select>
+                <Select
+                  label="Product type"
+                  value={draft.productType}
+                  onChange={(e) => edit("productType", e.target.value)}
+                >
+                  <option value="">All products</option>
+                  <option value="custom-cakes">Cakes</option>
+                  <option value="pastries">Ready to order</option>
+                  <option value="ready-to-bake">Ready to bake</option>
                 </Select>
               </>
             )}

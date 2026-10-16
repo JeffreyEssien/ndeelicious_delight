@@ -39,6 +39,10 @@ export const checkoutSchema = z.object({
         productId: z.string().min(1),
         variantId: z.string().min(1),
         quantity: z.number().int().positive().max(50),
+        selections: z
+          .array(z.object({ group: z.string().trim().min(1).max(100), value: z.string().trim().min(1).max(200) }))
+          .max(30)
+          .optional(),
       }),
     )
     .min(1),

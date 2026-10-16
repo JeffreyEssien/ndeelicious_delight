@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import { isVariantInventoryTracked } from "@/features/catalog/availability";
-import type { Collection, Product, ProductImage, ProductVariant } from "@/types";
+import type { CakeOptionGroup, Collection, Product, ProductImage, ProductVariant } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -27,6 +27,8 @@ type ProductRow = {
   allergens: string[];
   storage_instructions: string | null;
   preparation_instructions: string | null;
+  option_groups: CakeOptionGroup[] | null;
+  cake_layers: Record<string, number> | null;
   categories: { id: string; slug: string } | { id: string; slug: string }[] | null;
   product_variants: {
     id: string;
@@ -101,6 +103,8 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
     allergens: row.allergens ?? [],
     storageInstructions: row.storage_instructions ?? undefined,
     preparationInstructions: row.preparation_instructions ?? undefined,
+    optionGroups: Array.isArray(row.option_groups) ? row.option_groups : [],
+    cakeLayers: row.cake_layers && typeof row.cake_layers === "object" ? row.cake_layers : {},
   };
 }
 
@@ -110,7 +114,7 @@ async function loadProducts(options: { includeInactive?: boolean; client?: Supab
     .from("products")
     .select(`
       id,slug,name,short_description,description,sku,shopping_mode,preparation_hours,tax_class,base_price,discount_price,status,featured,collection_id,
-      track_inventory,stock_quantity,low_stock_threshold,ingredients,allergens,storage_instructions,preparation_instructions,
+      track_inventory,stock_quantity,low_stock_threshold,ingredients,allergens,storage_instructions,preparation_instructions,option_groups,cake_layers,
       categories(id,slug),product_variants(id,name,sku,price_adjustment,pack_quantity,sort_order,track_inventory,retired_at,stock_quantity,active),
       product_images(id,url,alt_text,sort_order,storage_path)
     `)
