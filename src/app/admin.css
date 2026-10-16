@@ -2444,6 +2444,37 @@ html[data-theme] .admin-sidebar {
   color: var(--muted);
   font-size: 11px;
 }
+.option-group-editor {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+}
+.option-group-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cake-library-pickers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.cake-library-pickers fieldset {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.cake-library-pickers legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
 .table-actions {
   justify-content: flex-start;
 }

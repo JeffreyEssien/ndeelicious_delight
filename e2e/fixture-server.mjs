@@ -117,6 +117,7 @@ const products = seedProducts.slice(0, 8).map((p, i) => ({
   storage_instructions: p.storageInstructions ?? "",
   preparation_instructions:
     p.category === "READY_TO_BAKE" ? "Keep frozen. Follow the supplied baking instructions." : "",
+  option_groups: p.optionGroups ?? [],
 }));
 products[1].base_price = 1500;
 const cakeOptions = ["occasion", "size", "flavour", "filling", "design"].map((type, i) => ({

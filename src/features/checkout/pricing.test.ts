@@ -20,6 +20,27 @@ describe("calculateOrderQuote", () => {
     const quote = calculateOrderQuote({ cart, products, fulfilment: "pickup", deliveryFee: 999999 });
     expect(quote.deliveryFee).toBe(0);
   });
+  it("carries cake selections through to the order line without changing price", () => {
+    const selections = [
+      { group: "Flavour (Layer 1)", value: "Vanilla" },
+      { group: "Filling", value: "Salted Caramel" },
+    ];
+    const quote = calculateOrderQuote({
+      cart: [{ productId: "p2", variantId: "v1", quantity: 1, selections }],
+      products,
+      fulfilment: "pickup",
+      deliveryFee: 0,
+    });
+    expect(quote.lines[0].selections).toEqual(selections);
+    const plain = calculateOrderQuote({
+      cart: [{ productId: "p2", variantId: "v1", quantity: 1 }],
+      products,
+      fulfilment: "pickup",
+      deliveryFee: 0,
+    });
+    expect(quote.lines[0].unitPrice).toBe(plain.lines[0].unitPrice);
+    expect(plain.lines[0].selections).toEqual([]);
+  });
   it("applies capped percentage coupons", () => {
     const quote = calculateOrderQuote({
       cart: [{ productId: "p1", variantId: "v3", quantity: 1 }],

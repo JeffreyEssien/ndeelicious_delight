@@ -47,7 +47,6 @@ test("arbitrary packs persist, preserve prices and work across all themes", asyn
   await page.goto("/admin/products");
   await page.getByRole("button", { name: "Add product", exact: true }).click();
   const fresh = page.getByRole("dialog", { name: "Add product", exact: true });
-  await fresh.getByLabel("Shopping mode").selectOption("MADE_TO_ORDER");
   await expect(fresh.getByText("No packs yet.", { exact: false })).toBeVisible();
   await fresh.getByRole("button", { name: "Cancel", exact: true }).click();
   const row = page.locator("tr").filter({ hasText: "Classic Butter Croissant" });
@@ -237,7 +236,6 @@ test("empty drafts, publication errors, duplication, loading and sold-out prices
   await page.goto("/admin/products");
   await page.getByRole("button", { name: "Add product", exact: true }).click();
   const add = page.getByRole("dialog", { name: "Add product", exact: true });
-  await add.getByLabel("Shopping mode").selectOption("MADE_TO_ORDER");
   await add.getByLabel("Product name", { exact: true }).fill("Dynamic made-to-order draft");
   await add.getByLabel("Short description", { exact: true }).fill("Prepared packs for your celebration.");
   await add.getByLabel("Full description", { exact: true }).fill("Choose any of our owner-configured pack sizes.");

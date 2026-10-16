@@ -279,6 +279,12 @@ export function AdminPortal({
         >
           <ProductEditor
             product={editor}
+            flavourLibrary={initialCakeConfiguration.options
+              .filter((option) => option.type === "flavour" && option.active)
+              .map((option) => option.name)}
+            fillingLibrary={initialCakeConfiguration.options
+              .filter((option) => option.type === "filling" && option.active)
+              .map((option) => option.name)}
             close={() => setEditor(undefined)}
             onSaved={(updated) => {
               setProducts((current) =>
@@ -754,6 +760,16 @@ function OrderDetail({
                         </div>
                       ) : null,
                     )}
+                  </dl>
+                )}
+                {!!line.selections?.length && (
+                  <dl className="purchase-configuration">
+                    {line.selections.map((selection) => (
+                      <div key={selection.group}>
+                        <dt>{selection.group}</dt>
+                        <dd>{selection.value}</dd>
+                      </div>
+                    ))}
                   </dl>
                 )}
               </span>

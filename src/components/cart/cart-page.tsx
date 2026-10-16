@@ -3,7 +3,7 @@ import { variantPrice } from "@/features/catalog/pricing";
 import { useCustomerText } from "@/components/customer-text-provider";
 import Image from "next/image";
 import Link from "next/link";
-import { useCart, useMoney, useProducts } from "@/components/providers";
+import { lineKey, useCart, useMoney, useProducts } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 export function CartPage() {
   const t = useCustomerText("cart page");
@@ -37,8 +37,9 @@ export function CartPage() {
           </button>
         </div>
         {lines.map(({ line, product: p, variant: v }) => {
+          const key = lineKey(line);
           return (
-            <article className="cart-page-line" key={`${p.id}-${v.id}`}>
+            <article className="cart-page-line" key={key}>
               {p.image ? (
                 <Image
                   src={p.image}
@@ -54,20 +55,31 @@ export function CartPage() {
                 <h3>{p.name}</h3>
                 <p>
                   {v.name}
-                  {v.packQuantity ? ` · ${line.quantity} packs / ${line.quantity * v.packQuantity} pieces` : ""}
+                  {p.category !== "CUSTOM_CAKES" && v.packQuantity
+                    ? ` · ${line.quantity} packs / ${line.quantity * v.packQuantity} pieces`
+                    : ""}
                 </p>
+                {!!line.selections?.length && (
+                  <ul className="cart-selections">
+                    {line.selections.map((s) => (
+                      <li key={s.group}>
+                        <span>{s.group}:</span> {s.value}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <strong>{formatMoney(variantPrice(p, v))}</strong>
                 <div className="quantity large">
-                  <button type="button" onClick={() => cart.update(p.id, v.id, line.quantity - 1)}>
+                  <button type="button" onClick={() => cart.update(key, line.quantity - 1)}>
                     <Icon name="minus" />
                   </button>
                   <span>{line.quantity}</span>
-                  <button type="button" onClick={() => cart.update(p.id, v.id, line.quantity + 1)}>
+                  <button type="button" onClick={() => cart.update(key, line.quantity + 1)}>
                     <Icon name="plus" />
                   </button>
                 </div>
               </div>
-              <button type="button" className="text-button" onClick={() => cart.remove(p.id, v.id)}>
+              <button type="button" className="text-button" onClick={() => cart.remove(key)}>
                 {t("Remove")}
               </button>
             </article>

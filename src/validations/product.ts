@@ -18,6 +18,13 @@ export const productVariantInputSchema = z.object({
   active: z.boolean().default(true),
 });
 
+export const productOptionGroupInputSchema = z.object({
+  id: z.string().trim().min(1).max(100),
+  name: z.string().trim().min(1, "Each option group needs a name.").max(100),
+  choices: z.array(z.string().trim().min(1).max(100)).min(1, "Add at least one choice.").max(50),
+  required: z.boolean().default(true),
+});
+
 export const productImageInputSchema = z.object({
   id: z.uuid(),
   altText: z.string().trim().min(1, "Each image needs alternative text.").max(250),
@@ -55,6 +62,8 @@ export const productInputSchema = z
     storageInstructions: optionalText(2_000),
     preparationInstructions: optionalText(2_000),
     variants: z.array(productVariantInputSchema).max(100),
+    optionGroups: z.array(productOptionGroupInputSchema).max(20).default([]),
+    cakeLayers: z.record(z.string(), z.number().int().min(1).max(12)).default({}),
     images: z.array(productImageInputSchema).max(12),
     collectionId: z.union([z.uuid(), z.literal(""), z.null()]).optional(),
   })

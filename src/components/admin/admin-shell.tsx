@@ -19,7 +19,6 @@ const navGroups: NavGroup[] = [
     links: [
       { label: "Today", href: "/admin", icon: "grid" },
       { label: "Orders", href: "/admin/orders", icon: "orders" },
-      { label: "Cake requests", href: "/admin/custom-cakes", icon: "heart" },
     ],
   },
   {
@@ -27,7 +26,7 @@ const navGroups: NavGroup[] = [
     links: [
       { label: "Products", href: "/admin/products", icon: "box" },
       { label: "Categories", href: "/admin/categories", icon: "grid" },
-      { label: "Cakes", href: "/admin/cakes", icon: "heart" },
+      { label: "Flavours & sizes", href: "/admin/cakes", icon: "heart" },
       { label: "Stock", href: "/admin/inventory", icon: "grid" },
       { label: "Customers", href: "/admin/customers", icon: "user" },
       { label: "Reviews", href: "/admin/reviews", icon: "check" },
@@ -57,7 +56,7 @@ const navGroups: NavGroup[] = [
 const bottomLinks: NavLink[] = [
   { label: "Today", href: "/admin", icon: "grid" },
   { label: "Orders", href: "/admin/orders", icon: "orders" },
-  { label: "Cakes", href: "/admin/custom-cakes", icon: "heart" },
+  { label: "Products", href: "/admin/products", icon: "box" },
 ];
 
 function AdminNav({ path, onNavigate }: { path: string; onNavigate: () => void }) {

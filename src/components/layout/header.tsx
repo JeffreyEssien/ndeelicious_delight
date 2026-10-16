@@ -55,15 +55,6 @@ export function Header({ content, business }: { content: StorefrontContent["glob
       </div>
       <header className="site-header">
         <div className="site-container nav-row">
-          <button
-            type="button"
-            className="icon-button mobile-only"
-            onClick={() => setMenu(true)}
-            aria-label={t("Open navigation")}
-            data-ui-ready={interactive}
-          >
-            <Icon name="menu" />
-          </button>
           <Link className="brand" href="/" aria-label={t("{value1} home", { value1: business.businessName })}>
             <BrandLogo compact priority />
           </Link>
@@ -98,6 +89,15 @@ export function Header({ content, business }: { content: StorefrontContent["glob
               <Icon name="bag" />
               <span className="desktop-only">{t("Basket")}</span>
               <b>{cart.count}</b>
+            </button>
+            <button
+              type="button"
+              className="icon-button mobile-only"
+              onClick={() => setMenu(true)}
+              aria-label={t("Open navigation")}
+              data-ui-ready={interactive}
+            >
+              <Icon name="menu" />
             </button>
           </div>
         </div>

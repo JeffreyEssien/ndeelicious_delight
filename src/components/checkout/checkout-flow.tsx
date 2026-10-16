@@ -4,7 +4,7 @@ import { useCustomerText } from "@/components/customer-text-provider";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCart, useDeliveryZones, useProducts } from "@/components/providers";
+import { lineKey, useCart, useDeliveryZones, useProducts } from "@/components/providers";
 import { formatMoney } from "@/lib/format";
 import { Icon } from "@/components/ui/icons";
 import { Input, Textarea } from "@/components/ui/primitives";
@@ -193,7 +193,12 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                   notes: info.notes,
                 }
               : { fulfilment },
-          cart: resolved.map(({ productId, variantId, quantity }) => ({ productId, variantId, quantity })),
+          cart: resolved.map(({ productId, variantId, quantity, selections }) => ({
+            productId,
+            variantId,
+            quantity,
+            selections,
+          })),
           couponCode: coupon.trim(),
         }),
       });
@@ -236,7 +241,12 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                   notes: info.notes,
                 }
               : { fulfilment },
-          cart: resolved.map(({ productId, variantId, quantity }) => ({ productId, variantId, quantity })),
+          cart: resolved.map(({ productId, variantId, quantity, selections }) => ({
+            productId,
+            variantId,
+            quantity,
+            selections,
+          })),
           couponCode: applied ? coupon.trim().toUpperCase() : undefined,
         }),
       });
@@ -549,8 +559,8 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
         </summary>
         <div className="checkout-summary-content">
           <h2>{t("Order summary")}</h2>
-          {resolved.map(({ p, v, quantity }) => (
-            <div className="checkout-item" key={`${p.id}-${v.id}`}>
+          {resolved.map(({ p, v, quantity, selections }) => (
+            <div className="checkout-item" key={lineKey({ productId: p.id, variantId: v.id, selections })}>
               {p.image ? (
                 <Image
                   src={p.image}
@@ -567,8 +577,13 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                 <small>
                   {v.name} {t("· Qty ")}
                   {quantity}
-                  {v.packQuantity ? ` packs / ${quantity * v.packQuantity} pieces` : ""}
+                  {p.category !== "CUSTOM_CAKES" && v.packQuantity ? ` packs / ${quantity * v.packQuantity} pieces` : ""}
                 </small>
+                {!!selections?.length && (
+                  <small className="checkout-item-selections">
+                    {selections.map((s) => `${s.group}: ${s.value}`).join(" · ")}
+                  </small>
+                )}
               </span>
               <strong>{money(variantPrice(p, v) * quantity)}</strong>
             </div>

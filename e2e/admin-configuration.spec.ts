@@ -59,10 +59,6 @@ test("owner configuration immediately drives cake rules and pack visibility", as
   await expect(editor.getByRole("status")).toHaveText("Saved");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("cake-management.png"), fullPage: true });
-  await page.goto("/custom-cakes");
-  await expect(page.getByRole("button", { name: /Wedding Cake.*Minimum lead time: 3 weeks/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Birthday Cake.*Minimum lead time: 1 week/ })).toBeVisible();
-  await page.goto("/admin/cakes");
   await editor
     .locator(".cake-type-card")
     .first()
@@ -72,8 +68,6 @@ test("owner configuration immediately drives cake rules and pack visibility", as
   await editor.locator("article").first().getByLabel("Preparation time", { exact: true }).fill("4");
   await editor.getByRole("button", { name: "Save cake types" }).click();
   await expect(editor.getByRole("status")).toHaveText("Saved");
-  await page.goto("/custom-cakes");
-  await expect(page.getByRole("button", { name: /Wedding Cake.*Minimum lead time: 4 weeks/ })).toBeVisible();
   await page.goto("/admin/products");
   await page
     .locator("tr")
@@ -81,7 +75,7 @@ test("owner configuration immediately drives cake rules and pack visibility", as
     .getByRole("button", { name: "Edit", exact: true })
     .click();
   const drawer = page.getByRole("dialog", { name: "Edit Classic Butter Croissant" });
-  await expect(drawer.getByLabel("Shopping mode")).toHaveValue("MADE_TO_ORDER");
+  await expect(drawer.getByLabel("Category")).toHaveValue("PASTRIES");
   await drawer
     .locator(".pack-editor-card")
     .filter({ hasText: "Pack of 12" })

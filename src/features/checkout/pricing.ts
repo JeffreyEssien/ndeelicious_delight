@@ -30,6 +30,7 @@ export type OrderQuote = {
     sku: string;
     name: string;
     variantName: string;
+    selections: { group: string; value: string }[];
     packQuantity: number | null;
     totalPieces: number | null;
     inventoryTracked: boolean;
@@ -113,6 +114,7 @@ export function calculateOrderQuote(input: {
       sku: variant.sku ?? "",
       name: product.name,
       variantName: variant.name,
+      selections: (line.selections ?? []).filter((selection) => selection.group && selection.value),
       packQuantity: variant.packQuantity ?? null,
       totalPieces: variant.packQuantity ? variant.packQuantity * line.quantity : null,
       inventoryTracked: isVariantInventoryTracked(product, variant),

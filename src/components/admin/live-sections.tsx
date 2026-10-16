@@ -3,7 +3,6 @@ import { useUnsavedChanges } from "./use-unsaved-changes";
 import { HistoryWorkspace } from "./history-workspace";
 import { BusinessDocument, type BusinessDocumentData } from "@/components/documents/business-document";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
-import { CakeTypesEditor } from "./cake-types-editor";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminCakeRequest, AdminCategory, AdminCoupon, AdminReview } from "@/lib/data/admin";
@@ -656,16 +655,11 @@ export function CakeWorkspace(_props: { requests: AdminCakeRequest[]; configurat
 export function CakeCatalogue({ configuration }: { configuration: CakeConfigurationData }) {
   return (
     <div className="cake-workspace">
-      <CakeTypesEditor
-        initial={configuration.cakeTypes}
-        options={configuration.options}
-        relationships={configuration.relationships ?? []}
-      />
-      <details className="admin-card">
-        <summary>Edit shared sizes, flavours and extras</summary>
-        <p>Manage the choices available across your cakes. Assign these choices to each cake above.</p>
-        <CakeConfigurationEditor initial={configuration} />
-      </details>
+      <p className="muted">
+        Your master lists of sizes, flavours and fillings. Add a cake under Products, then tick which of these flavours
+        and fillings it offers and set its layers per size.
+      </p>
+      <CakeConfigurationEditor initial={configuration} />
     </div>
   );
 }

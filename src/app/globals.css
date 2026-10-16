@@ -1488,6 +1488,55 @@ h2 {
 .variant-options label b {
   font-size: 12px;
 }
+.cake-option-groups {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 20px;
+  padding: 0;
+  border: 0;
+}
+.cake-option-group {
+  display: grid;
+  gap: 6px;
+}
+.cake-option-group > span {
+  font-size: 13px;
+  font-weight: 800;
+}
+.cake-option-group select {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+}
+.cake-option-group select:focus-visible {
+  border-color: var(--berry);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--berry);
+}
+.clear-selection {
+  margin-top: 12px;
+}
+.cart-selections {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.cart-selections span {
+  font-weight: 700;
+}
+.checkout-item-selections {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+}
 .purchase-row {
   display: flex;
   gap: 12px;

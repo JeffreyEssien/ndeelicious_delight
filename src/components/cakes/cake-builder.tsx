@@ -10,7 +10,7 @@ import { cakeAvailability } from "@/features/cakes/availability";
 import { optionsForCakeType } from "@/features/cakes/options";
 import { calculateCakeConfigurationPrice } from "@/features/cakes/pricing";
 import { trackCommerceEvent } from "@/lib/analytics/client";
-import { earliestCakeDate, leadTimeLabel } from "@/features/cakes/lead-time";
+import { earliestCakeDate } from "@/features/cakes/lead-time";
 const initial: CakeConfiguration = {
   cakeTypeId: "",
   occasion: "",
@@ -126,7 +126,6 @@ export function CakeBuilder({
     config.colours,
   ].filter(Boolean).length;
   const selectedType = configuration.cakeTypes.find((type) => type.id === config.cakeTypeId && type.active);
-  const leadNotice = selectedType ? `Minimum lead time: ${leadTimeLabel(selectedType)}` : "Choose a cake type";
   let minDate = selectedType ? earliestCakeDate(selectedType, configuration.timezone) : "";
   let availabilityError = "";
   if (selectedType && configuration.fulfilment) {
@@ -136,6 +135,7 @@ export function CakeBuilder({
       availabilityError = reason instanceof Error ? reason.message : "Schedule setup is required.";
     }
   }
+  const leadNotice = selectedType ? `Earliest date: ${minDate}` : "Choose a cake type";
   function choose(key: keyof CakeConfiguration, value: string) {
     setConfig((v) => {
       const next = { ...v, [key]: value };
@@ -191,7 +191,7 @@ export function CakeBuilder({
       return false;
     }
     if (step === 8 && config.deliveryDate < minDate) {
-      setError(`${leadNotice}. Earliest date: ${minDate}.`);
+      setError(`Please choose ${minDate} or later.`);
       return false;
     }
     if (step === 8 && selectedType && configuration.fulfilment) {
@@ -314,7 +314,7 @@ export function CakeBuilder({
           {step === -1 && (
             <div>
               <h2>Choose your cake type</h2>
-              <p className="stage-intro">Preparation time depends on the cake you choose.</p>
+              <p className="stage-intro">Pick the cake you’d like, then make it your own.</p>
               {(() => {
                 const active = configuration.cakeTypes.filter((type) => type.active);
                 const groups = [
@@ -346,7 +346,6 @@ export function CakeBuilder({
                         >
                           <b>{type.name}</b>
                           <small>{type.description}</small>
-                          <strong>Minimum lead time: {leadTimeLabel(type)}</strong>
                           <small>{type.customerNotice}</small>
                         </button>
                       ))}
@@ -503,7 +502,7 @@ export function CakeBuilder({
             <div>
               <h2>{t("When do you need your cake?")}</h2>
               <p className="stage-intro">
-                {leadNotice}. Earliest date: {minDate} ({configuration.timezone}).
+                Earliest date: {minDate} ({configuration.timezone}).
               </p>
               <Input
                 label={t("Collection or delivery date")}

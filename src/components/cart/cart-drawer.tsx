@@ -3,7 +3,7 @@ import { variantPrice } from "@/features/catalog/pricing";
 import { useCustomerText } from "@/components/customer-text-provider";
 import Image from "next/image";
 import Link from "next/link";
-import { useCart, useMoney, useProducts } from "@/components/providers";
+import { lineKey, useCart, useMoney, useProducts } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
 export function CartDrawer() {
@@ -54,8 +54,9 @@ export function CartDrawer() {
           </div>
         ) : (
           lines.map(({ line, product: p, variant: v }) => {
+            const key = lineKey(line);
             return (
-              <div className="cart-line" key={`${line.productId}-${line.variantId}`}>
+              <div className="cart-line" key={key}>
                 {p.image ? (
                   <Image src={p.image} alt="" width={88} height={104} style={{ objectPosition: p.imagePosition }} />
                 ) : (
@@ -67,13 +68,24 @@ export function CartDrawer() {
                   </Link>
                   <small>
                     {v.name}
-                    {v.packQuantity ? ` · ${line.quantity} packs / ${line.quantity * v.packQuantity} pieces` : ""}
+                    {p.category !== "CUSTOM_CAKES" && v.packQuantity
+                      ? ` · ${line.quantity} packs / ${line.quantity * v.packQuantity} pieces`
+                      : ""}
                   </small>
+                  {!!line.selections?.length && (
+                    <ul className="cart-selections">
+                      {line.selections.map((s) => (
+                        <li key={s.group}>
+                          <span>{s.group}:</span> {s.value}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <strong>{formatMoney(variantPrice(p, v))}</strong>
                   <div className="quantity">
                     <button
                       type="button"
-                      onClick={() => cart.update(p.id, v.id, line.quantity - 1)}
+                      onClick={() => cart.update(key, line.quantity - 1)}
                       aria-label={t("Decrease quantity")}
                     >
                       <Icon name="minus" />
@@ -81,14 +93,14 @@ export function CartDrawer() {
                     <span>{line.quantity}</span>
                     <button
                       type="button"
-                      onClick={() => cart.update(p.id, v.id, line.quantity + 1)}
+                      onClick={() => cart.update(key, line.quantity + 1)}
                       aria-label={t("Increase quantity")}
                     >
                       <Icon name="plus" />
                     </button>
                   </div>
                 </div>
-                <button type="button" className="text-button" onClick={() => cart.remove(p.id, v.id)}>
+                <button type="button" className="text-button" onClick={() => cart.remove(key)}>
                   {t("Remove")}
                 </button>
               </div>
