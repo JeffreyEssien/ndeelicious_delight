@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import { isVariantInventoryTracked } from "@/features/catalog/availability";
+import { normalizeCakeLayers } from "@/features/catalog/pricing";
 import type { CakeOptionGroup, Collection, Product, ProductImage, ProductVariant } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -28,7 +29,7 @@ type ProductRow = {
   storage_instructions: string | null;
   preparation_instructions: string | null;
   option_groups: CakeOptionGroup[] | null;
-  cake_layers: Record<string, number> | null;
+  cake_layers: unknown;
   categories: { id: string; slug: string } | { id: string; slug: string }[] | null;
   product_variants: {
     id: string;
@@ -104,7 +105,7 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
     storageInstructions: row.storage_instructions ?? undefined,
     preparationInstructions: row.preparation_instructions ?? undefined,
     optionGroups: Array.isArray(row.option_groups) ? row.option_groups : [],
-    cakeLayers: row.cake_layers && typeof row.cake_layers === "object" ? row.cake_layers : {},
+    cakeLayers: normalizeCakeLayers(row.cake_layers),
   };
 }
 

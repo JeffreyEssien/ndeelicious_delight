@@ -1,7 +1,7 @@
 import { calculateLineTaxes } from "@/features/tax/calculator";
 import type { DeliveryTaxMode, TaxSnapshot } from "@/features/tax/types";
 import { isVariantInventoryTracked, isVariantPurchasable } from "@/features/catalog/availability";
-import { variantPrice } from "@/features/catalog/pricing";
+import { lineUnitPrice } from "@/features/catalog/pricing";
 import type { CartLine, Fulfilment, Product } from "@/types";
 import { formatMoney } from "@/lib/format";
 
@@ -105,7 +105,7 @@ export function calculateOrderQuote(input: {
       if (line.quantity > available)
         throw new CommerceError("INSUFFICIENT_STOCK", `Only ${available} of ${product.name} remain.`);
     }
-    const unitPrice = variantPrice(product, variant);
+    const unitPrice = lineUnitPrice(product, variant, line.selections);
     if (!Number.isSafeInteger(unitPrice) || unitPrice < 0)
       throw new CommerceError("INVALID_PRICE", "This item’s price needs review.");
     return {

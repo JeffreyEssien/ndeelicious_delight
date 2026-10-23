@@ -103,13 +103,17 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             <summary>{t("Description")}</summary>
             <p>{product.description}</p>
           </details>
-          <details>
-            <summary>{t("Ingredients & allergens")}</summary>
-            <p>{product.ingredients}</p>
-            <p>
-              <b>{t("Contains:")}</b> {product.allergens.join(", ")}
-            </p>
-          </details>
+          {(product.ingredients || product.allergens.length > 0) && (
+            <details>
+              <summary>{t("Ingredients & allergens")}</summary>
+              {product.ingredients && <p>{product.ingredients}</p>}
+              {product.allergens.length > 0 && (
+                <p>
+                  <b>{t("Contains:")}</b> {product.allergens.join(", ")}
+                </p>
+              )}
+            </details>
+          )}
           {(product.storageInstructions || product.preparationInstructions) && (
             <details>
               <summary>{t("Storage & preparation")}</summary>

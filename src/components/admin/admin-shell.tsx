@@ -66,12 +66,7 @@ function AdminNav({ path, onNavigate }: { path: string; onNavigate: () => void }
         <div className="admin-nav-group" key={group.heading}>
           <p className="admin-nav-heading">{group.heading}</p>
           {group.links.map((link) => (
-            <Link
-              className={path === link.href ? "active" : ""}
-              href={link.href}
-              key={link.href}
-              onClick={onNavigate}
-            >
+            <Link className={path === link.href ? "active" : ""} href={link.href} key={link.href} onClick={onNavigate}>
               <Icon name={link.icon} />
               <span>{link.label}</span>
             </Link>

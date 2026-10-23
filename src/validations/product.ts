@@ -63,7 +63,12 @@ export const productInputSchema = z
     preparationInstructions: optionalText(2_000),
     variants: z.array(productVariantInputSchema).max(100),
     optionGroups: z.array(productOptionGroupInputSchema).max(20).default([]),
-    cakeLayers: z.record(z.string(), z.number().int().min(1).max(12)).default({}),
+    cakeLayers: z
+      .record(
+        z.string(),
+        z.array(z.object({ layers: z.number().int().min(1).max(6), priceAdjustment: z.number().int() })).max(6),
+      )
+      .default({}),
     images: z.array(productImageInputSchema).max(12),
     collectionId: z.union([z.uuid(), z.literal(""), z.null()]).optional(),
   })

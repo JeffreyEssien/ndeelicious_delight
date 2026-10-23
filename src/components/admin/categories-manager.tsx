@@ -39,7 +39,13 @@ export function CategoriesManager() {
   const add = (parent: string) => {
     setItems((current) => [
       ...current,
-      { id: `new-${crypto.randomUUID()}`, parent, name: "", sortOrder: current.filter((c) => c.parent === parent).length, active: true },
+      {
+        id: `new-${crypto.randomUUID()}`,
+        parent,
+        name: "",
+        sortOrder: current.filter((c) => c.parent === parent).length,
+        active: true,
+      },
     ]);
     setDirty(true);
   };
@@ -58,7 +64,13 @@ export function CategoriesManager() {
       collections: groups.flatMap((group) =>
         items
           .filter((item) => item.parent === group.key)
-          .map((item, index) => ({ id: item.id, parent: item.parent, name: item.name.trim(), sortOrder: index, active: item.active })),
+          .map((item, index) => ({
+            id: item.id,
+            parent: item.parent,
+            name: item.name.trim(),
+            sortOrder: index,
+            active: item.active,
+          })),
       ),
     };
     const response = await fetch("/api/admin/collections", {
@@ -99,7 +111,11 @@ export function CategoriesManager() {
                   onChange={(event) => update(item.id, { name: event.target.value })}
                 />
                 <label className="check-row">
-                  <input type="checkbox" checked={item.active} onChange={(event) => update(item.id, { active: event.target.checked })} />
+                  <input
+                    type="checkbox"
+                    checked={item.active}
+                    onChange={(event) => update(item.id, { active: event.target.checked })}
+                  />
                   <span>Visible</span>
                 </label>
                 <button type="button" className="text-button danger-text" onClick={() => remove(item.id)}>

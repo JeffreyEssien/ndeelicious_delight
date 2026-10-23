@@ -59,7 +59,7 @@ try {
     ).rows;
     fs.writeFileSync(
       path.join(folder, "previous-functions.sql"),
-      definitions.map((row) => row.definition + ";").join("\n\n"),
+      definitions.map((row) => `${row.definition};`).join("\n\n"),
       { mode: 0o600 },
     );
     await client.query(sql.replace(/^begin;\s*/i, "").replace(/commit;\s*$/i, ""));

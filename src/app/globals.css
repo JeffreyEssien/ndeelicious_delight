@@ -1001,7 +1001,9 @@ h2 {
   color: var(--ink);
   box-shadow: 0 2px 8px rgba(30, 20, 15, 0.14);
   cursor: pointer;
-  transition: transform 150ms ease, color 150ms ease;
+  transition:
+    transform 150ms ease,
+    color 150ms ease;
 }
 .wishlist-heart svg {
   width: 19px;
@@ -1513,6 +1515,31 @@ h2 {
   font-size: 14px;
 }
 .cake-option-group select:focus-visible {
+  border-color: var(--berry);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--berry);
+}
+.cake-message-field {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 20px;
+}
+.cake-message-field > span {
+  font-size: 13px;
+  font-weight: 800;
+}
+.cake-message-field textarea {
+  min-height: 72px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+.cake-message-field textarea:focus-visible {
   border-color: var(--berry);
   outline: none;
   box-shadow: 0 0 0 1px var(--berry);

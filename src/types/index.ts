@@ -35,8 +35,12 @@ export type Product = {
   storageInstructions?: string;
   preparationInstructions?: string;
   optionGroups?: CakeOptionGroup[];
-  cakeLayers?: Record<string, number>;
+  cakeLayers?: Record<string, CakeSizeLayer[]>;
 };
+
+// A cake size can offer several layer counts (e.g. 8" as 2 or 3 layers); each layer count
+// carries its own price adjustment (in cents) on top of the size's selling price.
+export type CakeSizeLayer = { layers: number; priceAdjustment: number };
 
 export type CakeOptionGroup = { id: string; name: string; choices: string[]; required: boolean };
 

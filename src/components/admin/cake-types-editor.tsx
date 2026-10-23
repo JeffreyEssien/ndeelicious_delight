@@ -20,7 +20,9 @@ export function CakeTypesEditor({
   useEffect(() => {
     fetch("/api/admin/collections", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : { collections: [] }))
-      .then((payload) => setCollections((payload.collections ?? []).filter((c: { parent: string }) => c.parent === "CUSTOM_CAKES")))
+      .then((payload) =>
+        setCollections((payload.collections ?? []).filter((c: { parent: string }) => c.parent === "CUSTOM_CAKES")),
+      )
       .catch(() => {});
   }, []);
   const [expandedCake, setExpandedCake] = useState("");

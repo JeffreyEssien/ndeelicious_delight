@@ -113,7 +113,9 @@ export default async function Page() {
             <article key={step.title}>
               <span>{String(index + 1).padStart(2, "0")}</span>
               <h3>{step.title}</h3>
-              <p>{step.body.replace(t("current bakery setting"), t("the earliest available date shown at checkout"))}</p>
+              <p>
+                {step.body.replace(t("current bakery setting"), t("the earliest available date shown at checkout"))}
+              </p>
             </article>
           ))}
         </div>

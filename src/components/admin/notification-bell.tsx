@@ -13,8 +13,7 @@ const typeIcon: Record<AdminNotification["type"], string> = {
   message: "user",
 };
 
-const pushSupported = () =>
-  typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator;
+const pushSupported = () => typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator;
 
 async function registerWorker() {
   try {

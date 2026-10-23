@@ -164,7 +164,9 @@
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--bg, var(--surface));
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
 }
 .admin-search:focus-within {
   border-color: var(--berry);
@@ -952,7 +954,9 @@
   padding: 16px 0;
   border-bottom: 1px solid var(--line);
   color: inherit;
-  transition: background 150ms ease, padding 150ms ease;
+  transition:
+    background 150ms ease,
+    padding 150ms ease;
 }
 .attention-row:last-child {
   border-bottom: 0;
@@ -976,7 +980,9 @@
   margin-left: auto;
   flex: none;
   color: var(--muted);
-  transition: transform 150ms ease, color 150ms ease;
+  transition:
+    transform 150ms ease,
+    color 150ms ease;
 }
 .attention-row:hover {
   background: color-mix(in srgb, var(--berry) 5%, transparent);
@@ -2444,6 +2450,21 @@ html[data-theme] .admin-sidebar {
   color: var(--muted);
   font-size: 11px;
 }
+.size-library-picker {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+}
+.size-library-picker select {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
 .option-group-editor {
   display: grid;
   gap: 10px;
@@ -2474,6 +2495,23 @@ html[data-theme] .admin-sidebar {
 .cake-library-pickers legend {
   padding: 0 6px;
   font-weight: 700;
+}
+.cake-layer-options {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.cake-layer-options legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+.cake-layer-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 1.4fr);
+  align-items: center;
+  gap: 12px;
 }
 .table-actions {
   justify-content: flex-start;
@@ -3522,7 +3560,9 @@ html[data-theme] .admin-sidebar {
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
-    transition: color 150ms ease, background 150ms ease;
+    transition:
+      color 150ms ease,
+      background 150ms ease;
   }
   .admin-bottom-nav a svg,
   .admin-bottom-nav button svg {
@@ -4833,7 +4873,9 @@ html[data-theme] .admin-sidebar {
   border: 1.5px dashed var(--line);
   border-radius: 12px;
   background: var(--bg, var(--surface));
-  transition: border-color 150ms ease, background 150ms ease;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
 }
 .cake-photo-drop.is-dragging {
   border-color: var(--berry);
