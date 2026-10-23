@@ -30,9 +30,9 @@ export function ProductEditor({
   product,
   close,
   onSaved,
-  flavourLibrary = [],
-  fillingLibrary = [],
-  sizeLibrary = [],
+  flavourLibrary: initialFlavours = [],
+  fillingLibrary: initialFillings = [],
+  sizeLibrary: initialSizes = [],
 }: {
   product: Product | null;
   close: () => void;
@@ -42,6 +42,22 @@ export function ProductEditor({
   sizeLibrary?: { name: string; price: number }[];
 }) {
   const { currency } = useBusinessSettings();
+  // The libraries arrive as a page-load snapshot; refetch them when the editor opens so new
+  // flavours, fillings and sizes added in "Sizes, flavours and cake options" show up here.
+  const [flavourLibrary, setFlavourLibrary] = useState(initialFlavours);
+  const [fillingLibrary, setFillingLibrary] = useState(initialFillings);
+  const [sizeLibrary, setSizeLibrary] = useState(initialSizes);
+  useEffect(() => {
+    fetch("/api/admin/cake-options", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (!payload) return;
+        setFlavourLibrary(payload.flavours ?? []);
+        setFillingLibrary(payload.fillings ?? []);
+        setSizeLibrary(payload.sizes ?? []);
+      })
+      .catch(() => {});
+  }, []);
   const initialPreparationUnit =
     product?.preparationHours && Number.isInteger(product.preparationHours) ? "hours" : "minutes";
   const [preparationUnit, setPreparationUnit] = useState(initialPreparationUnit);
@@ -283,13 +299,19 @@ export function ProductEditor({
             <Input label="URL slug" name="slug" defaultValue={product?.slug} placeholder="Generated from the name" />
           </details>
           <Textarea
-            label="Short description"
+            label={isCake ? "Short description (optional)" : "Short description"}
             name="shortDescription"
             defaultValue={product?.shortDescription}
             rows={2}
-            required
+            required={!isCake}
           />
-          <Textarea label="Full description" name="description" defaultValue={product?.description} rows={5} required />
+          <Textarea
+            label={isCake ? "Full description (optional)" : "Full description"}
+            name="description"
+            defaultValue={product?.description}
+            rows={5}
+            required={!isCake}
+          />
           <Select
             label="Category"
             name="category"
@@ -842,7 +864,7 @@ export function ProductEditor({
           <p className="field-help">JPG, PNG, WebP, or AVIF. Maximum 5 MB each and 12 images per product.</p>
           {images.map((image, index) => (
             <div className="image-editor" key={image.id}>
-              <Image src={image.url} alt="" width={64} height={64} />
+              <Image src={image.url} alt="" width={64} height={64} unoptimized />
               <Input
                 label="Alternative text"
                 value={image.altText}

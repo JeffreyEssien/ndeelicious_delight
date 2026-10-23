@@ -1074,7 +1074,7 @@ function Products({
                   <td>
                     <div className="product-cell">
                       {product.image ? (
-                        <Image src={product.image} alt="" width={48} height={54} />
+                        <Image src={product.image} alt="" width={48} height={54} unoptimized />
                       ) : (
                         <span className="admin-image-empty" role="img" aria-label="No product image" />
                       )}
