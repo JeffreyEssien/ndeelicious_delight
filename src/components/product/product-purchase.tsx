@@ -12,7 +12,7 @@ import {
   isVariantInventoryTracked,
   variantQuantityLimit,
 } from "@/features/catalog/availability";
-import { variantPrice } from "@/features/catalog/pricing";
+import { lineUnitPrice, variantPrice } from "@/features/catalog/pricing";
 import { earliestFulfilment } from "@/features/fulfilment/schedule";
 import { trackCommerceEvent } from "@/lib/analytics/client";
 
@@ -27,6 +27,7 @@ export function ProductPurchase({ product }: { product: Product }) {
     requested?.id ?? (madeToOrder ? "" : (getDefaultPurchasableVariant(product)?.id ?? "")),
   );
   const [choices, setChoices] = useState<Record<string, string>>({});
+  const [cakeMessage, setCakeMessage] = useState("");
   const [quantity, setQuantity] = useState(1);
   const cart = useCart();
   const business = useBusinessSettings();
@@ -42,21 +43,54 @@ export function ProductPurchase({ product }: { product: Product }) {
   const flavourChoices = optionGroups.find((group) => group.name === "Flavour")?.choices ?? [];
   const fillingChoices = optionGroups.find((group) => group.name === "Filling")?.choices ?? [];
   const isLayeredCake = isCake && (flavourChoices.length > 0 || fillingChoices.length > 0);
-  const layerCount = selected ? (product.cakeLayers?.[selected.id] ?? 1) : 0;
-  type Picker = { key: string; label: string; options: string[]; required: boolean };
+  // Each cake size offers one or more layer counts (with their own price adjustment); the
+  // customer picks one, which also drives how many flavour/filling pickers appear.
+  const layerSizes = isCake && selected ? (product.cakeLayers?.[selected.id] ?? []) : [];
+  const layerCount = layerSizes.length
+    ? Number(choices.Layers) || (layerSizes.length === 1 ? layerSizes[0].layers : 0)
+    : 1;
+  // When a size offers exactly one layer count, record it automatically so pricing and the
+  // order both reflect it; drop a stale choice the newly chosen size doesn't support.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-sync only when the size changes.
+  useEffect(() => {
+    if (!isCake) return;
+    setChoices((current) => {
+      if (layerSizes.length === 1 && current.Layers !== String(layerSizes[0].layers))
+        return { ...current, Layers: String(layerSizes[0].layers) };
+      if (current.Layers && !layerSizes.some((entry) => String(entry.layers) === current.Layers)) {
+        const { Layers: _removed, ...rest } = current;
+        return rest;
+      }
+      return current;
+    });
+  }, [variant, isCake]);
+  type Picker = { key: string; label: string; options: string[]; labels?: string[]; required: boolean };
   let pickers: Picker[];
-  if (isLayeredCake) {
-    pickers = selected
-      ? Array.from({ length: layerCount }, (_, i) => i + 1).flatMap((layer) => {
-          const prefix = layerCount > 1 ? `Layer ${layer} ` : "";
+  if (isCake) {
+    pickers = [];
+    if (selected && layerSizes.length > 1)
+      pickers.push({
+        key: "Layers",
+        label: "Layers",
+        options: layerSizes.map((entry) => String(entry.layers)),
+        labels: layerSizes.map(
+          (entry) =>
+            `${entry.layers} ${entry.layers === 1 ? "layer" : "layers"}${entry.priceAdjustment > 0 ? ` (+${formatMoney(entry.priceAdjustment)})` : ""}`,
+        ),
+        required: true,
+      });
+    if (isLayeredCake && selected && layerCount >= 1)
+      pickers.push(
+        ...Array.from({ length: layerCount }, (_, i) => i + 1).flatMap((layer) => {
+          const suffix = layerCount > 1 ? ` ${layer}` : "";
           const rows: Picker[] = [];
           if (flavourChoices.length)
-            rows.push({ key: `L${layer}-flavour`, label: `${prefix}flavour`, options: flavourChoices, required: true });
+            rows.push({ key: `L${layer}-flavour`, label: `Flavour${suffix}`, options: flavourChoices, required: true });
           if (fillingChoices.length)
-            rows.push({ key: `L${layer}-filling`, label: `${prefix}filling`, options: fillingChoices, required: true });
+            rows.push({ key: `L${layer}-filling`, label: `Filling${suffix}`, options: fillingChoices, required: true });
           return rows;
-        })
-      : [];
+        }),
+      );
   } else {
     pickers = optionGroups.map((group) => ({
       key: group.id,
@@ -65,9 +99,15 @@ export function ProductPurchase({ product }: { product: Product }) {
       required: group.required,
     }));
   }
-  const selections = pickers.flatMap((picker) =>
-    choices[picker.key] ? [{ group: picker.label, value: choices[picker.key] }] : [],
-  );
+  const selections = [
+    ...pickers.flatMap((picker) => (choices[picker.key] ? [{ group: picker.label, value: choices[picker.key] }] : [])),
+    // A size with a single layer count has no Layers picker but still carries its (auto-selected)
+    // layer choice so the order records it and any layer price adjustment is applied.
+    ...(isCake && selected && layerSizes.length === 1 && choices.Layers
+      ? [{ group: "Layers", value: choices.Layers }]
+      : []),
+    ...(isCake && cakeMessage.trim() ? [{ group: "Cake message", value: cakeMessage.trim().slice(0, 200) }] : []),
+  ];
   const missingChoice = pickers.find((picker) => picker.required && !choices[picker.key]);
   const unavailable = !selected || limit < 1 || Boolean(missingChoice);
   let availabilityLabel = "Enter your postal code at checkout to confirm delivery availability.";
@@ -100,15 +140,16 @@ export function ProductPurchase({ product }: { product: Product }) {
                   : "This product does not have an available option.",
             )}
           </p>
-        ) : options.length > 6 ? (
+        ) : isCake || options.length > 6 ? (
           <label className="pack-compact-label">
             <span>{t(isCake ? "Size" : madeToOrder ? "Pack options" : "Product options")}</span>
             <select value={selected?.id ?? ""} onChange={(event) => choose(event.target.value)}>
-              <option value="">{t(isCake ? "Choose your size" : "Choose your pack")}</option>
+              <option value="">{t("Choose an option")}</option>
               {options.map((v) => (
                 <option key={v.id} value={v.id} disabled={!isVariantPurchasable(product, v)}>
                   {v.name}
-                  {!isCake && v.packQuantity ? ` · ${v.packQuantity} pieces` : ""} · {formatMoney(variantPrice(product, v))}
+                  {!isCake && v.packQuantity ? ` · ${v.packQuantity} pieces` : ""} ·{" "}
+                  {formatMoney(variantPrice(product, v))}
                   {!isVariantPurchasable(product, v) ? " · Sold out" : ""}
                 </option>
               ))}
@@ -154,9 +195,9 @@ export function ProductPurchase({ product }: { product: Product }) {
                 onChange={(event) => setChoices((current) => ({ ...current, [picker.key]: event.target.value }))}
               >
                 <option value="">{t("Choose an option")}</option>
-                {picker.options.map((choice) => (
+                {picker.options.map((choice, choiceIndex) => (
                   <option key={choice} value={choice}>
-                    {choice}
+                    {picker.labels?.[choiceIndex] ?? choice}
                   </option>
                 ))}
               </select>
@@ -164,11 +205,23 @@ export function ProductPurchase({ product }: { product: Product }) {
           ))}
         </fieldset>
       )}
+      {isCake && selected && (
+        <label className="cake-message-field">
+          <span>{t("What message would you like on the cake")}</span>
+          <textarea
+            value={cakeMessage}
+            maxLength={200}
+            rows={3}
+            placeholder={t("e.g. Happy Birthday Lara")}
+            onChange={(event) => setCakeMessage(event.target.value)}
+          />
+        </label>
+      )}
       <div className="pack-selection-summary" aria-live="polite" aria-atomic="true">
         {selected ? (
           <>
             <strong>
-              {formatMoney(variantPrice(product, selected))} {t(sellingPacks ? "per pack" : "each")}
+              {formatMoney(lineUnitPrice(product, selected, selections))} {t(sellingPacks ? "per pack" : "each")}
             </strong>
             <span>
               {count} {sellingPacks ? (count === 1 ? "pack" : "packs") : count === 1 ? "item" : "items"}
@@ -212,7 +265,9 @@ export function ProductPurchase({ product }: { product: Product }) {
               ? t("Choose {value1}", { value1: missingChoice.label })
               : limit < 1
                 ? t("Unavailable")
-                : t("Add to basket · {value1}", { value1: formatMoney(variantPrice(product, selected) * count) })}
+                : t("Add to basket · {value1}", {
+                    value1: formatMoney(lineUnitPrice(product, selected, selections) * count),
+                  })}
         </button>
       </div>
       {(optionGroups.length > 0 || variant) && (
@@ -222,6 +277,7 @@ export function ProductPurchase({ product }: { product: Product }) {
           onClick={() => {
             setVariant(madeToOrder ? "" : (getDefaultPurchasableVariant(product)?.id ?? ""));
             setChoices({});
+            setCakeMessage("");
             setQuantity(1);
           }}
         >

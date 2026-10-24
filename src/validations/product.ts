@@ -40,8 +40,9 @@ export const productInputSchema = z
       .min(2)
       .max(180)
       .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use a lowercase URL slug with hyphens."),
-    shortDescription: z.string().trim().min(2).max(500),
-    description: z.string().trim().min(2).max(10_000),
+    // Descriptions are optional for cakes; the superRefine below enforces them for other categories.
+    shortDescription: z.string().trim().max(500),
+    description: z.string().trim().max(10_000),
     category: productCategorySchema,
     shoppingMode: z.enum(["READY_TO_ORDER", "MADE_TO_ORDER", "READY_TO_BAKE"]).default("READY_TO_ORDER"),
     taxClass: z.enum(taxClasses).default("REQUIRES_REVIEW"),
@@ -63,12 +64,24 @@ export const productInputSchema = z
     preparationInstructions: optionalText(2_000),
     variants: z.array(productVariantInputSchema).max(100),
     optionGroups: z.array(productOptionGroupInputSchema).max(20).default([]),
-    cakeLayers: z.record(z.string(), z.number().int().min(1).max(12)).default({}),
+    cakeLayers: z
+      .record(
+        z.string(),
+        z.array(z.object({ layers: z.number().int().min(1).max(6), priceAdjustment: z.number().int() })).max(6),
+      )
+      .default({}),
     images: z.array(productImageInputSchema).max(12),
     collectionId: z.union([z.uuid(), z.literal(""), z.null()]).optional(),
   })
   .superRefine((product, context) => {
     const base = product.discountPrice ?? product.price;
+    // Non-cake products still need both descriptions; cakes may leave them blank.
+    if (product.category !== "CUSTOM_CAKES") {
+      if (product.shortDescription.length < 2)
+        context.addIssue({ code: "custom", path: ["shortDescription"], message: "Add a short description." });
+      if (product.description.length < 2)
+        context.addIssue({ code: "custom", path: ["description"], message: "Add a full description." });
+    }
     if (product.shoppingMode !== "MADE_TO_ORDER" && !product.variants.length)
       context.addIssue({ code: "custom", path: ["variants"], message: "Add at least one variant." });
     const ids = product.variants.flatMap((v) => (v.id ? [v.id] : []));

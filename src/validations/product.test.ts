@@ -27,6 +27,12 @@ describe("productInputSchema", () => {
     expect(categorySlug(valid.category)).toBe("pastries");
   });
 
+  it("requires descriptions for non-cakes but allows cakes to omit them", () => {
+    const blank = { ...valid, shortDescription: "", description: "" };
+    expect(productInputSchema.safeParse(blank).success).toBe(false);
+    expect(productInputSchema.safeParse({ ...blank, category: "CUSTOM_CAKES" }).success).toBe(true);
+  });
+
   it("rejects unsafe slugs and products without variants", () => {
     expect(productInputSchema.safeParse({ ...valid, slug: "../Secret", variants: [] }).success).toBe(false);
   });

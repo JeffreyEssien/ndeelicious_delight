@@ -1,6 +1,6 @@
 # Project Progress and TODOs
 
-Last updated: 2026-10-07
+Last updated: 2026-10-16
 Active development branch: `commerce/full-implementation`
 Latest prior application commit: `b8b126b`
 Baseline commit for the premium pass: `9818e17`
@@ -8,6 +8,29 @@ Baseline commit for the premium pass: `9818e17`
 This is the living checkpoint for implementation progress. Update it when a feature, migration, test, deployment prerequisite, or known limitation changes. `implementation.md` remains the full product plan and definition of done.
 
 ## Current checkpoint
+
+### Cakes-as-products epic (2026-10-13 → 2026-10-16)
+
+Custom cakes are now sold as ordinary products (cakesandcream.ng-style product page) instead of the multi-step builder, and the admin was simplified to match. Implemented across migrations `0042`–`0046` (all applied to the configured database with a backup taken before each; existing records preserved):
+
+- `0042` fixed `save_delivery_areas` (WHERE-less UPDATE rejected by `sql_safe_updates`).
+- `0043` relaxed `validate_published_cakes` to require only size + flavour.
+- `0044` added the `collections` table (two-level categories: 3 fixed groups → owner-managed sub-categories).
+- `0045` added `products.option_groups` jsonb and threaded it through `admin_save_product`.
+- `0046` added `products.cake_layers` jsonb (per-size layer counts) and a `productType` (category-slug) filter to `admin_history_page`.
+
+Behaviour now live:
+
+- **Cakes are products.** `/custom-cakes` is a product grid (the `Catalogue` filtered to `CUSTOM_CAKES`); the from-scratch `CakeBuilder` / `/api/cakes/quote` / `custom_cake_orders` path is retired from the storefront but kept in the repo (bespoke-quote path). `custom-cakes/build-your-cake` redirects to `/custom-cakes`.
+- **Size → price range.** Size variants drive the product-page price range; flavour/filling are free choices.
+- **Flavour/filling library + per-size layers.** The owner maintains one master list (reusing `custom_cake_options`, managed in the repurposed admin **"Flavours & sizes"** section). Per cake she ticks which flavours/fillings apply (stored in `option_groups` as `Flavour`/`Filling`) and sets **layers per size** (`cake_layers`). The storefront renders exactly that many flavour + filling dropdowns after a size is chosen (6″→2, 8″→3, 10″→4 on the demo cakes).
+- **Orders.** Cake orders are regular orders; selections ride in `order_items.product_snapshot.selections` and show in cart, checkout, admin order detail, and the confirmation email. Orders has a new **Product type** filter (All / Cakes / Ready to order / Ready to bake).
+- **Internal lead/prep time is hidden** from customers everywhere (shows the computed earliest pickup date/window instead).
+- **Admin cleanup.** `Cake requests` nav link removed; old builder `cake_types` ("test cake") set inactive (can't hard-delete — a past `custom_cake_order` FK-references it); mobile quick-nav points to Products.
+
+Three **placeholder** demo cakes exist (Caramel Berry Dream, Classic Vanilla Celebration, Midnight Chocolate Fudge) with example names/prices/allergens for the owner to edit — not real production data. Owner still needs to enter real cakes, prices, descriptions, allergens and photos through the admin. Code changes require a deploy; DB changes are already live. Verified 2026-10-16: `tsc` clean, `biome` clean (3 pre-existing infos in untouched files), CSS token audit 58/0, **271 unit/API tests pass**; live dev-server browser check confirmed per-size layer pickers (8″→6 pickers at $135) and add-to-basket.
+
+### Full commerce specification
 
 The full commerce specification is implemented on `commerce/full-implementation`, based on reconciled remote main `dde3e06`. Cake base prices and assigned options, explicit pack quantities, postal-code delivery resolution, Halifax fulfilment scheduling, line tax/discount snapshots, quote checkout, and owner configuration controls now share canonical domain logic. See [the verification report](docs/full-commerce-verification.md) and [rollout/recovery instructions](docs/commerce-rollout.md).
 
@@ -63,6 +86,7 @@ G15 is active. Durable database-backed abuse protection now covers the public su
 
 ## Implemented
 
+- [x] Reworked custom cakes into ordinary products: size-variant price range, a shared flavour/filling library, per-size layer counts driving dynamic per-layer flavour/filling pickers, selections carried onto orders, two-level categories, an Orders product-type filter, and a simplified admin (retired builder/quote UI, hidden cake-request inbox). Migrations `0042`–`0046`.
 - [x] Added a complete semantic theme resolver for Berry, Purple, Sunrise, and arbitrary custom colours, including automatic contrast-safe foregrounds and centralized CSS variables.
 - [x] Added shared product/variant availability rules and used them in carousel, budget, product card, and cart paths so multi-variant products never silently add the wrong variant.
 - [x] Reworked carousel autoplay, manual pause, reduced-motion, touch swipe, announcements, 44px controls, advanced settings, and persistent publish state.
@@ -266,6 +290,7 @@ Complete these checkpoints in order unless a newly discovered dependency require
 
 - [ ] Create and validate separate development, staging, and production Supabase/Stripe/SMTP environments.
 - [ ] Enter owner-approved business contact details, catalogue records, imagery, policy dates, and final editorial copy through admin before launch; runtime fallbacks have been removed.
+- [ ] Replace the three placeholder demo cakes with the owner's real cakes: names, per-size prices, descriptions, allergens, photos, flavour/filling library entries, and layers per size.
 - [ ] Confirm the owner-approved province, timezone, delivery areas, tax registration/rates, and CAD catalogue prices in admin before accepting live orders; migration defaults intentionally do not invent these business facts.
 - [x] Add analytics, error monitoring, and structured logs.
 - [x] Review rate limiting for a multi-instance production deployment.

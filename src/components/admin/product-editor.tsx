@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import { type FormEvent, useEffect, useState } from "react";
-import type { Product, ProductImage, ProductStatus, ProductVariant } from "@/types";
+import type { CakeSizeLayer, Product, ProductImage, ProductStatus, ProductVariant } from "@/types";
 import { Button, Checkbox, Input, Select, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
-import { variantPrice } from "@/features/catalog/pricing";
+import { normalizeCakeSizeLayers, variantPrice } from "@/features/catalog/pricing";
 import { useBusinessSettings } from "@/components/providers";
 
 type DraftVariant = Omit<ProductVariant, "id"> & {
@@ -13,7 +13,7 @@ type DraftVariant = Omit<ProductVariant, "id"> & {
   key: string;
   sellingPrice: number;
   expectedStockQuantity?: number;
-  layers?: number;
+  layerOptions?: CakeSizeLayer[];
 };
 type PendingImage = { key: string; file: File; altText: string };
 type DraftOptionGroup = { key: string; id: string; name: string; choicesText: string; required: boolean };
@@ -30,16 +30,34 @@ export function ProductEditor({
   product,
   close,
   onSaved,
-  flavourLibrary = [],
-  fillingLibrary = [],
+  flavourLibrary: initialFlavours = [],
+  fillingLibrary: initialFillings = [],
+  sizeLibrary: initialSizes = [],
 }: {
   product: Product | null;
   close: () => void;
   onSaved: (updated: Partial<Product>) => void;
   flavourLibrary?: string[];
   fillingLibrary?: string[];
+  sizeLibrary?: { name: string; price: number }[];
 }) {
   const { currency } = useBusinessSettings();
+  // The libraries arrive as a page-load snapshot; refetch them when the editor opens so new
+  // flavours, fillings and sizes added in "Sizes, flavours and cake options" show up here.
+  const [flavourLibrary, setFlavourLibrary] = useState(initialFlavours);
+  const [fillingLibrary, setFillingLibrary] = useState(initialFillings);
+  const [sizeLibrary, setSizeLibrary] = useState(initialSizes);
+  useEffect(() => {
+    fetch("/api/admin/cake-options", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (!payload) return;
+        setFlavourLibrary(payload.flavours ?? []);
+        setFillingLibrary(payload.fillings ?? []);
+        setSizeLibrary(payload.sizes ?? []);
+      })
+      .catch(() => {});
+  }, []);
   const initialPreparationUnit =
     product?.preparationHours && Number.isInteger(product.preparationHours) ? "hours" : "minutes";
   const [preparationUnit, setPreparationUnit] = useState(initialPreparationUnit);
@@ -49,6 +67,11 @@ export function ProductEditor({
         ? Math.round((product?.preparationHours ?? 0) * 60)
         : (product?.preparationHours ?? 0),
     ),
+  );
+  // Cakes express their buffer as a whole number of lead-time days, stored as prep hours
+  // (days × 24) so scheduling keeps working unchanged.
+  const [leadTimeDays, setLeadTimeDays] = useState(
+    String(Math.max(0, Math.round((product?.preparationHours ?? 0) / 24))),
   );
   const [price, setPrice] = useState(String((product?.price ?? 0) / 100));
   const [discount, setDiscount] = useState(
@@ -80,7 +103,7 @@ export function ProductEditor({
           sellingPrice: variantPrice(product, variant),
           expectedStockQuantity: variant.stockQuantity,
           active: variant.active ?? true,
-          layers: product.cakeLayers?.[variant.id] ?? 1,
+          layerOptions: normalizeCakeSizeLayers(product.cakeLayers?.[variant.id]),
         }))
       : [
           {
@@ -172,6 +195,12 @@ export function ProductEditor({
     setError("");
     const form = new FormData(event.currentTarget);
     const name = String(form.get("name"));
+    // Cakes store a lead-time buffer in days; ready-to-bake uses prep time; ready-to-order has none.
+    const preparationHours = isCake
+      ? Number(leadTimeDays || 0) * 24
+      : category === "READY_TO_BAKE"
+        ? Number(preparationValue || 0) / (preparationUnit === "minutes" ? 60 : 1)
+        : 0;
     const payload = {
       name,
       slug: String(form.get("slug")) || slugify(name),
@@ -183,7 +212,7 @@ export function ProductEditor({
       status: String(form.get("status")) as ProductStatus,
       featured: form.get("featured") === "on",
       shoppingMode: mode,
-      preparationHours: Number(form.get("preparationHours")) / (form.get("preparationUnit") === "minutes" ? 60 : 1),
+      preparationHours,
       taxClass: String(form.get("taxClass")),
       trackInventory: form.get("trackInventory") === "on",
       lowStockThreshold: Number(form.get("lowStockThreshold")),
@@ -224,7 +253,9 @@ export function ProductEditor({
             .filter((group) => group.name && group.choices.length),
       cakeLayers: isCake
         ? Object.fromEntries(
-            variants.filter((variant) => variant.id).map((variant) => [variant.id, Math.max(1, variant.layers ?? 1)]),
+            variants
+              .filter((variant) => variant.id && normalizeCakeSizeLayers(variant.layerOptions).length)
+              .map((variant) => [variant.id, normalizeCakeSizeLayers(variant.layerOptions)]),
           )
         : {},
       collectionId: collectionId || null,
@@ -268,13 +299,19 @@ export function ProductEditor({
             <Input label="URL slug" name="slug" defaultValue={product?.slug} placeholder="Generated from the name" />
           </details>
           <Textarea
-            label="Short description"
+            label={isCake ? "Short description (optional)" : "Short description"}
             name="shortDescription"
             defaultValue={product?.shortDescription}
             rows={2}
-            required
+            required={!isCake}
           />
-          <Textarea label="Full description" name="description" defaultValue={product?.description} rows={5} required />
+          <Textarea
+            label={isCake ? "Full description (optional)" : "Full description"}
+            name="description"
+            defaultValue={product?.description}
+            rows={5}
+            required={!isCake}
+          />
           <Select
             label="Category"
             name="category"
@@ -284,9 +321,13 @@ export function ProductEditor({
               const oldMode = category === "READY_TO_BAKE" ? "READY_TO_BAKE" : "MADE_TO_ORDER";
               const newMode = nextCategory === "READY_TO_BAKE" ? "READY_TO_BAKE" : "MADE_TO_ORDER";
               if (newMode === "MADE_TO_ORDER" && oldMode !== newMode)
-                setVariants((current) => current.map((v) => ({ ...v, sellingPrice: effectiveBase + v.priceAdjustment })));
+                setVariants((current) =>
+                  current.map((v) => ({ ...v, sellingPrice: effectiveBase + v.priceAdjustment })),
+                );
               if (oldMode === "MADE_TO_ORDER" && newMode !== oldMode)
-                setVariants((current) => current.map((v) => ({ ...v, priceAdjustment: v.sellingPrice - effectiveBase })));
+                setVariants((current) =>
+                  current.map((v) => ({ ...v, priceAdjustment: v.sellingPrice - effectiveBase })),
+                );
               setCategory(nextCategory);
               setCollectionId("");
             }}
@@ -356,30 +397,48 @@ export function ProductEditor({
             Confirm CRA classification, serving size and packaging. Sweet servings qualify for the six-or-more rule only
             when sold together without individual taxable packaging.
           </p>
-          <Input
-            label="Preparation time"
-            name="preparationHours"
-            type="number"
-            min="0"
-            max={preparationUnit === "minutes" ? 525600 : 8760}
-            step={preparationUnit === "minutes" ? "1" : "any"}
-            value={preparationValue}
-            onChange={(event) => setPreparationValue(event.target.value)}
-            required
-          />
-          <Select
-            label="Preparation unit"
-            name="preparationUnit"
-            value={preparationUnit}
-            onChange={(event) => {
-              const unit = event.target.value === "hours" ? "hours" : "minutes";
-              setPreparationValue(String(Number(preparationValue) * (unit === "minutes" ? 60 : 1 / 60)));
-              setPreparationUnit(unit);
-            }}
-          >
-            <option value="minutes">Minutes</option>
-            <option value="hours">Hours</option>
-          </Select>
+          {isCake ? (
+            <>
+              <Input
+                label="Lead time (days)"
+                type="number"
+                min="0"
+                step="1"
+                value={leadTimeDays}
+                onChange={(event) => setLeadTimeDays(event.target.value)}
+                required
+              />
+              <p className="field-help">
+                The buffer you need before a cake order is ready — the earliest pickup/delivery date is pushed out by
+                this many days. Cakes are made to order, so there is no separate preparation time.
+              </p>
+            </>
+          ) : category === "READY_TO_BAKE" ? (
+            <>
+              <Input
+                label="Preparation time"
+                type="number"
+                min="0"
+                max={preparationUnit === "minutes" ? 525600 : 8760}
+                step={preparationUnit === "minutes" ? "1" : "any"}
+                value={preparationValue}
+                onChange={(event) => setPreparationValue(event.target.value)}
+                required
+              />
+              <Select
+                label="Preparation unit"
+                value={preparationUnit}
+                onChange={(event) => {
+                  const unit = event.target.value === "hours" ? "hours" : "minutes";
+                  setPreparationValue(String(Number(preparationValue) * (unit === "minutes" ? 60 : 1 / 60)));
+                  setPreparationUnit(unit);
+                }}
+              >
+                <option value="minutes">Minutes</option>
+                <option value="hours">Hours</option>
+              </Select>
+            </>
+          ) : null}
           <h3>Inventory</h3>
           <Checkbox label="Track inventory" name="trackInventory" defaultChecked={product?.trackInventory ?? true} />
           <div className="field-row">
@@ -429,6 +488,7 @@ export function ProductEditor({
                     stockQuantity: 0,
                     active: false,
                     trackInventory: mode === "MADE_TO_ORDER" ? false : null,
+                    layerOptions: isCake ? [{ layers: 1, priceAdjustment: 0 }] : undefined,
                   },
                 ]);
                 setEditingPack(key);
@@ -462,6 +522,45 @@ export function ProductEditor({
             >
               Add common sizes
             </Button>
+          )}
+          {isCake && sizeLibrary.length > 0 && (
+            <label className="size-library-picker">
+              <span className="field-label">Add a size from your Flavours &amp; sizes library</span>
+              <select
+                value=""
+                onChange={(event) => {
+                  const picked = sizeLibrary.find((size) => size.name === event.target.value);
+                  if (!picked) return;
+                  const key = crypto.randomUUID();
+                  setVariants((current) => [
+                    ...current,
+                    {
+                      id: key,
+                      key,
+                      name: picked.name,
+                      packQuantity: null,
+                      sellingPrice: picked.price,
+                      priceAdjustment: 0,
+                      stockQuantity: 0,
+                      active: false,
+                      trackInventory: false,
+                      layerOptions: [{ layers: 1, priceAdjustment: 0 }],
+                    },
+                  ]);
+                  setEditingPack(key);
+                }}
+              >
+                <option value="">Choose a size…</option>
+                {sizeLibrary.map((size) => (
+                  <option key={size.name} value={size.name}>
+                    {size.name}
+                  </option>
+                ))}
+              </select>
+              <p className="field-help">
+                Pick a size you keep in Flavours &amp; sizes, then set its price and how many layers it has.
+              </p>
+            </label>
           )}
           {!variants.length && (
             <p className="empty-state">
@@ -536,15 +635,48 @@ export function ProductEditor({
                     />
                   </div>
                   {isCake && (
-                    <Input
-                      label="Layers"
-                      type="number"
-                      min="1"
-                      max="12"
-                      step="1"
-                      value={variant.layers ?? 1}
-                      onChange={(event) => patchPack(index, { layers: Math.max(1, Number(event.target.value) || 1) })}
-                    />
+                    <fieldset className="cake-layer-options">
+                      <legend>Available layers</legend>
+                      <p className="field-help">
+                        Tick each layer count this size can be made in. Set a price adjustment to charge more (or less)
+                        for taller cakes — it is added to the size price above.
+                      </p>
+                      {[1, 2, 3, 4, 5, 6].map((count) => {
+                        const option = variant.layerOptions?.find((entry) => entry.layers === count);
+                        return (
+                          <div className="cake-layer-row" key={count}>
+                            <Checkbox
+                              label={`${count} ${count === 1 ? "layer" : "layers"}`}
+                              checked={Boolean(option)}
+                              onChange={(event) =>
+                                patchPack(index, {
+                                  layerOptions: event.target.checked
+                                    ? [...(variant.layerOptions ?? []), { layers: count, priceAdjustment: 0 }]
+                                    : (variant.layerOptions ?? []).filter((entry) => entry.layers !== count),
+                                })
+                              }
+                            />
+                            {option && (
+                              <Input
+                                label={`Price adjustment (${currency})`}
+                                type="number"
+                                step="0.01"
+                                value={option.priceAdjustment / 100}
+                                onChange={(event) =>
+                                  patchPack(index, {
+                                    layerOptions: (variant.layerOptions ?? []).map((entry) =>
+                                      entry.layers === count
+                                        ? { ...entry, priceAdjustment: Math.round(Number(event.target.value) * 100) }
+                                        : entry,
+                                    ),
+                                  })
+                                }
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </fieldset>
                   )}
                   <Checkbox
                     label="Published (available to customers)"
@@ -732,7 +864,7 @@ export function ProductEditor({
           <p className="field-help">JPG, PNG, WebP, or AVIF. Maximum 5 MB each and 12 images per product.</p>
           {images.map((image, index) => (
             <div className="image-editor" key={image.id}>
-              <Image src={image.url} alt="" width={64} height={64} />
+              <Image src={image.url} alt="" width={64} height={64} unoptimized />
               <Input
                 label="Alternative text"
                 value={image.altText}

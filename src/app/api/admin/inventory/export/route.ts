@@ -30,7 +30,7 @@ export async function GET(request: Request) {
             const product = variant.products as unknown as { name: string } | { name: string }[];
             controller.enqueue(
               encoder.encode(
-                [
+                `${[
                   variant.product_id,
                   variant.id,
                   variant.stock_quantity,
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
                   variant.sku,
                 ]
                   .map(cell)
-                  .join(",") + "\r\n",
+                  .join(",")}\r\n`,
               ),
             );
             cursor = variant.id;

@@ -285,6 +285,9 @@ export function AdminPortal({
             fillingLibrary={initialCakeConfiguration.options
               .filter((option) => option.type === "filling" && option.active)
               .map((option) => option.name)}
+            sizeLibrary={initialCakeConfiguration.options
+              .filter((option) => option.type === "size" && option.active)
+              .map((option) => ({ name: option.name, price: option.priceAdjustment }))}
             close={() => setEditor(undefined)}
             onSaved={(updated) => {
               setProducts((current) =>
@@ -481,7 +484,8 @@ function Dashboard({ summary }: { summary: DashboardSummary }) {
                   <span className="attention-icon warning">$</span>
                   <div>
                     <b>
-                      {summary.waitingQuotes} cake {summary.waitingQuotes === 1 ? "quote" : "quotes"} waiting for a price
+                      {summary.waitingQuotes} cake {summary.waitingQuotes === 1 ? "quote" : "quotes"} waiting for a
+                      price
                     </b>
                     <small>Send a quote so the customer can pay</small>
                   </div>
@@ -493,8 +497,8 @@ function Dashboard({ summary }: { summary: DashboardSummary }) {
                   <span className="attention-icon danger">!</span>
                   <div>
                     <b>
-                      {summary.lowStockProducts} {summary.lowStockProducts === 1 ? "product is" : "products are"} running
-                      low
+                      {summary.lowStockProducts} {summary.lowStockProducts === 1 ? "product is" : "products are"}{" "}
+                      running low
                     </b>
                     <small>Top up today’s quantities</small>
                   </div>
@@ -1051,93 +1055,93 @@ function Products({
           }
         />
       ) : (
-      <div className="admin-card table-scroll mobile-card-table products-table">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Category</th>
-              <th>Price</th>
-              <th>Stock</th>
-              <th>Options</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((product) => (
-              <tr key={product.id}>
-                <td>
-                  <div className="product-cell">
-                    {product.image ? (
-                      <Image src={product.image} alt="" width={48} height={54} />
-                    ) : (
-                      <span className="admin-image-empty" role="img" aria-label="No product image" />
-                    )}
-                    <div>
-                      <b>{product.name}</b>
-                      <small>
-                        {product.featured
-                          ? "Featured product"
-                          : product.shoppingMode?.replaceAll("_", " ").toLowerCase()}
-                      </small>
-                    </div>
-                  </div>
-                </td>
-                <td>{categoryLabel(product.category)}</td>
-                <td>{money(product.price)}</td>
-                <td>
-                  <b className={product.stockQuantity <= product.lowStockThreshold ? "danger-text" : ""}>
-                    {product.stockQuantity}
-                  </b>
-                  <small>Alert at {product.lowStockThreshold}</small>
-                </td>
-                <td>
-                  <b>{product.variants.length}</b>
-                  <small>{product.variants[0]?.sku ?? "No SKU"}</small>
-                </td>
-                <td>
-                  <select
-                    className="status-select"
-                    aria-label={`Change status for ${product.name}`}
-                    value={product.status}
-                    onChange={(e) => onStatus(product.id, e.target.value as ProductStatus)}
-                  >
-                    {["ACTIVE", "OUT_OF_STOCK", "DRAFT", "ARCHIVED"].map((item) => (
-                      <option key={item} value={item}>
-                        {item.replaceAll("_", " ")}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <div className="table-actions">
-                    <button type="button" className="text-button" onClick={() => onEdit(product)}>
-                      Edit
-                    </button>
-                    <button type="button" className="text-button" onClick={() => onDuplicate(product)}>
-                      Duplicate
-                    </button>
-                    {product.status === "ARCHIVED" ? (
-                      <button type="button" className="text-button" onClick={() => onStatus(product.id, "DRAFT")}>
-                        Restore
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="text-button danger-text"
-                        onClick={() => setRemoveTarget(product)}
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </td>
+        <div className="admin-card table-scroll mobile-card-table products-table">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Options</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {visible.map((product) => (
+                <tr key={product.id}>
+                  <td>
+                    <div className="product-cell">
+                      {product.image ? (
+                        <Image src={product.image} alt="" width={48} height={54} unoptimized />
+                      ) : (
+                        <span className="admin-image-empty" role="img" aria-label="No product image" />
+                      )}
+                      <div>
+                        <b>{product.name}</b>
+                        <small>
+                          {product.featured
+                            ? "Featured product"
+                            : product.shoppingMode?.replaceAll("_", " ").toLowerCase()}
+                        </small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{categoryLabel(product.category)}</td>
+                  <td>{money(product.price)}</td>
+                  <td>
+                    <b className={product.stockQuantity <= product.lowStockThreshold ? "danger-text" : ""}>
+                      {product.stockQuantity}
+                    </b>
+                    <small>Alert at {product.lowStockThreshold}</small>
+                  </td>
+                  <td>
+                    <b>{product.variants.length}</b>
+                    <small>{product.variants[0]?.sku ?? "No SKU"}</small>
+                  </td>
+                  <td>
+                    <select
+                      className="status-select"
+                      aria-label={`Change status for ${product.name}`}
+                      value={product.status}
+                      onChange={(e) => onStatus(product.id, e.target.value as ProductStatus)}
+                    >
+                      {["ACTIVE", "OUT_OF_STOCK", "DRAFT", "ARCHIVED"].map((item) => (
+                        <option key={item} value={item}>
+                          {item.replaceAll("_", " ")}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <div className="table-actions">
+                      <button type="button" className="text-button" onClick={() => onEdit(product)}>
+                        Edit
+                      </button>
+                      <button type="button" className="text-button" onClick={() => onDuplicate(product)}>
+                        Duplicate
+                      </button>
+                      {product.status === "ARCHIVED" ? (
+                        <button type="button" className="text-button" onClick={() => onStatus(product.id, "DRAFT")}>
+                          Restore
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="text-button danger-text"
+                          onClick={() => setRemoveTarget(product)}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       <ConfirmDialog
         open={removeTarget !== null}
@@ -1551,59 +1555,71 @@ function BusinessSettings({
             <input name="useCustomColors" type="checkbox" defaultChecked={appearance.useCustomColors} />
             <span>Use my own custom colours instead of the chosen theme</span>
           </label>
-        <fieldset className="colour-group">
-          <legend>Your brand colours</legend>
-          <small className="field-hint">The main colour for buttons and highlights. This is the one customers notice.</small>
-          <div className="field-row">
-            <Input name="primary" label="Brand colour" type="color" defaultValue={appearance.colors.primary} />
-            <Input name="primaryDark" label="Brand colour (darker)" type="color" defaultValue={appearance.colors.primaryDark} />
-            <Input name="accent" label="Accent" type="color" defaultValue={appearance.colors.accent} />
-          </div>
-        </fieldset>
-        <fieldset className="colour-group">
-          <legend>Page &amp; text colours</legend>
-          <small className="field-hint">Background and text shades. The defaults suit most bakeries.</small>
-          <div className="field-row">
-            <Input name="background" label="Page background" type="color" defaultValue={appearance.colors.background} />
-            <Input name="surface" label="Cards &amp; panels" type="color" defaultValue={appearance.colors.surface} />
-          </div>
-          <div className="field-row">
-            <Input name="text" label="Main text" type="color" defaultValue={appearance.colors.text} />
-            <Input name="mutedText" label="Supporting text" type="color" defaultValue={appearance.colors.mutedText} />
-          </div>
-        </fieldset>
-        <label className="field">
-          <span>Content width</span>
-          <select name="contentWidth" defaultValue={appearance.contentWidth}>
-            <option value="compact">Compact</option>
-            <option value="standard">Standard</option>
-            <option value="wide">Wide</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>Space between sections</span>
-          <select name="sectionSpacing" defaultValue={appearance.sectionSpacing}>
-            <option value="compact">Compact</option>
-            <option value="comfortable">Comfortable</option>
-            <option value="airy">Airy</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>Corner style</span>
-          <select name="cornerStyle" defaultValue={appearance.cornerStyle}>
-            <option value="subtle">Subtle</option>
-            <option value="soft">Soft</option>
-            <option value="rounded">Rounded</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>Products per row on large screens</span>
-          <select name="productColumns" defaultValue={appearance.productColumns}>
-            <option value="2">2 products</option>
-            <option value="3">3 products</option>
-            <option value="4">4 products</option>
-          </select>
-        </label>
+          <fieldset className="colour-group">
+            <legend>Your brand colours</legend>
+            <small className="field-hint">
+              The main colour for buttons and highlights. This is the one customers notice.
+            </small>
+            <div className="field-row">
+              <Input name="primary" label="Brand colour" type="color" defaultValue={appearance.colors.primary} />
+              <Input
+                name="primaryDark"
+                label="Brand colour (darker)"
+                type="color"
+                defaultValue={appearance.colors.primaryDark}
+              />
+              <Input name="accent" label="Accent" type="color" defaultValue={appearance.colors.accent} />
+            </div>
+          </fieldset>
+          <fieldset className="colour-group">
+            <legend>Page &amp; text colours</legend>
+            <small className="field-hint">Background and text shades. The defaults suit most bakeries.</small>
+            <div className="field-row">
+              <Input
+                name="background"
+                label="Page background"
+                type="color"
+                defaultValue={appearance.colors.background}
+              />
+              <Input name="surface" label="Cards &amp; panels" type="color" defaultValue={appearance.colors.surface} />
+            </div>
+            <div className="field-row">
+              <Input name="text" label="Main text" type="color" defaultValue={appearance.colors.text} />
+              <Input name="mutedText" label="Supporting text" type="color" defaultValue={appearance.colors.mutedText} />
+            </div>
+          </fieldset>
+          <label className="field">
+            <span>Content width</span>
+            <select name="contentWidth" defaultValue={appearance.contentWidth}>
+              <option value="compact">Compact</option>
+              <option value="standard">Standard</option>
+              <option value="wide">Wide</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Space between sections</span>
+            <select name="sectionSpacing" defaultValue={appearance.sectionSpacing}>
+              <option value="compact">Compact</option>
+              <option value="comfortable">Comfortable</option>
+              <option value="airy">Airy</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Corner style</span>
+            <select name="cornerStyle" defaultValue={appearance.cornerStyle}>
+              <option value="subtle">Subtle</option>
+              <option value="soft">Soft</option>
+              <option value="rounded">Rounded</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Products per row on large screens</span>
+            <select name="productColumns" defaultValue={appearance.productColumns}>
+              <option value="2">2 products</option>
+              <option value="3">3 products</option>
+              <option value="4">4 products</option>
+            </select>
+          </label>
         </details>
         <span className="document-save-state" role="status">
           {appearanceState === "saved"
@@ -1629,7 +1645,12 @@ function BusinessSettings({
         <Input name="contactEmail" label="Contact email" type="email" defaultValue={initial.contactEmail} />
         <Input name="phone" label="Phone" defaultValue={initial.phone} />
         <div className="field-with-hint">
-          <Input name="whatsapp" label="WhatsApp number" placeholder="+1 902 555 1234" defaultValue={initial.whatsapp} />
+          <Input
+            name="whatsapp"
+            label="WhatsApp number"
+            placeholder="+1 902 555 1234"
+            defaultValue={initial.whatsapp}
+          />
           <small className="field-hint">
             Your WhatsApp number with country code. You can also paste a wa.me link if you prefer.
           </small>

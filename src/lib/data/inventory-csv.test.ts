@@ -9,11 +9,11 @@ describe("inventory CSV review", () => {
   });
   it("rejects duplicates, malformed quantities, missing columns and oversized imports", () => {
     for (const text of [
-      header + row + "\n" + row,
+      `${header + row}\n${row}`,
       header + row.replace(",12,set", ",-1,set"),
       "quantity\n1",
       header + row.replace(",15,", ",1.5,"),
-      header + '"unfinished',
+      `${header}"unfinished`,
     ])
       expect(() => parseInventoryCsv(text)).toThrow();
   });

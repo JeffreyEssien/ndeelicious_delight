@@ -348,7 +348,9 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
           <div className="checkout-panel">
             <span className="overline">{t("Fulfilment")}</span>
             <h1>{t("How should we get it to you?")}</h1>
-            <p>{t("Choose pickup or delivery below — we’ll show you the earliest time we can have your order ready.")}</p>
+            <p>
+              {t("Choose pickup or delivery below — we’ll show you the earliest time we can have your order ready.")}
+            </p>
             {business.deliveryEnabled && !deliveryZones.length && (
               <p>{t("Delivery is currently unavailable. You can collect your order from the bakery.")}</p>
             )}
@@ -577,7 +579,9 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                 <small>
                   {v.name} {t("· Qty ")}
                   {quantity}
-                  {p.category !== "CUSTOM_CAKES" && v.packQuantity ? ` packs / ${quantity * v.packQuantity} pieces` : ""}
+                  {p.category !== "CUSTOM_CAKES" && v.packQuantity
+                    ? ` packs / ${quantity * v.packQuantity} pieces`
+                    : ""}
                 </small>
                 {!!selections?.length && (
                   <small className="checkout-item-selections">

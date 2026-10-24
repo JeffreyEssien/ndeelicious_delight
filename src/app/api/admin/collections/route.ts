@@ -69,14 +69,18 @@ export async function POST(request: Request) {
   const seen = new Set<string>();
   for (const row of rows) {
     if (!row.slug) return Response.json({ error: `"${row.name}" needs a valid link name.` }, { status: 400 });
-    if (seen.has(row.slug)) return Response.json({ error: `Two categories share the link "${row.slug}".` }, { status: 400 });
+    if (seen.has(row.slug))
+      return Response.json({ error: `Two categories share the link "${row.slug}".` }, { status: 400 });
     seen.add(row.slug);
   }
 
   // Remove categories the owner deleted (products/cakes pointing at them are detached via FK).
   const keepIds = rows.map((row) => row.id);
   const removed = keepIds.length
-    ? await auth.db.from("collections").delete().not("id", "in", `(${keepIds.join(",")})`)
+    ? await auth.db
+        .from("collections")
+        .delete()
+        .not("id", "in", `(${keepIds.join(",")})`)
     : await auth.db.from("collections").delete().not("id", "is", null);
   if (removed.error) return Response.json({ error: "Categories could not be updated." }, { status: 500 });
 
@@ -86,5 +90,8 @@ export async function POST(request: Request) {
   }
 
   invalidateStorefrontCache();
-  return Response.json({ ok: true, ids: Object.fromEntries(parsed.data.collections.map((item, index) => [item.id, rows[index].id])) });
+  return Response.json({
+    ok: true,
+    ids: Object.fromEntries(parsed.data.collections.map((item, index) => [item.id, rows[index].id])),
+  });
 }

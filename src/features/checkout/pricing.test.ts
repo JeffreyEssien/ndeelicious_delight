@@ -41,6 +41,31 @@ describe("calculateOrderQuote", () => {
     expect(quote.lines[0].unitPrice).toBe(plain.lines[0].unitPrice);
     expect(plain.lines[0].selections).toEqual([]);
   });
+  it("reprices cakes from the chosen layer count, ignoring any client price", () => {
+    const p1 = products.find((p) => p.id === "p1");
+    if (!p1) throw new Error("fixture p1 missing");
+    const cake = {
+      ...p1,
+      cakeLayers: {
+        v3: [
+          { layers: 2, priceAdjustment: 0 },
+          { layers: 3, priceAdjustment: 1200000 },
+        ],
+      },
+    };
+    const base = calculateOrderQuote({
+      cart: [{ productId: "p1", variantId: "v3", quantity: 1, selections: [{ group: "Layers", value: "2" }] }],
+      products: [cake],
+      fulfilment: "pickup",
+    });
+    const tall = calculateOrderQuote({
+      cart: [{ productId: "p1", variantId: "v3", quantity: 2, selections: [{ group: "Layers", value: "3" }] }],
+      products: [cake],
+      fulfilment: "pickup",
+    });
+    expect(tall.lines[0].unitPrice).toBe(base.lines[0].unitPrice + 1200000);
+    expect(tall.lines[0].lineTotal).toBe((base.lines[0].unitPrice + 1200000) * 2);
+  });
   it("applies capped percentage coupons", () => {
     const quote = calculateOrderQuote({
       cart: [{ productId: "p1", variantId: "v3", quantity: 1 }],

@@ -26,7 +26,10 @@ export function ProductCard({ product, eager = false }: { product: Product; eage
   const madeToOrder = product.shoppingMode === "MADE_TO_ORDER";
   const availableVariants = getPurchasableVariants(product);
   const priceVariants = availableVariants.length ? availableVariants : getPublishedVariants(product);
-  const hasDifferentPrices = new Set(priceVariants.map((v) => variantPrice(product, v))).size > 1;
+  const variantPrices = priceVariants.map((v) => variantPrice(product, v));
+  const minPrice = variantPrices.length ? Math.min(...variantPrices) : productStartingPrice(product);
+  const maxPrice = variantPrices.length ? Math.max(...variantPrices) : minPrice;
+  const hasDifferentPrices = minPrice !== maxPrice;
   const hasUnambiguousVariant = getPurchasableVariants(product).length === 1;
   const saved = wishlist.has(product.id);
 
@@ -99,10 +102,7 @@ export function ProductCard({ product, eager = false }: { product: Product; eage
           <Link href={`/product/${product.slug}`}>
             <h3>{product.name}</h3>
           </Link>
-          <p>
-            {hasDifferentPrices ? "From " : ""}
-            {formatMoney(productStartingPrice(product))}
-          </p>
+          <p>{hasDifferentPrices ? `${formatMoney(minPrice)} – ${formatMoney(maxPrice)}` : formatMoney(minPrice)}</p>
         </div>
         {action()}
       </div>

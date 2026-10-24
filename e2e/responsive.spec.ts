@@ -7,14 +7,7 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/analytics/events", (route) => route.fulfill({ status: 204 }));
 });
 
-const customerRoutes = [
-  "/",
-  "/shop",
-  "/cart",
-  "/checkout",
-  "/custom-cakes",
-  "/track-order",
-];
+const customerRoutes = ["/", "/shop", "/cart", "/checkout", "/custom-cakes", "/track-order"];
 
 const adminRoutes = [
   "/admin",

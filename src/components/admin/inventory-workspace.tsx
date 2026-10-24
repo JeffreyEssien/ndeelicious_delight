@@ -29,7 +29,13 @@ function StockRow({ product, variant, onSaved }: { product: Product; variant: Va
       const response = await fetch("/api/admin/inventory/adjust", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ productId: product.id, variantId: variant.id, expected: current, mode: "set", quantity: amount }),
+        body: JSON.stringify({
+          productId: product.id,
+          variantId: variant.id,
+          expected: current,
+          mode: "set",
+          quantity: amount,
+        }),
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -56,10 +62,17 @@ function StockRow({ product, variant, onSaved }: { product: Product; variant: Va
       <div className="stock-row-id">
         <b>{variant.name}</b>
         <small>{variant.sku || "No SKU"}</small>
-        {status !== "ok" && <span className={`stock-tag ${status}`}>{status === "out" ? "Out of stock" : "Running low"}</span>}
+        {status !== "ok" && (
+          <span className={`stock-tag ${status}`}>{status === "out" ? "Out of stock" : "Running low"}</span>
+        )}
       </div>
       <div className="stock-stepper">
-        <button type="button" onClick={() => nudge(-1)} disabled={busy || amount <= 0} aria-label={`Remove one ${variant.name}`}>
+        <button
+          type="button"
+          onClick={() => nudge(-1)}
+          disabled={busy || amount <= 0}
+          aria-label={`Remove one ${variant.name}`}
+        >
           −
         </button>
         <input

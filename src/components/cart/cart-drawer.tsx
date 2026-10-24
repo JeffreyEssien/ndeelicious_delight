@@ -1,5 +1,5 @@
 "use client";
-import { variantPrice } from "@/features/catalog/pricing";
+import { lineUnitPrice } from "@/features/catalog/pricing";
 import { useCustomerText } from "@/components/customer-text-provider";
 import Image from "next/image";
 import Link from "next/link";
@@ -81,7 +81,7 @@ export function CartDrawer() {
                       ))}
                     </ul>
                   )}
-                  <strong>{formatMoney(variantPrice(p, v))}</strong>
+                  <strong>{formatMoney(lineUnitPrice(p, v, line.selections))}</strong>
                   <div className="quantity">
                     <button
                       type="button"

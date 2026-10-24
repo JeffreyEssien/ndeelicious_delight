@@ -9,7 +9,7 @@ import {
   getPurchasableVariants,
   variantQuantityLimit,
 } from "@/features/catalog/availability";
-import { variantPrice } from "@/features/catalog/pricing";
+import { lineUnitPrice } from "@/features/catalog/pricing";
 import { trackCommerceEvent } from "@/lib/analytics/client";
 
 type Toast = { id: number; message: string };
@@ -166,7 +166,7 @@ export function Providers({
       subtotal: lines.reduce((sum, line) => {
         const p = products.find((x) => x.id === line.productId);
         const v = p?.variants.find((x) => x.id === line.variantId);
-        return sum + (p && v ? variantPrice(p, v) : 0) * line.quantity;
+        return sum + (p && v ? lineUnitPrice(p, v, line.selections) : 0) * line.quantity;
       }, 0),
     }),
     [lines, open, products, notify],
