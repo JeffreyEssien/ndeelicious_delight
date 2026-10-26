@@ -327,6 +327,9 @@ export const defaultCustomerText: CustomerText = {
     Pause: "Pause",
   },
   catalogue: {
+    "Show all": "Show all",
+    "Ready to order": "Ready to order",
+    "Made to order": "Made to order",
     "Search catalogue": "Search catalogue",
     "Search the bakery": "Search the bakery",
     "Filters & budget": "Filters & budget",
@@ -607,6 +610,7 @@ export const defaultCustomerText: CustomerText = {
     Date: "Date",
     Review: "Review",
     "{stage}, completed": "{stage}, completed",
+    "Payment received. Thank you for your order!": "Payment received. Thank you for your order!",
   },
   "track order": {
     paid: "paid",
@@ -635,6 +639,14 @@ export const defaultCustomerText: CustomerText = {
     Ready: "Ready",
     "Out for delivery": "Out for delivery",
     Delivered: "Delivered",
+    collected: "collected",
+    "Ready for pickup": "Ready for pickup",
+    Collected: "Collected",
+    "This order was cancelled.": "This order was cancelled.",
+    "This order was refunded.": "This order was refunded.",
+    "Payment for this order didn’t go through.": "Payment for this order didn’t go through.",
+    "Contact the bakery if you have any questions about this order.":
+      "Contact the bakery if you have any questions about this order.",
   },
   "contact form": {
     "Your note is with us.": "Your note is with us.",
