@@ -26,6 +26,26 @@ function slugify(value: string) {
     .replace(/^-|-$/g, "");
 }
 
+// Vercel's Hobby plan rejects request bodies over 4.5 MB before they reach the function, so cap
+// image uploads safely below that (multipart adds some overhead) to avoid a plain-text 413.
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+
+// Infrastructure in front of the app (e.g. Vercel's body-size cap) can reply with plain text such as
+// "Request Entity Too Large" instead of JSON. Read the body as text first so those responses surface a
+// real message rather than an "Unexpected token" JSON parse crash.
+async function readJsonResponse(response: Response): Promise<{ error?: string; [key: string]: unknown }> {
+  const text = await response.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    const message =
+      response.status === 413
+        ? "That upload was too large for the server. Use an image under 4 MB."
+        : `The server returned an unexpected response (${response.status}). Please try again.`;
+    return { error: message };
+  }
+}
+
 export function ProductEditor({
   product,
   close,
@@ -181,9 +201,9 @@ export function ProductEditor({
       form.set("altText", pending.altText.trim() || productName);
       form.set("sortOrder", String(images.length + index));
       const response = await fetch("/api/admin/products/images", { method: "POST", body: form });
-      const payload = await response.json();
+      const payload = await readJsonResponse(response);
       if (!response.ok) throw new Error(payload.error ?? `Could not upload ${pending.file.name}.`);
-      setImages((current) => [...current, payload.image]);
+      setImages((current) => [...current, payload.image as ProductImage]);
       setPendingImages((current) => current.filter((item) => item.key !== pending.key));
     }
   }
@@ -268,10 +288,10 @@ export function ProductEditor({
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const result = await response.json();
+      const result = await readJsonResponse(response);
       if (!response.ok) throw new Error(result.error ?? "Product could not be saved.");
-      setSavedId(result.id);
-      if (pendingImages.length) await uploadImages(result.id, name);
+      setSavedId(result.id as string);
+      if (pendingImages.length) await uploadImages(result.id as string, name);
       onSaved({ preparationHours: payload.preparationHours });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Product could not be saved.");
@@ -937,9 +957,19 @@ export function ProductEditor({
             onChange={(event) => {
               const remaining = 12 - images.length - pendingImages.length;
               const selected = Array.from(event.target.files ?? []).slice(0, remaining);
+              const oversized = selected.filter((file) => file.size > MAX_IMAGE_BYTES);
+              const valid = selected.filter((file) => file.size <= MAX_IMAGE_BYTES);
+              if (oversized.length) {
+                const names = oversized.map((file) => file.name).join(", ");
+                setError(
+                  `${names} ${oversized.length === 1 ? "is" : "are"} over 4 MB. Resize or compress before uploading.`,
+                );
+              } else {
+                setError("");
+              }
               setPendingImages((current) => [
                 ...current,
-                ...selected.map((file) => ({ key: crypto.randomUUID(), file, altText: product?.name ?? "" })),
+                ...valid.map((file) => ({ key: crypto.randomUUID(), file, altText: product?.name ?? "" })),
               ]);
               event.target.value = "";
             }}
