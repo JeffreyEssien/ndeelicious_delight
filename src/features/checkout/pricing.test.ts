@@ -191,7 +191,7 @@ it("prices two arbitrary packs canonically with discount, coupon, tax and a 16-p
     trackInventory: true,
     stockQuantity: 0,
     taxClass: "STANDARD_TAXABLE" as const,
-    preparationHours: 0.75,
+    preparationHours: 24.75,
     variants: [
       {
         id: "eight",
@@ -223,7 +223,7 @@ it("prices two arbitrary packs canonically with discount, coupon, tax and a 16-p
   expect(quote.discount).toBe(480);
   expect(quote.taxTotal).toBe(605);
   expect(quote.grandTotal).toBe(4925);
-  expect(quote.preparationHours).toBe(0.75);
+  expect(quote.preparationHours).toBe(24.75);
   expect(() =>
     calculateOrderQuote({
       products: [{ ...packProduct, variants: [{ ...packProduct.variants[0], active: false }] }],

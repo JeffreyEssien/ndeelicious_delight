@@ -23,7 +23,7 @@ const TITLES = {
   status: "Publish",
   featured: "Feature on the home page?",
   taxClass: "Tax classification",
-  preparationHours: "Preparation time (hours)",
+  preparationHours: "Lead time (hours)",
   trackInventory: "Track stock?",
   lowStockThreshold: "Low stock alert at",
   ingredients: "Ingredients",
@@ -126,7 +126,7 @@ function createProductForm() {
   form
     .addTextItem()
     .setTitle(TITLES.preparationHours)
-    .setHelpText("Ready to bake: prep time. Custom cakes: lead time (e.g. 48 for two days).")
+    .setHelpText("How long after an order is placed it can be ready. At least 24; blank means 24 (48 = two days).")
     .setValidation(money);
   form.addMultipleChoiceItem().setTitle(TITLES.trackInventory).setChoiceValues(["No", "Yes"]);
   form
@@ -214,7 +214,7 @@ function buildProduct_(answers) {
     status: STATUSES[text_(answers[TITLES.status])] || "DRAFT",
     featured: text_(answers[TITLES.featured]) === "Yes",
     taxClass: TAX_CLASSES[text_(answers[TITLES.taxClass])] || "REQUIRES_REVIEW",
-    preparationHours: answers[TITLES.preparationHours] ? number_(answers[TITLES.preparationHours], TITLES.preparationHours) : 0,
+    preparationHours: answers[TITLES.preparationHours] ? number_(answers[TITLES.preparationHours], TITLES.preparationHours) : 24,
     trackInventory: text_(answers[TITLES.trackInventory]) === "Yes",
     lowStockThreshold: answers[TITLES.lowStockThreshold] ? number_(answers[TITLES.lowStockThreshold], TITLES.lowStockThreshold) : 0,
     ingredients: text_(answers[TITLES.ingredients]),

@@ -1,3 +1,4 @@
+import { MIN_LEAD_TIME_HOURS } from "@/validations/product";
 import { fulfilmentScheduleSchema } from "./validation";
 import { FulfilmentError, type DeliveryArea, type FulfilmentSchedule } from "./types";
 function localParts(date: Date, timezone: string) {
@@ -38,7 +39,8 @@ export function earliestFulfilment(input: {
     throw new FulfilmentError("SCHEDULE_SETUP_REQUIRED", "Fulfilment schedule setup is required. Contact the bakery.");
   const schedule = parsed.data;
   const now = input.now ?? new Date();
-  const hours = Math.max(input.preparationHours, input.cakeLeadTimeHours ?? 0);
+  // No order, including cake quotes, can be ready sooner than the minimum lead time after it is placed.
+  const hours = Math.max(MIN_LEAD_TIME_HOURS, input.preparationHours, input.cakeLeadTimeHours ?? 0);
   if (!Number.isFinite(hours) || hours < 0)
     throw new FulfilmentError("INVALID_PREPARATION_TIME", "Preparation time needs review.");
   if (input.mode === "pickup" && !schedule.pickupEnabled)

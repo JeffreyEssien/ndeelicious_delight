@@ -4,6 +4,9 @@ import { taxClasses } from "@/features/tax/types";
 export const productCategorySchema = z.enum(["CUSTOM_CAKES", "PASTRIES", "READY_TO_BAKE"]);
 export const productStatusSchema = z.enum(["ACTIVE", "OUT_OF_STOCK", "DRAFT", "ARCHIVED"]);
 
+// Every order needs at least a day's notice, whatever is in it.
+export const MIN_LEAD_TIME_HOURS = 24;
+
 const optionalText = (maximum: number) => z.string().trim().max(maximum).optional().default("");
 
 export const productVariantInputSchema = z.object({
@@ -14,7 +17,11 @@ export const productVariantInputSchema = z.object({
   expectedStockQuantity: z.number().int().min(0).optional(),
   packQuantity: z.number().int().positive().max(2_147_483_647).nullable().default(null),
   priceAdjustment: z.number().int().min(-1_000_000_000).max(1_000_000_000),
-  stockQuantity: z.number().int().min(0).max(1_000_000),
+  stockQuantity: z
+    .number({ error: "Enter stock as a whole number." })
+    .int("Enter stock as a whole number.")
+    .min(0, "Stock cannot be negative.")
+    .max(1_000_000),
   active: z.boolean().default(true),
 });
 
@@ -33,31 +40,48 @@ export const productImageInputSchema = z.object({
 
 export const productInputSchema = z
   .object({
-    name: z.string().trim().min(2).max(150),
+    name: z
+      .string()
+      .trim()
+      .min(2, "Give the product a name of at least 2 characters.")
+      .max(150, "Keep the product name under 150 characters."),
     slug: z
       .string()
       .trim()
-      .min(2)
-      .max(180)
+      .min(2, "The product link needs at least 2 letters or numbers. Change the name or the link.")
+      .max(180, "The product link is too long. Shorten it.")
       .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use a lowercase URL slug with hyphens."),
     // Descriptions are optional for cakes; the superRefine below enforces them for other categories.
-    shortDescription: z.string().trim().max(500),
-    description: z.string().trim().max(10_000),
+    shortDescription: z.string().trim().max(500, "Keep the short description under 500 characters."),
+    description: z.string().trim().max(10_000, "Keep the full description under 10,000 characters."),
     category: productCategorySchema,
     shoppingMode: z.enum(["READY_TO_ORDER", "MADE_TO_ORDER", "READY_TO_BAKE"]).default("READY_TO_ORDER"),
     taxClass: z.enum(taxClasses).default("REQUIRES_REVIEW"),
     preparationHours: z
-      .number()
-      .min(0)
-      .max(8760)
+      .number({ error: "Enter the lead time in hours." })
+      .min(MIN_LEAD_TIME_HOURS, `Lead time must be at least ${MIN_LEAD_TIME_HOURS} hours.`)
+      .max(8760, "Lead time must be under a year.")
       .refine((hours) => Math.abs(hours * 60 - Math.round(hours * 60)) < 0.000001, "Use whole minutes.")
-      .default(0),
-    price: z.number().int().min(0).max(1_000_000_000),
-    discountPrice: z.number().int().min(0).max(1_000_000_000).nullable(),
+      .default(MIN_LEAD_TIME_HOURS),
+    price: z
+      .number({ error: "Enter a price, for example 24.50." })
+      .int()
+      .min(0, "The price cannot be negative.")
+      .max(1_000_000_000),
+    discountPrice: z
+      .number({ error: "Enter a sale price, for example 19.99, or leave it empty." })
+      .int()
+      .min(0, "The sale price cannot be negative.")
+      .max(1_000_000_000)
+      .nullable(),
     status: productStatusSchema,
     featured: z.boolean(),
     trackInventory: z.boolean(),
-    lowStockThreshold: z.number().int().min(0).max(1_000_000),
+    lowStockThreshold: z
+      .number({ error: "Enter the low stock alert as a whole number." })
+      .int("Enter the low stock alert as a whole number.")
+      .min(0, "The low stock alert cannot be negative.")
+      .max(1_000_000),
     ingredients: optionalText(5_000),
     allergens: z.array(z.string().trim().min(1).max(100)).max(30),
     storageInstructions: optionalText(2_000),
