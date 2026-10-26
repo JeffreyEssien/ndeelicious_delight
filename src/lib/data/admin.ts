@@ -1,3 +1,4 @@
+import { signReferenceImageUrls } from "@/lib/data/reference-images";
 import { getDashboardSummary } from "./admin-dashboard";
 import type { Order } from "@/types";
 import { getDeliveryZones, getProducts } from "./catalog";
@@ -364,11 +365,8 @@ async function mapCakeRows(
   const deliveryByDocument = new Map((deliveryResult.data ?? []).map((delivery) => [delivery.document_id, delivery]));
   const cakes: AdminCakeRequest[] = await Promise.all(
     (cakeResult.data ?? []).map(async (row) => {
-      const paths = row.reference_urls ?? [];
-      const signed = paths.length
-        ? await supabase.storage.from("cake-reference-images").createSignedUrls(paths, 60 * 60)
-        : { data: [] };
-      if ("error" in signed && signed.error) throw signed.error;
+      const paths: string[] = row.reference_urls ?? [];
+      const signed = await signReferenceImageUrls(supabase, paths, 60 * 60);
       const quoteDocument = latestQuoteByCake.get(row.id);
       const delivery = quoteDocument ? deliveryByDocument.get(quoteDocument.id) : undefined;
       return {
@@ -383,7 +381,7 @@ async function mapCakeRows(
         estimatedTotal: row.estimated_total,
         quotedTotal: row.quoted_total,
         customerNote: row.customer_note,
-        referenceUrls: (signed.data ?? []).flatMap((item) => (item.signedUrl ? [item.signedUrl] : [])),
+        referenceUrls: paths.flatMap((path) => signed.get(path) ?? []),
         communications: (quoteDocuments.data ?? [])
           .filter((document) => document.cake_order_id === row.id)
           .map((document) => {
