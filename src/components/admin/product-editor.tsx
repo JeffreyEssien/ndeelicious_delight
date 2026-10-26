@@ -7,6 +7,7 @@ import { Button, Checkbox, Input, Select, Textarea } from "@/components/ui/primi
 import { Icon } from "@/components/ui/icons";
 import { normalizeCakeSizeLayers, variantPrice } from "@/features/catalog/pricing";
 import { useBusinessSettings } from "@/components/providers";
+import { createClient } from "@/lib/supabase/client";
 
 type DraftVariant = Omit<ProductVariant, "id"> & {
   id?: string;
@@ -194,13 +195,36 @@ export function ProductEditor({
   }
 
   async function uploadImages(productId: string, productName: string) {
+    const supabase = createClient();
     for (const [index, pending] of pendingImages.entries()) {
-      const form = new FormData();
-      form.set("productId", productId);
-      form.set("file", pending.file);
-      form.set("altText", pending.altText.trim() || productName);
-      form.set("sortOrder", String(images.length + index));
-      const response = await fetch("/api/admin/products/images", { method: "POST", body: form });
+      // Ask the server for a one-time signed URL, upload the file straight to Supabase Storage, then
+      // send only metadata back. Uploading directly bypasses Vercel's 4.5 MB function body limit, which
+      // a plain file POST through the function would hit.
+      const signResponse = await fetch("/api/admin/products/images/sign", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ productId, contentType: pending.file.type }),
+      });
+      const sign = await readJsonResponse(signResponse);
+      if (!signResponse.ok) throw new Error(sign.error ?? `Could not upload ${pending.file.name}.`);
+
+      const upload = await supabase.storage
+        .from("product-images")
+        .uploadToSignedUrl(sign.path as string, sign.token as string, pending.file, {
+          contentType: pending.file.type,
+        });
+      if (upload.error) throw new Error(`Could not upload ${pending.file.name}. Please try again.`);
+
+      const response = await fetch("/api/admin/products/images", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          productId,
+          path: sign.path,
+          altText: pending.altText.trim() || productName,
+          sortOrder: images.length + index,
+        }),
+      });
       const payload = await readJsonResponse(response);
       if (!response.ok) throw new Error(payload.error ?? `Could not upload ${pending.file.name}.`);
       setImages((current) => [...current, payload.image as ProductImage]);

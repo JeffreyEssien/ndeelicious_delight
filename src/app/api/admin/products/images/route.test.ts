@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   productSingle: vi.fn(),
   imageCount: vi.fn(),
   imageSingle: vi.fn(),
-  upload: vi.fn(),
+  info: vi.fn(),
   remove: vi.fn(),
   getPublicUrl: vi.fn(),
   readAuditState: vi.fn(),
@@ -24,7 +24,7 @@ const db = {
     throw new Error(`Unexpected table: ${table}`);
   }),
   storage: {
-    from: vi.fn(() => ({ upload: mocks.upload, remove: mocks.remove, getPublicUrl: mocks.getPublicUrl })),
+    from: vi.fn(() => ({ info: mocks.info, remove: mocks.remove, getPublicUrl: mocks.getPublicUrl })),
   },
 };
 vi.mock("@/lib/auth/admin-request", () => ({
@@ -33,12 +33,24 @@ vi.mock("@/lib/auth/admin-request", () => ({
 
 import { POST } from "./route";
 
+const PRODUCT_ID = "11111111-1111-4111-8111-111111111111";
+const PATH = `${PRODUCT_ID}/image.png`;
+
+function request(body: unknown) {
+  return new Request("http://localhost/api/admin/products/images", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 describe("POST /api/admin/products/images", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.productSingle.mockResolvedValue({ data: { id: "product-id" } });
     mocks.imageCount.mockResolvedValue({ count: 0 });
-    mocks.upload.mockResolvedValue({ error: null });
+    mocks.info.mockResolvedValue({ data: { size: 1024, contentType: "image/png" }, error: null });
+    mocks.remove.mockResolvedValue({ error: null });
     mocks.getPublicUrl.mockReturnValue({ data: { publicUrl: "https://example.com/product.png" } });
     mocks.imageSingle.mockResolvedValue({
       data: {
@@ -46,40 +58,52 @@ describe("POST /api/admin/products/images", () => {
         url: "https://example.com/product.png",
         alt_text: "Product artwork",
         sort_order: 0,
-        storage_path: "product-id/image.png",
+        storage_path: PATH,
       },
       error: null,
     });
-    mocks.readAuditState.mockResolvedValue({ id: "11111111-1111-4111-8111-111111111111" });
+    mocks.readAuditState.mockResolvedValue({ id: PRODUCT_ID });
     mocks.recordAudit.mockResolvedValue(undefined);
   });
 
-  it("rejects SVG uploads before storage access", async () => {
-    const form = new FormData();
-    form.set("productId", "11111111-1111-4111-8111-111111111111");
-    form.set("altText", "Product artwork");
-    form.set("sortOrder", "0");
-    form.set("file", new File(["<svg />"], "image.svg", { type: "image/svg+xml" }));
+  it("rejects a path outside the product's own folder before touching storage", async () => {
     const response = await POST(
-      new Request("http://localhost/api/admin/products/images", { method: "POST", body: form }),
+      request({ productId: PRODUCT_ID, path: "22222222-2222-4222-8222-222222222222/evil.png", altText: "x", sortOrder: 0 }),
     );
 
     expect(response.status).toBe(400);
     expect(db.storage.from).not.toHaveBeenCalled();
   });
 
-  it("stores an allowed raster image and its metadata", async () => {
-    const form = new FormData();
-    form.set("productId", "11111111-1111-4111-8111-111111111111");
-    form.set("altText", "Product artwork");
-    form.set("sortOrder", "0");
-    form.set("file", new File(["png"], "image.png", { type: "image/png" }));
-    const response = await POST(
-      new Request("http://localhost/api/admin/products/images", { method: "POST", body: form }),
-    );
+  it("rejects when the uploaded object is missing", async () => {
+    mocks.info.mockResolvedValue({ data: null, error: { message: "not found" } });
+    const response = await POST(request({ productId: PRODUCT_ID, path: PATH, altText: "Product artwork", sortOrder: 0 }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.imageSingle).not.toHaveBeenCalled();
+  });
+
+  it("rejects and removes an object whose real type is not allowed", async () => {
+    mocks.info.mockResolvedValue({ data: { size: 1024, contentType: "image/svg+xml" }, error: null });
+    const response = await POST(request({ productId: PRODUCT_ID, path: PATH, altText: "Product artwork", sortOrder: 0 }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.remove).toHaveBeenCalledWith([PATH]);
+    expect(mocks.imageSingle).not.toHaveBeenCalled();
+  });
+
+  it("rejects and removes an object larger than the limit", async () => {
+    mocks.info.mockResolvedValue({ data: { size: 6 * 1024 * 1024, contentType: "image/png" }, error: null });
+    const response = await POST(request({ productId: PRODUCT_ID, path: PATH, altText: "Product artwork", sortOrder: 0 }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.remove).toHaveBeenCalledWith([PATH]);
+  });
+
+  it("stores verified metadata and records the audit", async () => {
+    const response = await POST(request({ productId: PRODUCT_ID, path: PATH, altText: "Product artwork", sortOrder: 0 }));
 
     expect(response.status).toBe(201);
-    expect(mocks.upload).toHaveBeenCalledOnce();
     await expect(response.json()).resolves.toEqual({
       image: expect.objectContaining({ id: "image-id", altText: "Product artwork" }),
     });
@@ -90,18 +114,12 @@ describe("POST /api/admin/products/images", () => {
     );
   });
 
-  it("enforces the server-side image limit", async () => {
+  it("enforces the server-side image limit and removes the orphaned object", async () => {
     mocks.imageCount.mockResolvedValue({ count: 12 });
-    const form = new FormData();
-    form.set("productId", "11111111-1111-4111-8111-111111111111");
-    form.set("altText", "Product artwork");
-    form.set("sortOrder", "0");
-    form.set("file", new File(["png"], "image.png", { type: "image/png" }));
-    const response = await POST(
-      new Request("http://localhost/api/admin/products/images", { method: "POST", body: form }),
-    );
+    const response = await POST(request({ productId: PRODUCT_ID, path: PATH, altText: "Product artwork", sortOrder: 0 }));
 
     expect(response.status).toBe(409);
-    expect(mocks.upload).not.toHaveBeenCalled();
+    expect(mocks.remove).toHaveBeenCalledWith([PATH]);
+    expect(mocks.imageSingle).not.toHaveBeenCalled();
   });
 });
