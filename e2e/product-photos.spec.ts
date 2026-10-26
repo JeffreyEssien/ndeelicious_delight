@@ -1,5 +1,7 @@
 import { createHmac } from "node:crypto";
-import { expect, test } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
+import { expect, type Page, test } from "@playwright/test";
 
 test.beforeEach(async ({ page, context }) => {
   test.skip(process.env.NDEE_BROWSER_FIXTURES !== "true", "Isolated local fixtures only.");
@@ -61,6 +63,37 @@ test("a large phone photo is shrunk, previewed and saved without asking for a de
   expect(object.bytes).toBeLessThanOrEqual(5 * 1024 * 1024);
 });
 
+// Uploads one photo to the croissant, saves, and returns what (the stand-in for) Cloudinary stored.
+async function savePhoto(page: Page, file: { name: string; mimeType: string; buffer: Buffer }) {
+  await page.goto("/admin/products");
+  const row = page.locator("tr").filter({ hasText: "Classic Butter Croissant" });
+  await row.getByRole("button", { name: "Edit", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "Edit Classic Butter Croissant" });
+  await editor.getByLabel("Add photos").setInputFiles(file);
+  await expect(editor.locator(".pending-image img")).toBeVisible({ timeout: 30000 });
+  await expect(editor.getByRole("alert")).toHaveCount(0);
+  const commit = page.waitForRequest((request) => request.url().endsWith("/api/admin/products/images"));
+  await editor.getByRole("button", { name: "Save changes", exact: true }).click();
+  const { publicId } = (await commit).postDataJSON();
+  await expect(editor).toBeHidden();
+  const stored = await (await page.request.get("http://127.0.0.1:4545/__fixtures/cloudinary")).json();
+  return stored.find((image: { public_id: string }) => image.public_id === publicId);
+}
+
+test("an iPhone HEIC photo is converted and uploaded", async ({ page }) => {
+  test.setTimeout(90000);
+  const buffer = fs.readFileSync(path.join(__dirname, "fixtures/cake.heic"));
+  const object = await savePhoto(page, { name: "IMG_0044.HEIC", mimeType: "image/heic", buffer });
+  expect(["webp", "jpg"]).toContain(object.format);
+});
+
+test("a photo whose name and type do not match its contents still uploads", async ({ page }) => {
+  // Images copied out of WhatsApp or the Mac clipboard arrive as "temp_image_….WEBP" holding other data.
+  const buffer = fs.readFileSync(path.join(__dirname, "fixtures/cake.jpg"));
+  const object = await savePhoto(page, { name: "temp_image_4BEE7837.WEBP", mimeType: "image/webp", buffer });
+  expect(["webp", "jpg"]).toContain(object.format);
+});
+
 test("an unreadable file explains what to do instead of failing on save", async ({ page }) => {
   await page.goto("/admin/products");
   const row = page.locator("tr").filter({ hasText: "Classic Butter Croissant" });
@@ -71,7 +104,7 @@ test("an unreadable file explains what to do instead of failing on save", async 
     mimeType: "image/heic",
     buffer: Buffer.from("not a browser-readable image"),
   });
-  await expect(editor.getByRole("alert")).toContainText("IMG_0043.HEIC could not be read");
+  await expect(editor.getByRole("alert")).toContainText("IMG_0043.HEIC could not be opened as a photo");
   await expect(editor.locator(".pending-image")).toHaveCount(0);
   await expect(editor.getByRole("button", { name: "Save changes", exact: true })).toBeEnabled();
 });
