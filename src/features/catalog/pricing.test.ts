@@ -5,6 +5,7 @@ import {
   lineUnitPrice,
   normalizeCakeLayers,
   normalizeCakeSizeLayers,
+  productPriceRange,
   variantPrice,
 } from "./pricing";
 
@@ -77,5 +78,22 @@ describe("cakeLayerAdjustment / lineUnitPrice", () => {
   it("ignores layer selections on non-cakes", () => {
     const pastry: Product = { ...cake, category: "PASTRIES" };
     expect(cakeLayerAdjustment(pastry, "eight", [{ group: "Layers", value: "3" }])).toBe(0);
+  });
+});
+
+describe("productPriceRange", () => {
+  it("spans the published packs and ignores unpublished ones", () => {
+    const product: Product = {
+      ...cake,
+      variants: [
+        { id: "small", name: '6"', priceAdjustment: -1000, stockQuantity: 0, active: true },
+        { id: "large", name: '10"', priceAdjustment: 2500, stockQuantity: 0, active: true },
+        { id: "draft", name: '12"', priceAdjustment: 9000, stockQuantity: 0, active: false },
+      ],
+    };
+    expect(productPriceRange(product)).toEqual({ min: 4000, max: 7500 });
+  });
+  it("falls back to the base price when there are no packs", () => {
+    expect(productPriceRange({ ...cake, variants: [] })).toEqual({ min: 5000, max: 5000 });
   });
 });

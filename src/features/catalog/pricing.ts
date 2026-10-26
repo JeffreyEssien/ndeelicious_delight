@@ -75,6 +75,17 @@ export function productStartingPrice(product: Product) {
     ? Math.min(...variants.map((variant) => variantPrice(product, variant)))
     : (product.discountPrice ?? product.price);
 }
+// Lowest and highest price across the packs customers can choose (all packs while none are published).
+export function productPriceRange(product: Product) {
+  const published = getPublishedVariants(product);
+  const variants = published.length ? published : product.variants;
+  if (!variants.length) {
+    const base = product.discountPrice ?? product.price;
+    return { min: base, max: base };
+  }
+  const prices = variants.map((variant) => variantPrice(product, variant));
+  return { min: Math.min(...prices), max: Math.max(...prices) };
+}
 export function shoppingMode(product: Product) {
   return product.shoppingMode ?? (product.category === "READY_TO_BAKE" ? "READY_TO_BAKE" : "READY_TO_ORDER");
 }

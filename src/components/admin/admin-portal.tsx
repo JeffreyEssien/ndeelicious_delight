@@ -18,7 +18,7 @@ import type {
 } from "@/lib/data/admin";
 import type { DeliveryZone, OrderStatus, Product, ProductStatus } from "@/types";
 import { formatDate, formatMoney } from "@/lib/format";
-import { categoryLabel } from "@/features/catalog/pricing";
+import { categoryLabel, productPriceRange } from "@/features/catalog/pricing";
 import { Badge, Button, EmptyState, Input, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
@@ -1014,6 +1014,10 @@ function Products({
   onDuplicate: (product: Product) => void;
 }) {
   const money = useMoney();
+  const priceRange = (product: Product) => {
+    const { min, max } = productPriceRange(product);
+    return min === max ? money(min) : `${money(min)} – ${money(max)}`;
+  };
   const [removeTarget, setRemoveTarget] = useState<Product | null>(null);
   const visible = products.filter(
     (p) =>
@@ -1089,7 +1093,7 @@ function Products({
                     </div>
                   </td>
                   <td>{categoryLabel(product.category)}</td>
-                  <td>{money(product.price)}</td>
+                  <td>{priceRange(product)}</td>
                   <td>
                     <b className={product.stockQuantity <= product.lowStockThreshold ? "danger-text" : ""}>
                       {product.stockQuantity}

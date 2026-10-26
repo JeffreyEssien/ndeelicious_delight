@@ -83,6 +83,10 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: fixture-service-key
       ADMIN_AUTH_SECRET: isolated-ndee-browser-secret-32-characters
       NEXT_PUBLIC_SITE_URL: http://localhost:3100
+      CLOUDINARY_CLOUD_NAME: fixture
+      CLOUDINARY_API_KEY: fixture-key
+      CLOUDINARY_API_SECRET: fixture-secret
+      CLOUDINARY_UPLOAD_PREFIX: http://127.0.0.1:4545
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -102,7 +106,7 @@ jobs:
           cat /tmp/ndee-app.log
           exit 1
       - name: Check seven screen widths
-        run: npx playwright test e2e/admin-audit.spec.ts e2e/admin-configuration.spec.ts e2e/admin-documents.spec.ts e2e/admin-history.spec.ts e2e/admin-mobile-followup.spec.ts e2e/admin-delta.spec.ts e2e/product-packs.spec.ts --workers=1
+        run: npx playwright test e2e/admin-audit.spec.ts e2e/admin-configuration.spec.ts e2e/admin-documents.spec.ts e2e/admin-history.spec.ts e2e/admin-mobile-followup.spec.ts e2e/admin-delta.spec.ts e2e/product-packs.spec.ts e2e/product-photos.spec.ts e2e/product-editor-simplified.spec.ts --workers=1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
