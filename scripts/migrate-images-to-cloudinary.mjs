@@ -1,6 +1,8 @@
 // Copies existing product photos and cake type photos into Cloudinary and points the database at the copies.
 // Dry run by default: `npm run images:migrate` lists what would move; add `-- --apply` to copy and update.
 // Safe to re-run: rows already on Cloudinary are skipped. Originals in Supabase Storage are left in place.
+import fs from "node:fs";
+import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import nextEnv from "@next/env";
 import { v2 as cloudinary } from "cloudinary";
@@ -27,8 +29,22 @@ const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABA
   auth: { persistSession: false, autoRefreshToken: false },
 });
 const onCloudinary = (url) => typeof url === "string" && url.startsWith("https://res.cloudinary.com/");
+// Seeded products point at the site's own placeholder files ("/pastries.jpg"), which Cloudinary cannot
+// download from a bare path; upload those from the local public/ folder instead.
+const source = (url) => {
+  if (!url.startsWith("/")) return url;
+  const file = path.join(process.cwd(), "public", url);
+  if (!fs.existsSync(file)) throw new Error(`${url} is not in the public/ folder.`);
+  return file;
+};
 const copy = (url, folder) =>
-  cloudinary.uploader.upload(url, { folder, resource_type: "image", allowed_formats: ["jpg", "png", "webp", "avif"] });
+  cloudinary.uploader.upload(source(url), {
+    folder,
+    resource_type: "image",
+    allowed_formats: ["jpg", "png", "webp", "avif"],
+  });
+// The Cloudinary SDK rejects with plain objects such as { error: { message } }.
+const reason = (error) => error?.message ?? error?.error?.message ?? JSON.stringify(error);
 
 const report = { project: new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname.split(".")[0], apply };
 const failures = [];
@@ -53,7 +69,7 @@ if (apply) {
         .eq("id", image.id);
       if (error) throw error;
     } catch (error) {
-      failures.push({ table: "product_images", id: image.id, url: image.url, error: String(error?.message ?? error) });
+      failures.push({ table: "product_images", id: image.id, url: image.url, error: reason(error) });
     }
   }
   for (const type of cakeImages) {
@@ -62,7 +78,7 @@ if (apply) {
       const { error } = await db.from("cake_types").update({ image: result.secure_url }).eq("id", type.id);
       if (error) throw error;
     } catch (error) {
-      failures.push({ table: "cake_types", id: type.id, url: type.image, error: String(error?.message ?? error) });
+      failures.push({ table: "cake_types", id: type.id, url: type.image, error: reason(error) });
     }
   }
   report.copied = productImages.length + cakeImages.length - failures.length;
