@@ -5,15 +5,22 @@ import { Input } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 import { useBusinessSettings } from "@/components/providers";
 
-const stages = ["Order confirmed", "Preparing", "Ready", "Out for delivery", "Delivered"];
+const deliveryStages = ["Order confirmed", "Preparing", "Ready", "Out for delivery", "Delivered"];
+// The bakery moves a ready pickup order straight to DELIVERED when it is collected.
+const pickupStages = ["Order confirmed", "Preparing", "Ready for pickup", "Collected"];
 const statusStep: Record<string, number> = {
-  PENDING_PAYMENT: 0,
   PAID: 0,
   CONFIRMED: 0,
   PREPARING: 1,
   READY: 2,
   OUT_FOR_DELIVERY: 3,
   DELIVERED: 4,
+};
+// Orders that will not progress: show what happened instead of a progress tracker.
+const closedStatus: Record<string, string> = {
+  CANCELLED: "This order was cancelled.",
+  REFUNDED: "This order was refunded.",
+  FAILED: "Payment for this order didn’t go through.",
 };
 type TrackedOrder = { order_number: string; status: string; fulfilment: string; updated_at: string };
 
@@ -65,12 +72,19 @@ export function TrackOrder({ initial = "" }: { initial?: string }) {
         </button>
       </form>
     );
-  const current = statusStep[order.status] ?? 0;
+  const pickup = order.fulfilment === "pickup";
+  const stages = pickup ? pickupStages : deliveryStages;
+  const closed = closedStatus[order.status];
+  const pending = order.status === "PENDING_PAYMENT";
+  // No stage is current until payment is confirmed.
+  const current = pending ? -1 : Math.min(statusStep[order.status] ?? 0, stages.length - 1);
+  const statusName =
+    pickup && order.status === "DELIVERED" ? "collected" : order.status.toLowerCase().replaceAll("_", " ");
   return (
     <div className="tracking-result">
       <div className="tracking-head">
-        <span className="success-mark">
-          <Icon name="check" />
+        <span className={`success-mark ${pending || closed ? "payment-attention" : ""}`}>
+          <Icon name={pending || closed ? "clock" : "check"} />
         </span>
         <div>
           <span className="overline">
@@ -78,32 +92,37 @@ export function TrackOrder({ initial = "" }: { initial?: string }) {
             {order.order_number}
           </span>
           <h2>
-            {order.status === "PENDING_PAYMENT"
-              ? t("Your order is awaiting payment.")
-              : t("Your order is {value1}.", { value1: t(order.status.toLowerCase().replaceAll("_", " ")) })}
+            {closed
+              ? t(closed)
+              : pending
+                ? t("Your order is awaiting payment.")
+                : t("Your order is {value1}.", { value1: t(statusName) })}
           </h2>
           <p>
-            {order.fulfilment === "pickup" ? t("Pickup") : t("Delivery")}{" "}
-            {t("details will be confirmed by the bakery.")}
+            {closed
+              ? t("Contact the bakery if you have any questions about this order.")
+              : `${pickup ? t("Pickup") : t("Delivery")} ${t("details will be confirmed by the bakery.")}`}
           </p>
         </div>
       </div>
-      <div className="tracking-steps">
-        {stages.map((stage, index) => (
-          <div className={index < current ? "done" : index === current ? "current" : ""} key={stage}>
-            <span>{index < current ? <Icon name="check" /> : index + 1}</span>
-            <div>
-              <b>{t(stage)}</b>
-              {index === current && (
-                <small>
-                  {t("Updated")}
-                  {new Date(order.updated_at).toLocaleString(business.locale, { timeZone: business.timezone })}
-                </small>
-              )}
+      {!closed && (
+        <div className="tracking-steps">
+          {stages.map((stage, index) => (
+            <div className={index < current ? "done" : index === current ? "current" : ""} key={stage}>
+              <span>{index < current ? <Icon name="check" /> : index + 1}</span>
+              <div>
+                <b>{t(stage)}</b>
+                {index === current && (
+                  <small>
+                    {t("Updated")}{" "}
+                    {new Date(order.updated_at).toLocaleString(business.locale, { timeZone: business.timezone })}
+                  </small>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
       <button type="button" className="text-button" onClick={() => setOrder(null)}>
         {t("Track a different order")}
       </button>
