@@ -4,6 +4,7 @@ import { Catalogue } from "@/components/product/catalogue";
 import { ContentLines } from "@/components/ui/content-lines";
 import { getCakeConfiguration, getStorefrontContent } from "@/lib/data/settings";
 import { getCollections } from "@/lib/data/catalog";
+import { parseShopCategory, parseShoppingMode } from "@/features/catalog/shop-filters";
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getCustomerText("page titles");
   return {
@@ -23,7 +24,8 @@ export default async function ShopPage({
     getCakeConfiguration(),
     getCollections(),
   ]);
-  const category = params.category as "PASTRIES" | "READY_TO_BAKE" | "CUSTOM_CAKES" | undefined;
+  const category = parseShopCategory(params.category);
+  const mode = parseShoppingMode(params.mode);
   const maximumPrice =
     params.maxPrice && Number(params.maxPrice) > 0 ? Math.round(Number(params.maxPrice) * 100) : undefined;
   const header = content.headers.shop;
@@ -37,8 +39,11 @@ export default async function ShopPage({
         <p>{header.supportingText}</p>
       </header>
       <section className="site-container catalogue-section">
+        {/* Remount when a link changes the filters, since the catalogue keeps them in local state. */}
         <Catalogue
+          key={`${category ?? ""}|${mode ?? ""}|${params.collection ?? ""}`}
           initialCategory={category}
+          initialMode={mode}
           maximumPrice={maximumPrice}
           cakeConfiguration={cakeConfiguration}
           budgetContent={content.shopBudget}

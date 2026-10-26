@@ -5,7 +5,8 @@ import { useCustomerText } from "@/components/customer-text-provider";
 import { type FormEvent, useMemo, useState } from "react";
 import { useBusinessSettings, useMoney, useProducts } from "@/components/providers";
 import { BudgetResults } from "./budget-results";
-import { productStartingPrice } from "@/features/catalog/pricing";
+import { productStartingPrice, shoppingMode } from "@/features/catalog/pricing";
+import { type ShoppingMode, shoppingModeLabels } from "@/features/catalog/shop-filters";
 import { ProductGrid } from "./product-grid";
 import { Icon } from "@/components/ui/icons";
 import { Button, EmptyState, Input, Pagination } from "@/components/ui/primitives";
@@ -23,6 +24,7 @@ type Sort = "featured" | "newest" | "low" | "high";
 
 export function Catalogue({
   initialCategory,
+  initialMode,
   maximumPrice,
   cakeConfiguration,
   budgetContent,
@@ -30,6 +32,7 @@ export function Catalogue({
   initialCollection,
 }: {
   initialCategory?: Category;
+  initialMode?: ShoppingMode;
   maximumPrice?: number;
   cakeConfiguration: CakeConfigurationData;
   budgetContent: StorefrontContent["shopBudget"];
@@ -47,6 +50,7 @@ export function Catalogue({
   const business = useBusinessSettings();
   const [category, setCategory] = useState<Category | "ALL">(initialCategory ?? "ALL");
   const [collection, setCollection] = useState<string>(initialCollection ?? "ALL");
+  const [mode, setMode] = useState<ShoppingMode | undefined>(initialMode);
   const [available, setAvailable] = useState(false);
   const [sort, setSort] = useState<Sort>("featured");
   const [query, setQuery] = useState("");
@@ -62,13 +66,14 @@ export function Catalogue({
       products.filter(
         (product) =>
           (category === "ALL" || product.category === category) &&
+          (!mode || shoppingMode(product) === mode) &&
           (collection === "ALL" || product.collectionId === collection) &&
           (!available || isProductPurchasable(product)) &&
           `${product.name} ${product.shortDescription} ${product.description} ${product.category}`
             .toLowerCase()
             .includes(query.toLowerCase()),
       ),
-    [category, collection, available, query, products],
+    [category, mode, collection, available, query, products],
   );
   const items = useMemo(
     () =>
@@ -223,6 +228,7 @@ export function Catalogue({
                   onChange={() => {
                     setCategory(value as Category | "ALL");
                     setCollection("ALL");
+                    setMode(undefined);
                     reset();
                   }}
                 />
@@ -301,6 +307,22 @@ export function Catalogue({
               <p className="result-count">
                 {items.length} {items.length === 1 ? t("treat") : t("treats")}
                 {budget !== undefined ? t(" within {value1}", { value1: money(budget) }) : ""}
+                {mode && (
+                  <>
+                    {" · "}
+                    {t(shoppingModeLabels[mode])}{" "}
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => {
+                        setMode(undefined);
+                        reset();
+                      }}
+                    >
+                      {t("Show all")}
+                    </button>
+                  </>
+                )}
               </p>
               {items.length ? (
                 <>
@@ -329,6 +351,8 @@ export function Catalogue({
                         } else {
                           setQuery("");
                           setCategory("ALL");
+                          setCollection("ALL");
+                          setMode(undefined);
                           setAvailable(false);
                           setBudget(undefined);
                           rememberBudget(undefined);
