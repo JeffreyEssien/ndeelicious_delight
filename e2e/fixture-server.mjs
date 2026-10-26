@@ -267,6 +267,7 @@ const server = http.createServer(async (req, res) => {
   const filter = (row) =>
     [...url.searchParams].every(([key, value]) => {
       if (value.startsWith("eq.")) return String(row[key]) === value.slice(3);
+      if (value.startsWith("neq.")) return String(row[key]) !== value.slice(4);
       if (value === "is.null") return row[key] == null;
       if (value.startsWith("gt.")) return String(row[key]) > value.slice(3);
       return true;

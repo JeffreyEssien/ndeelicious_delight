@@ -5,7 +5,17 @@ vi.mock("@/lib/auth/admin-request", () => ({
   requireAdminRequest: async () => ({
     ok: true,
     db: {
-      from: () => ({ select: () => ({ eq: () => ({ single: async () => ({ data: { id: "category-id" } }) }) }) }),
+      from: () => ({
+        select: () => {
+          const query = {
+            eq: () => query,
+            neq: () => query,
+            limit: async () => ({ data: [], error: null }),
+            single: async () => ({ data: { id: "category-id" } }),
+          };
+          return query;
+        },
+      }),
       rpc: mocks.rpc,
     },
     admin: { id: "admin-id" },

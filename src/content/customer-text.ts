@@ -407,7 +407,8 @@ export const defaultCustomerText: CustomerText = {
     "This request is temporarily unavailable. Please try again shortly.":
       "This request is temporarily unavailable. Please try again shortly.",
     "Sale price cannot exceed the regular price.": "Sale price cannot exceed the regular price.",
-    "An active product needs an active variant.": "An active product needs an active variant.",
+    "Publish at least one pack or size (with a name and price) before making the product visible.":
+      "Publish at least one pack or size (with a name and price) before making the product visible.",
     "One of the selected cake options is unavailable.": "One of the selected cake options is unavailable.",
     "Choose a date with enough preparation time.": "Choose a date with enough preparation time.",
     "Delivery is not currently available.": "Delivery is not currently available.",

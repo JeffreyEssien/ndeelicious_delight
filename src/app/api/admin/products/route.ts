@@ -1,23 +1,31 @@
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 import { invalidateStorefrontCache } from "@/lib/cache/storefront";
-import { applyProductCollection, productSaveArguments, productSaveError } from "@/lib/data/product-write";
-import { categorySlug, productInputSchema } from "@/validations/product";
+import {
+  applyProductCollection,
+  availableSlug,
+  productSaveArguments,
+  productSaveError,
+} from "@/lib/data/product-write";
+import { categorySlug, productInputSchema, productIssues } from "@/validations/product";
 
 export async function POST(request: Request) {
   const auth = await requireAdminRequest(request);
   if (!auth.ok) return auth.response;
   const parsed = productInputSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success)
-    return Response.json({ error: parsed.error.issues[0]?.message ?? "Check the product details." }, { status: 400 });
+  if (!parsed.success) {
+    const issues = productIssues(parsed.error);
+    return Response.json({ error: issues[0] ?? "Check the product details.", issues }, { status: 400 });
+  }
   const { data: category } = await auth.db
     .from("categories")
     .select("id")
     .eq("slug", categorySlug(parsed.data.category))
     .single();
   if (!category) return Response.json({ error: "Product category is missing." }, { status: 400 });
+  const slug = await availableSlug(auth.db, parsed.data.slug, null);
   const { data: id, error } = await auth.db.rpc("admin_save_product", {
     p_id: null,
-    ...productSaveArguments(parsed.data, category.id),
+    ...productSaveArguments({ ...parsed.data, slug }, category.id),
     p_admin_id: auth.admin.id,
     p_session_id: auth.sessionId,
   });
@@ -27,5 +35,5 @@ export async function POST(request: Request) {
   }
   await applyProductCollection(auth.db, id, parsed.data.category, parsed.data.collectionId);
   invalidateStorefrontCache();
-  return Response.json({ ok: true, id }, { status: 201 });
+  return Response.json({ ok: true, id, slug }, { status: 201 });
 }

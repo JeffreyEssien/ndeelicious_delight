@@ -251,7 +251,9 @@ test("empty drafts, publication errors, duplication, loading and sold-out prices
   await expect(editor.getByText("No packs yet.", { exact: false })).toBeVisible();
   await editor.getByLabel("Storefront visibility").selectOption("ACTIVE");
   await editor.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect(editor.getByRole("alert")).toContainText("active variant");
+  await expect(editor.getByRole("status").filter({ hasText: "Saved as a hidden draft" })).toContainText(
+    "Publish at least one pack or size",
+  );
   await editor.getByLabel("Tax classification").selectOption("STANDARD_TAXABLE");
   await editor.getByRole("button", { name: "Add pack", exact: true }).click();
   const original = editor.locator(".pack-editor-card").first();

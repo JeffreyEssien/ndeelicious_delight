@@ -17,6 +17,21 @@ export async function applyProductCollection(
   await db.from("products").update({ collection_id: value }).eq("id", productId);
 }
 
+// Product links must be unique. Rather than refusing a save because another product (or an old one)
+// already uses the link, add a number to it: "chocolate-cake" becomes "chocolate-cake-2".
+export async function availableSlug(db: SupabaseClient, slug: string, productId: string | null) {
+  const stem = slug.slice(0, 170);
+  for (let attempt = 1; attempt <= 20; attempt++) {
+    const candidate = attempt === 1 ? slug : `${stem}-${attempt}`;
+    let query = db.from("products").select("id").eq("slug", candidate);
+    if (productId) query = query.neq("id", productId);
+    const { data, error } = await query.limit(1);
+    if (error) return slug;
+    if (!data?.length) return candidate;
+  }
+  return `${stem}-${crypto.randomUUID().slice(0, 6)}`;
+}
+
 export function productRow(input: ProductInput, categoryId: string) {
   return {
     category_id: categoryId,
@@ -61,7 +76,11 @@ export function productSaveError(error: { code?: string; message?: string }) {
   if (error.code === "23505" || message.includes("DUPLICATE"))
     return { status: 409, error: "That product link or published pack size is already in use." };
   if (message.includes("INVENTORY_CHANGED"))
-    return { status: 409, error: "Stock changed while you were editing. Reload the product before saving." };
+    return {
+      status: 409,
+      error:
+        "Stock changed while you were editing (probably an order came in). Reload the page, open the product and press Restore changes.",
+    };
   if (message.includes("STOCK_BELOW_RESERVED") || message.includes("reserved"))
     return { status: 409, error: "This stock is reserved for pending orders. Keep enough packs to fulfil them." };
   if (message.includes("OWNERSHIP"))

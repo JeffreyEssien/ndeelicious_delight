@@ -1,7 +1,12 @@
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 import { invalidateStorefrontCache } from "@/lib/cache/storefront";
-import { applyProductCollection, productSaveArguments, productSaveError } from "@/lib/data/product-write";
-import { categorySlug, productInputSchema } from "@/validations/product";
+import {
+  applyProductCollection,
+  availableSlug,
+  productSaveArguments,
+  productSaveError,
+} from "@/lib/data/product-write";
+import { categorySlug, productInputSchema, productIssues } from "@/validations/product";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -9,8 +14,10 @@ export async function PATCH(request: Request, context: Context) {
   const auth = await requireAdminRequest(request);
   if (!auth.ok) return auth.response;
   const parsed = productInputSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success)
-    return Response.json({ error: parsed.error.issues[0]?.message ?? "Check the product details." }, { status: 400 });
+  if (!parsed.success) {
+    const issues = productIssues(parsed.error);
+    return Response.json({ error: issues[0] ?? "Check the product details.", issues }, { status: 400 });
+  }
   const { id } = await context.params;
   const { data: category } = await auth.db
     .from("categories")
@@ -18,9 +25,10 @@ export async function PATCH(request: Request, context: Context) {
     .eq("slug", categorySlug(parsed.data.category))
     .single();
   if (!category) return Response.json({ error: "Product category is missing." }, { status: 400 });
+  const slug = await availableSlug(auth.db, parsed.data.slug, id);
   const { error } = await auth.db.rpc("admin_save_product", {
     p_id: id,
-    ...productSaveArguments(parsed.data, category.id),
+    ...productSaveArguments({ ...parsed.data, slug }, category.id),
     p_admin_id: auth.admin.id,
     p_session_id: auth.sessionId,
   });
@@ -30,7 +38,7 @@ export async function PATCH(request: Request, context: Context) {
   }
   await applyProductCollection(auth.db, id, parsed.data.category, parsed.data.collectionId);
   invalidateStorefrontCache();
-  return Response.json({ ok: true, id });
+  return Response.json({ ok: true, id, slug });
 }
 
 export async function POST(request: Request, context: Context) {
