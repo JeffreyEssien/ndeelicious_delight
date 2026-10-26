@@ -1,13 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { type FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { CakeSizeLayer, Product, ProductImage, ProductStatus, ProductVariant } from "@/types";
+import { MIN_LEAD_TIME_HOURS } from "@/validations/product";
 import { Button, Checkbox, Input, Select, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 import { normalizeCakeSizeLayers, variantPrice } from "@/features/catalog/pricing";
 import { useBusinessSettings } from "@/components/providers";
-import { createClient } from "@/lib/supabase/client";
+import { prepareImageForUpload } from "@/lib/images/prepare-upload";
 
 type DraftVariant = Omit<ProductVariant, "id"> & {
   id?: string;
@@ -16,7 +18,7 @@ type DraftVariant = Omit<ProductVariant, "id"> & {
   expectedStockQuantity?: number;
   layerOptions?: CakeSizeLayer[];
 };
-type PendingImage = { key: string; file: File; altText: string };
+type PendingImage = { key: string; file: File; altText: string; previewUrl: string };
 type DraftOptionGroup = { key: string; id: string; name: string; choicesText: string; required: boolean };
 
 function slugify(value: string) {
@@ -26,10 +28,6 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 }
-
-// Vercel's Hobby plan rejects request bodies over 4.5 MB before they reach the function, so cap
-// image uploads safely below that (multipart adds some overhead) to avoid a plain-text 413.
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 // Infrastructure in front of the app (e.g. Vercel's body-size cap) can reply with plain text such as
 // "Request Entity Too Large" instead of JSON. Read the body as text first so those responses surface a
@@ -41,7 +39,7 @@ async function readJsonResponse(response: Response): Promise<{ error?: string; [
   } catch {
     const message =
       response.status === 413
-        ? "That upload was too large for the server. Use an image under 4 MB."
+        ? "That upload was too large for the server. Please try a smaller photo."
         : `The server returned an unexpected response (${response.status}). Please try again.`;
     return { error: message };
   }
@@ -79,24 +77,9 @@ export function ProductEditor({
       })
       .catch(() => {});
   }, []);
-  const initialPreparationUnit =
-    product?.preparationHours && Number.isInteger(product.preparationHours) ? "hours" : "minutes";
-  const [preparationUnit, setPreparationUnit] = useState(initialPreparationUnit);
-  const [preparationValue, setPreparationValue] = useState(
-    String(
-      initialPreparationUnit === "minutes"
-        ? Math.round((product?.preparationHours ?? 0) * 60)
-        : (product?.preparationHours ?? 0),
-    ),
-  );
-  // Cakes express their buffer as a whole number of lead-time days, stored as prep hours
-  // (days × 24) so scheduling keeps working unchanged.
-  const [leadTimeDays, setLeadTimeDays] = useState(
-    String(Math.max(0, Math.round((product?.preparationHours ?? 0) / 24))),
-  );
-  const [price, setPrice] = useState(String((product?.price ?? 0) / 100));
-  const [discount, setDiscount] = useState(
-    product?.discountPrice === undefined ? "" : String(product.discountPrice / 100),
+  // One lead time for every product, in hours: how long after an order is placed it can be ready.
+  const [leadTimeHours, setLeadTimeHours] = useState(
+    String(Math.max(MIN_LEAD_TIME_HOURS, Math.ceil(product?.preparationHours ?? MIN_LEAD_TIME_HOURS))),
   );
   const [editingPack, setEditingPack] = useState<string | null>(null);
   const [category, setCategory] = useState<string>(product?.category ?? "PASTRIES");
@@ -112,8 +95,10 @@ export function ProductEditor({
       .then((payload) => setCollections(payload.collections ?? []))
       .catch(() => {});
   }, []);
-  const effectiveBase = Math.round(Number(discount || price) * 100);
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState("");
+  const [preparingPhotos, setPreparingPhotos] = useState(false);
   const [error, setError] = useState("");
   const [savedId, setSavedId] = useState(product?.id ?? "");
   const [variants, setVariants] = useState<DraftVariant[]>(
@@ -126,21 +111,49 @@ export function ProductEditor({
           active: variant.active ?? true,
           layerOptions: normalizeCakeSizeLayers(product.cakeLayers?.[variant.id]),
         }))
-      : [
-          {
-            id: crypto.randomUUID(),
-            key: "standard",
-            name: "Standard",
-            sellingPrice: 0,
-            priceAdjustment: 0,
-            stockQuantity: 0,
-            active: true,
-          },
-        ],
+      : // New products start without packs: made-to-order packs need a size and price the owner chooses.
+        [],
   );
   const [images, setImages] = useState<ProductImage[]>(product?.images ?? []);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
-  const [optionGroups, setOptionGroups] = useState<DraftOptionGroup[]>(
+  const [photoError, setPhotoError] = useState("");
+  // Preview URLs hold the photo in memory until revoked; release any still pending when the editor closes.
+  const pendingRef = useRef(pendingImages);
+  pendingRef.current = pendingImages;
+  useEffect(
+    () => () => {
+      for (const pending of pendingRef.current) URL.revokeObjectURL(pending.previewUrl);
+    },
+    [],
+  );
+  function removePending(key: string) {
+    setPendingImages((current) =>
+      current.filter((item) => {
+        if (item.key === key) URL.revokeObjectURL(item.previewUrl);
+        return item.key !== key;
+      }),
+    );
+  }
+
+  async function addPhotos(files: File[]) {
+    const remaining = 12 - images.length - pendingImages.length;
+    const selected = files.slice(0, remaining);
+    const problems = files.length > remaining ? [`Only ${remaining} more photo(s) fit; a product can have 12.`] : [];
+    setPreparingPhotos(true);
+    const prepared: PendingImage[] = [];
+    for (const file of selected) {
+      try {
+        const ready = await prepareImageForUpload(file);
+        prepared.push({ key: crypto.randomUUID(), file: ready, altText: "", previewUrl: URL.createObjectURL(ready) });
+      } catch (reason) {
+        problems.push(reason instanceof Error ? reason.message : `${file.name} could not be added.`);
+      }
+    }
+    setPendingImages((current) => [...current, ...prepared]);
+    setPhotoError(problems.join(" "));
+    setPreparingPhotos(false);
+  }
+  const [optionGroups] = useState<DraftOptionGroup[]>(
     (product?.optionGroups ?? []).map((group) => ({
       key: group.id,
       id: group.id,
@@ -151,26 +164,14 @@ export function ProductEditor({
   );
 
   // Cakes pick their flavours/fillings from the shared library (stored as option groups named
-  // "Flavour"/"Filling"); non-cakes keep the free-text option groups above.
+  // "Flavour"/"Filling"). Only cakes offer customer options; any older options on other products
+  // are kept unchanged when saving.
   const initialGroupChoices = (name: string) =>
     product?.optionGroups?.find((group) => group.name === name)?.choices ?? [];
   const [cakeFlavours, setCakeFlavours] = useState<string[]>(initialGroupChoices("Flavour"));
   const [cakeFillings, setCakeFillings] = useState<string[]>(initialGroupChoices("Filling"));
   function toggleIn(list: string[], value: string) {
     return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
-  }
-
-  function addOptionGroup() {
-    setOptionGroups((current) => [
-      ...current,
-      { key: crypto.randomUUID(), id: crypto.randomUUID(), name: "", choicesText: "", required: true },
-    ]);
-  }
-  function patchOptionGroup(index: number, patch: Partial<DraftOptionGroup>) {
-    setOptionGroups((current) => current.map((group, i) => (i === index ? { ...group, ...patch } : group)));
-  }
-  function removeOptionGroup(index: number) {
-    setOptionGroups((current) => current.filter((_, i) => i !== index));
   }
 
   function patchPack(index: number, patch: Partial<DraftVariant>) {
@@ -194,65 +195,78 @@ export function ProductEditor({
     });
   }
 
+  // Uploads every pending photo, carrying on past failures, and returns one message per failed photo.
   async function uploadImages(productId: string, productName: string) {
-    const supabase = createClient();
+    const failures: string[] = [];
     for (const [index, pending] of pendingImages.entries()) {
-      // Ask the server for a one-time signed URL, upload the file straight to Supabase Storage, then
-      // send only metadata back. Uploading directly bypasses Vercel's 4.5 MB function body limit, which
-      // a plain file POST through the function would hit.
-      const signResponse = await fetch("/api/admin/products/images/sign", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ productId, contentType: pending.file.type }),
-      });
-      const sign = await readJsonResponse(signResponse);
-      if (!signResponse.ok) throw new Error(sign.error ?? `Could not upload ${pending.file.name}.`);
-
-      const upload = await supabase.storage
-        .from("product-images")
-        .uploadToSignedUrl(sign.path as string, sign.token as string, pending.file, {
-          contentType: pending.file.type,
-        });
-      if (upload.error) throw new Error(`Could not upload ${pending.file.name}. Please try again.`);
-
-      const response = await fetch("/api/admin/products/images", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          productId,
-          path: sign.path,
-          altText: pending.altText.trim() || productName,
-          sortOrder: images.length + index,
-        }),
-      });
-      const payload = await readJsonResponse(response);
-      if (!response.ok) throw new Error(payload.error ?? `Could not upload ${pending.file.name}.`);
-      setImages((current) => [...current, payload.image as ProductImage]);
-      setPendingImages((current) => current.filter((item) => item.key !== pending.key));
+      setProgress(`Uploading photo ${index + 1} of ${pendingImages.length}…`);
+      try {
+        await uploadImage(productId, productName, pending, images.length + index);
+      } catch (reason) {
+        failures.push(reason instanceof Error ? reason.message : `Could not upload ${pending.file.name}.`);
+      }
     }
+    return failures;
+  }
+
+  async function uploadImage(productId: string, productName: string, pending: PendingImage, sortOrder: number) {
+    // Get signed upload parameters, send the file straight to Cloudinary, then record it. Uploading
+    // directly bypasses Vercel's 4.5 MB function body limit that a file sent through our server would hit.
+    const signResponse = await fetch("/api/admin/products/images/sign", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ productId }),
+    });
+    const sign = await readJsonResponse(signResponse);
+    if (!signResponse.ok) throw new Error(sign.error ?? `Could not upload ${pending.file.name}.`);
+
+    const upload = new FormData();
+    for (const [key, value] of Object.entries(sign.fields as Record<string, string | number>))
+      upload.set(key, String(value));
+    upload.set("file", pending.file);
+    const uploaded = await fetch(sign.uploadUrl as string, { method: "POST", body: upload })
+      .then((response) => (response.ok ? response.json() : null))
+      .catch(() => null);
+    if (!uploaded?.public_id)
+      throw new Error(`Could not upload ${pending.file.name}. Check your connection and try again.`);
+
+    const response = await fetch("/api/admin/products/images", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        productId,
+        publicId: uploaded.public_id,
+        altText: pending.altText.trim() || productName,
+        sortOrder,
+      }),
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error ?? `Could not upload ${pending.file.name}.`);
+    setImages((current) => [...current, payload.image as ProductImage]);
+    removePending(pending.key);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || preparingPhotos) return;
     setBusy(true);
+    setProgress("Saving product…");
     setError("");
     const form = new FormData(event.currentTarget);
     const name = String(form.get("name"));
-    // Cakes store a lead-time buffer in days; ready-to-bake uses prep time; ready-to-order has none.
-    const preparationHours = isCake
-      ? Number(leadTimeDays || 0) * 24
-      : category === "READY_TO_BAKE"
-        ? Number(preparationValue || 0) / (preparationUnit === "minutes" ? 60 : 1)
-        : 0;
+    const preparationHours = Number(leadTimeHours || MIN_LEAD_TIME_HOURS);
+    // Every pack or size carries its own selling price. The product's base price is the cheapest published
+    // one (or the cheapest overall while nothing is published), and each pack is stored relative to it.
+    const priced = variants.some((variant) => variant.active) ? variants.filter((variant) => variant.active) : variants;
+    const basePrice = priced.length ? Math.min(...priced.map((variant) => variant.sellingPrice)) : 0;
     const payload = {
       name,
       slug: String(form.get("slug")) || slugify(name),
       shortDescription: String(form.get("shortDescription")),
       description: String(form.get("description")),
       category: String(form.get("category")),
-      price: Math.round(Number(form.get("price")) * 100),
-      discountPrice: form.get("discountPrice") ? Math.round(Number(form.get("discountPrice")) * 100) : null,
+      price: basePrice,
+      discountPrice: null,
       status: String(form.get("status")) as ProductStatus,
       featured: form.get("featured") === "on",
       shoppingMode: mode,
@@ -270,7 +284,7 @@ export function ProductEditor({
       variants: variants.map((variant, index) => ({
         id: variant.id,
         name: variant.name,
-        priceAdjustment: mode === "MADE_TO_ORDER" ? variant.sellingPrice - effectiveBase : variant.priceAdjustment,
+        priceAdjustment: variant.sellingPrice - basePrice,
         packQuantity: variant.packQuantity ?? null,
         stockQuantity: variant.stockQuantity,
         active: variant.active,
@@ -278,7 +292,11 @@ export function ProductEditor({
         trackInventory: variant.trackInventory ?? null,
         expectedStockQuantity: variant.expectedStockQuantity,
       })),
-      images: images.map((image, index) => ({ id: image.id, altText: image.altText, sortOrder: index })),
+      images: images.map((image, index) => ({
+        id: image.id,
+        altText: image.altText.trim() || name,
+        sortOrder: index,
+      })),
       optionGroups: isCake
         ? [
             { id: "flavour", name: "Flavour", required: true, choices: cakeFlavours },
@@ -315,11 +333,22 @@ export function ProductEditor({
       const result = await readJsonResponse(response);
       if (!response.ok) throw new Error(result.error ?? "Product could not be saved.");
       setSavedId(result.id as string);
-      if (pendingImages.length) await uploadImages(result.id as string, name);
+      const failures = pendingImages.length ? await uploadImages(result.id as string, name) : [];
+      if (failures.length) {
+        // The product itself is saved; keep the editor open so only the failed photos need retrying.
+        router.refresh();
+        setError(
+          `Product saved, but ${failures.length === 1 ? "1 photo was" : `${failures.length} photos were`} not uploaded. ${failures.join(" ")} Press Save changes to try again.`,
+        );
+        setBusy(false);
+        return;
+      }
       onSaved({ preparationHours: payload.preparationHours });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Product could not be saved.");
       setBusy(false);
+    } finally {
+      setProgress("");
     }
   }
 
@@ -328,7 +357,7 @@ export function ProductEditor({
       <div className="panel-head">
         <div>
           <span className="overline">Catalogue</span>
-          <h2>{product ? "Edit product" : "Add product"}</h2>
+          <h2>{savedId ? "Edit product" : "Add product"}</h2>
         </div>
         <button type="button" className="icon-button" onClick={close} aria-label="Close product drawer">
           <Icon name="close" />
@@ -362,16 +391,6 @@ export function ProductEditor({
             value={category}
             onChange={(event) => {
               const nextCategory = event.target.value;
-              const oldMode = category === "READY_TO_BAKE" ? "READY_TO_BAKE" : "MADE_TO_ORDER";
-              const newMode = nextCategory === "READY_TO_BAKE" ? "READY_TO_BAKE" : "MADE_TO_ORDER";
-              if (newMode === "MADE_TO_ORDER" && oldMode !== newMode)
-                setVariants((current) =>
-                  current.map((v) => ({ ...v, sellingPrice: effectiveBase + v.priceAdjustment })),
-                );
-              if (oldMode === "MADE_TO_ORDER" && newMode !== oldMode)
-                setVariants((current) =>
-                  current.map((v) => ({ ...v, priceAdjustment: v.sellingPrice - effectiveBase })),
-                );
               setCategory(nextCategory);
               setCollectionId("");
             }}
@@ -396,28 +415,7 @@ export function ProductEditor({
         </div>
 
         <div className="product-editor-section">
-          <h3>Pricing & visibility</h3>
-          <div className="field-row">
-            <Input
-              label={`Price (${currency})`}
-              name="price"
-              type="number"
-              min="0"
-              step="0.01"
-              value={price}
-              onChange={(event) => setPrice(event.target.value)}
-              required
-            />
-            <Input
-              label={`Sale price (${currency})`}
-              name="discountPrice"
-              type="number"
-              min="0"
-              step="0.01"
-              value={discount}
-              onChange={(event) => setDiscount(event.target.value)}
-            />
-          </div>
+          <h3>Visibility</h3>
           <Select label="Storefront visibility" name="status" defaultValue={product?.status ?? "DRAFT"}>
             <option value="DRAFT">Draft — hidden</option>
             <option value="ACTIVE">Active — visible</option>
@@ -441,48 +439,20 @@ export function ProductEditor({
             Confirm CRA classification, serving size and packaging. Sweet servings qualify for the six-or-more rule only
             when sold together without individual taxable packaging.
           </p>
-          {isCake ? (
-            <>
-              <Input
-                label="Lead time (days)"
-                type="number"
-                min="0"
-                step="1"
-                value={leadTimeDays}
-                onChange={(event) => setLeadTimeDays(event.target.value)}
-                required
-              />
-              <p className="field-help">
-                The buffer you need before a cake order is ready — the earliest pickup/delivery date is pushed out by
-                this many days. Cakes are made to order, so there is no separate preparation time.
-              </p>
-            </>
-          ) : category === "READY_TO_BAKE" ? (
-            <>
-              <Input
-                label="Preparation time"
-                type="number"
-                min="0"
-                max={preparationUnit === "minutes" ? 525600 : 8760}
-                step={preparationUnit === "minutes" ? "1" : "any"}
-                value={preparationValue}
-                onChange={(event) => setPreparationValue(event.target.value)}
-                required
-              />
-              <Select
-                label="Preparation unit"
-                value={preparationUnit}
-                onChange={(event) => {
-                  const unit = event.target.value === "hours" ? "hours" : "minutes";
-                  setPreparationValue(String(Number(preparationValue) * (unit === "minutes" ? 60 : 1 / 60)));
-                  setPreparationUnit(unit);
-                }}
-              >
-                <option value="minutes">Minutes</option>
-                <option value="hours">Hours</option>
-              </Select>
-            </>
-          ) : null}
+          <Input
+            label="Lead time (hours)"
+            type="number"
+            min={MIN_LEAD_TIME_HOURS}
+            max="8760"
+            step="1"
+            value={leadTimeHours}
+            onChange={(event) => setLeadTimeHours(event.target.value)}
+            required
+          />
+          <p className="field-help">
+            How long after an order is placed it can be ready. At least {MIN_LEAD_TIME_HOURS} hours; for example 48 for
+            two days.
+          </p>
           <h3>Inventory</h3>
           <Checkbox label="Track inventory" name="trackInventory" defaultChecked={product?.trackInventory ?? true} />
           <div className="field-row">
@@ -513,7 +483,7 @@ export function ProductEditor({
                   ? "Add each size and set its selling price. “Serves” is the guest count for that size."
                   : mode === "MADE_TO_ORDER"
                     ? "Choose any pack size and set its selling price. Stock is optional and counts packs, not pieces."
-                    : "Manage product choices and their stock."}
+                    : "Add each option the customer can buy and set its selling price."}
               </p>
             </div>
             <Button
@@ -624,12 +594,8 @@ export function ProductEditor({
                       : isCake
                         ? "Serves not set · "
                         : "Size not set · "}
-                    {currency}{" "}
-                    {(mode === "MADE_TO_ORDER"
-                      ? variant.sellingPrice / 100
-                      : (effectiveBase + variant.priceAdjustment) / 100
-                    ).toFixed(2)}{" "}
-                    · {variant.active ? "Published" : "Unavailable"}
+                    {currency} {(variant.sellingPrice / 100).toFixed(2)} ·{" "}
+                    {variant.active ? "Published" : "Unavailable"}
                   </p>
                 </div>
                 <Button
@@ -661,21 +627,15 @@ export function ProductEditor({
                       required={mode === "MADE_TO_ORDER" && variant.active}
                     />
                     <Input
-                      label={
-                        mode === "MADE_TO_ORDER" ? `Selling price (${currency})` : `Price adjustment (${currency})`
-                      }
+                      label={`Selling price (${currency})`}
                       type="number"
-                      min={mode === "MADE_TO_ORDER" ? "0" : undefined}
+                      min="0"
                       step="0.01"
-                      value={(mode === "MADE_TO_ORDER" ? variant.sellingPrice : variant.priceAdjustment) / 100}
+                      value={variant.sellingPrice / 100}
                       onChange={(event) =>
-                        patchPack(
-                          index,
-                          mode === "MADE_TO_ORDER"
-                            ? { sellingPrice: Math.round(Number(event.target.value) * 100) }
-                            : { priceAdjustment: Math.round(Number(event.target.value) * 100) },
-                        )
+                        patchPack(index, { sellingPrice: Math.round(Number(event.target.value) * 100) })
                       }
+                      required={variant.active}
                     />
                   </div>
                   {isCake && (
@@ -855,69 +815,26 @@ export function ProductEditor({
               </fieldset>
             </div>
           </div>
-        ) : (
-          <div className="product-editor-section">
-            <div className="editor-section-head">
-              <div>
-                <h3>Options &amp; flavours</h3>
-                <p className="field-help">
-                  Dropdowns the customer picks on the product page. Size and price stay in{" "}
-                  {mode === "MADE_TO_ORDER" ? "Pack options" : "Variants / packs"} above. These choices don’t change the
-                  price.
-                </p>
-              </div>
-              <Button type="button" variant="secondary" onClick={addOptionGroup}>
-                Add option group
-              </Button>
-            </div>
-            {optionGroups.map((group, index) => (
-              <div className="option-group-editor" key={group.key}>
-                <Input
-                  label="Option name"
-                  value={group.name}
-                  placeholder="Topping"
-                  onChange={(event) => patchOptionGroup(index, { name: event.target.value })}
-                />
-                <Textarea
-                  label="Choices (one per line)"
-                  rows={4}
-                  value={group.choicesText}
-                  placeholder={"Small\nLarge"}
-                  onChange={(event) => patchOptionGroup(index, { choicesText: event.target.value })}
-                />
-                <div className="option-group-actions">
-                  <Checkbox
-                    label="Required"
-                    checked={group.required}
-                    onChange={(event) => patchOptionGroup(index, { required: event.target.checked })}
-                  />
-                  <button type="button" className="text-button" onClick={() => removeOptionGroup(index)}>
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ))}
-            {!optionGroups.length && (
-              <p className="field-help">No options yet. Add one if this product needs customer choices.</p>
-            )}
-          </div>
-        )}
+        ) : null}
 
         <div className="product-editor-section">
-          <h3>Images</h3>
-          <p className="field-help">JPG, PNG, WebP, or AVIF. Maximum 5 MB each and 12 images per product.</p>
+          <h3>Photos</h3>
+          <p className="field-help">
+            Add up to 12 photos. Large phone photos are resized automatically. The first photo is the main one; use the
+            arrows to reorder. New photos upload when you save.
+          </p>
           {images.map((image, index) => (
             <div className="image-editor" key={image.id}>
               <Image src={image.url} alt="" width={64} height={64} unoptimized />
               <Input
-                label="Alternative text"
+                label="Photo description (optional)"
+                placeholder="Describes the photo for screen readers"
                 value={image.altText}
                 onChange={(event) =>
                   setImages((current) =>
                     current.map((item) => (item.id === image.id ? { ...item, altText: event.target.value } : item)),
                   )
                 }
-                required
               />
               <div className="image-order-actions">
                 <button
@@ -950,9 +867,11 @@ export function ProductEditor({
           ))}
           {pendingImages.map((pending, index) => (
             <div className="pending-image" key={pending.key}>
-              <span>{pending.file.name}</span>
+              {/* biome-ignore lint/performance/noImgElement: local blob preview, nothing to optimise */}
+              <img src={pending.previewUrl} alt="" width={64} height={64} />
               <Input
-                label="Alternative text"
+                label="Photo description (optional)"
+                placeholder="Not uploaded yet — saves with the product"
                 value={pending.altText}
                 onChange={(event) =>
                   setPendingImages((current) =>
@@ -961,43 +880,29 @@ export function ProductEditor({
                     ),
                   )
                 }
-                required
               />
-              <button
-                type="button"
-                className="text-button danger-text"
-                onClick={() => setPendingImages((current) => current.filter((item) => item.key !== pending.key))}
-              >
+              <button type="button" className="text-button danger-text" onClick={() => removePending(pending.key)}>
                 Remove
               </button>
             </div>
           ))}
           <Input
-            label="Upload product images"
+            label={preparingPhotos ? "Preparing photos…" : "Add photos"}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
+            accept="image/*"
             multiple
-            disabled={images.length + pendingImages.length >= 12}
+            disabled={preparingPhotos || images.length + pendingImages.length >= 12}
             onChange={(event) => {
-              const remaining = 12 - images.length - pendingImages.length;
-              const selected = Array.from(event.target.files ?? []).slice(0, remaining);
-              const oversized = selected.filter((file) => file.size > MAX_IMAGE_BYTES);
-              const valid = selected.filter((file) => file.size <= MAX_IMAGE_BYTES);
-              if (oversized.length) {
-                const names = oversized.map((file) => file.name).join(", ");
-                setError(
-                  `${names} ${oversized.length === 1 ? "is" : "are"} over 4 MB. Resize or compress before uploading.`,
-                );
-              } else {
-                setError("");
-              }
-              setPendingImages((current) => [
-                ...current,
-                ...valid.map((file) => ({ key: crypto.randomUUID(), file, altText: product?.name ?? "" })),
-              ]);
+              const files = Array.from(event.target.files ?? []);
               event.target.value = "";
+              if (files.length) void addPhotos(files);
             }}
           />
+          {photoError && (
+            <p className="form-error" role="alert">
+              {photoError}
+            </p>
+          )}
         </div>
 
         <div className="product-editor-section">
@@ -1027,8 +932,14 @@ export function ProductEditor({
           <Button variant="ghost" onClick={close}>
             Cancel
           </Button>
-          <Button type="submit" disabled={busy}>
-            {busy ? "Saving…" : product ? "Save changes" : "Create product"}
+          <Button type="submit" disabled={busy || preparingPhotos}>
+            {busy
+              ? progress || "Saving…"
+              : preparingPhotos
+                ? "Preparing photos…"
+                : savedId
+                  ? "Save changes"
+                  : "Create product"}
           </Button>
         </div>
       </form>

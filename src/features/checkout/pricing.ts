@@ -3,6 +3,7 @@ import type { DeliveryTaxMode, TaxSnapshot } from "@/features/tax/types";
 import { isVariantInventoryTracked, isVariantPurchasable } from "@/features/catalog/availability";
 import { lineUnitPrice } from "@/features/catalog/pricing";
 import type { CartLine, Fulfilment, Product } from "@/types";
+import { MIN_LEAD_TIME_HOURS } from "@/validations/product";
 import { formatMoney } from "@/lib/format";
 
 export type CouponRule = {
@@ -124,7 +125,7 @@ export function calculateOrderQuote(input: {
     };
   });
   const preparationHours = Math.max(
-    0,
+    MIN_LEAD_TIME_HOURS,
     ...input.cart.map((line) => input.products.find((product) => product.id === line.productId)?.preparationHours ?? 0),
   );
   const preparationReadyAt = new Date((input.now ?? new Date()).getTime() + preparationHours * 3600000).toISOString();

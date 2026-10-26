@@ -166,15 +166,85 @@ const tables = {
   ],
 };
 const initialTables = structuredClone(tables);
+// Stand-in for the Cloudinary API (CLOUDINARY_UPLOAD_PREFIX points here): uploads, lookups and deletes.
+const cloudinaryImages = new Map();
+const corsHeaders = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "*",
+  "access-control-allow-methods": "GET,POST,OPTIONS",
+};
+const imageFormats = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif" };
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://127.0.0.1");
   const table = url.pathname.split("/").pop();
-  let body = "";
-  for await (const chunk of req) body += chunk;
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const raw = Buffer.concat(chunks);
+  const body = raw.toString();
   const respond = (status, value) => {
-    res.writeHead(status, { "content-type": "application/json" });
+    res.writeHead(status, { "content-type": "application/json", ...corsHeaders });
     res.end(JSON.stringify(value));
   };
+  if (url.pathname.startsWith("/v1_1/")) {
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, corsHeaders);
+      res.end();
+      return;
+    }
+    const [, , cloud, ...rest] = url.pathname.split("/");
+    const action = rest.join("/");
+    if (action === "image/upload" && req.method === "POST") {
+      const form = await new Request("http://fixture.invalid", {
+        method: "POST",
+        headers: { "content-type": req.headers["content-type"] },
+        body: raw,
+      }).formData();
+      const file = form.get("file");
+      const dataUri = typeof file === "string" ? file.match(/^data:([^;]+);base64,(.*)$/) : null;
+      const type = dataUri ? dataUri[1] : file?.type;
+      const bytes = dataUri ? Buffer.from(dataUri[2], "base64").length : (file?.size ?? 0);
+      const format = imageFormats[type];
+      if (!format) {
+        respond(400, { error: { message: "Image format not allowed" } });
+        return;
+      }
+      const deliveryType = form.get("type") || "upload";
+      const publicId = `${form.get("folder")}/${crypto.randomUUID()}`;
+      const image = {
+        public_id: publicId,
+        secure_url: `https://res.cloudinary.com/${cloud}/image/${deliveryType}/v1/${publicId}.${format}`,
+        bytes,
+        format,
+        type: deliveryType,
+      };
+      cloudinaryImages.set(publicId, image);
+      respond(200, image);
+      return;
+    }
+    const lookup = action.match(/^resources\/image\/(upload|authenticated)\/(.+)$/);
+    if (lookup && req.method === "GET") {
+      const image = cloudinaryImages.get(decodeURIComponent(lookup[2]));
+      if (image) respond(200, image);
+      else respond(404, { error: { message: "Resource not found" } });
+      return;
+    }
+    if (action === "image/destroy" && req.method === "POST") {
+      const form = await new Request("http://fixture.invalid", {
+        method: "POST",
+        headers: { "content-type": req.headers["content-type"] },
+        body: raw,
+      }).formData();
+      cloudinaryImages.delete(form.get("public_id"));
+      respond(200, { result: "ok" });
+      return;
+    }
+    respond(404, {});
+    return;
+  }
+  if (url.pathname === "/__fixtures/cloudinary" && req.method === "GET") {
+    respond(200, [...cloudinaryImages.values()]);
+    return;
+  }
   if (url.pathname === "/__fixtures/reset" && req.method === "POST") {
     for (const key of Object.keys(tables)) tables[key] = structuredClone(initialTables[key] ?? []);
     respond(200, {});

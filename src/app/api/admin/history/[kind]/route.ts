@@ -1,3 +1,4 @@
+import { signReferenceImageUrls } from "@/lib/data/reference-images";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 import { getHistoryPage, parseHistoryQuery } from "@/lib/data/admin-history";
 export async function GET(request: Request, context: { params: Promise<{ kind: string }> }) {
@@ -14,11 +15,7 @@ export async function GET(request: Request, context: { params: Promise<{ kind: s
   try {
     const page = await getHistoryPage(auth.db, kind, query);
     const paths = kind === "cakes" ? page.rows.flatMap((row) => (row.referencePath ? [row.referencePath] : [])) : [];
-    const signed = paths.length
-      ? await auth.db.storage.from("cake-reference-images").createSignedUrls(paths, 600)
-      : { data: [], error: null };
-    if (signed.error) throw signed.error;
-    const urls = new Map((signed.data ?? []).map((image) => [image.path, image.signedUrl]));
+    const urls = await signReferenceImageUrls(auth.db, paths, 600);
     page.rows = page.rows.map(({ referencePath, ...row }) => {
       const thumbnailUrl = referencePath ? urls.get(referencePath) : undefined;
       return { ...row, ...(thumbnailUrl ? { thumbnailUrl } : {}) };

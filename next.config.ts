@@ -1,12 +1,15 @@
 import type { NextConfig } from "next";
 
 function productImagePatterns() {
+  // New images are served by Cloudinary; photos uploaded before the move stay on Supabase Storage.
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const patterns = [new URL(`https://res.cloudinary.com/${cloudName || "*"}/image/upload/**`)];
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!supabaseUrl) return [];
+  if (!supabaseUrl) return patterns;
   try {
-    return [new URL("/storage/v1/object/public/product-images/**", supabaseUrl)];
+    return [...patterns, new URL("/storage/v1/object/public/product-images/**", supabaseUrl)];
   } catch {
-    return [];
+    return patterns;
   }
 }
 

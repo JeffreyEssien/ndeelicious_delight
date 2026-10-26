@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { taxClasses } from "@/features/tax/types";
-import { productCategorySchema, productStatusSchema } from "@/validations/product";
+import { MIN_LEAD_TIME_HOURS, productCategorySchema, productStatusSchema } from "@/validations/product";
 
 const text = (maximum: number) => z.string().trim().max(maximum).optional().default("");
 const list = z.array(z.string().trim().min(1).max(100)).max(50).optional().default([]);
@@ -21,7 +21,7 @@ export const productImportSchema = z.object({
   status: productStatusSchema.default("DRAFT"),
   featured: z.boolean().default(false),
   taxClass: z.enum(taxClasses).default("REQUIRES_REVIEW"),
-  preparationHours: z.number().min(0).max(8760).default(0),
+  preparationHours: z.number().min(MIN_LEAD_TIME_HOURS).max(8760).default(MIN_LEAD_TIME_HOURS),
   trackInventory: z.boolean().default(false),
   lowStockThreshold: z.number().int().min(0).max(1_000_000).default(0),
   ingredients: text(5_000),

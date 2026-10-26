@@ -95,10 +95,11 @@ describe("Halifax fulfilment dates", () => {
         now: new Date("2026-10-07T12:00:00Z"),
       }).date,
     ).toBe("2026-10-14");
+    // Even with no product preparation time, every order waits the 24-hour minimum lead time.
     expect(
       earliestFulfilment({ mode: "pickup", schedule, preparationHours: 0, now: new Date("2026-11-02T10:00:00Z") })
         .earliestAt,
-    ).toBe("2026-11-02T13:00:00.000Z");
+    ).toBe("2026-11-03T13:00:00.000Z");
   });
   it("does not invent availability when configuration is absent", () => {
     expect(() => earliestFulfilment({ mode: "pickup", schedule: null, preparationHours: 0 })).toThrow("setup");
@@ -110,8 +111,8 @@ it("keeps minute precision in pickup readiness and combines a minute buffer", ()
   const result = earliestFulfilment({
     mode: "pickup",
     schedule: { ...schedule, pickupPreparationBufferHours: 15 / 60 },
-    preparationHours: 45 / 60,
+    preparationHours: 24 + 45 / 60,
     now,
   });
-  expect(result.earliestAt).toBe("2026-10-07T14:00:00.000Z");
+  expect(result.earliestAt).toBe("2026-10-08T14:00:00.000Z");
 });

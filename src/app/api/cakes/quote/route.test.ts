@@ -15,11 +15,13 @@ const mocks = vi.hoisted(() => ({
   imageRemove: vi.fn(),
 }));
 
+vi.mock("@/lib/cloudinary", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/cloudinary")>()),
+  uploadImage: mocks.imageUpload,
+  deleteImage: mocks.imageRemove,
+}));
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: () => ({
-    storage: {
-      from: () => ({ upload: mocks.imageUpload, remove: mocks.imageRemove }),
-    },
     from: (table: string) => {
       if (table === "customers") {
         return {
@@ -144,8 +146,13 @@ describe("POST /api/cakes/quote", () => {
     mocks.customerUpsert.mockResolvedValue({ data: { id: "customer-id" }, error: null });
     mocks.cakeInsert.mockResolvedValue({ error: null });
     mocks.sendEmail.mockResolvedValue({ sent: true });
-    mocks.imageUpload.mockResolvedValue({ error: null });
-    mocks.imageRemove.mockResolvedValue({ error: null });
+    mocks.imageUpload.mockResolvedValue({
+      publicId: "ndee/cake-references/customer-id/idea",
+      url: "https://res.cloudinary.com/demo/image/authenticated/idea.png",
+      bytes: 4,
+      format: "png",
+    });
+    mocks.imageRemove.mockResolvedValue(undefined);
   });
 
   it("rejects incomplete cake requests", async () => {
@@ -190,9 +197,13 @@ describe("POST /api/cakes/quote", () => {
     const response = await POST(new Request("http://localhost/api/cakes/quote", { method: "POST", body: form }));
 
     expect(response.status).toBe(201);
-    expect(mocks.imageUpload).toHaveBeenCalledOnce();
+    expect(mocks.imageUpload).toHaveBeenCalledWith(
+      expect.any(File),
+      "ndee/cake-references/customer-id",
+      "authenticated",
+    );
     expect(mocks.cakeInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ reference_urls: [expect.stringMatching(/^customer-id\/.+\.png$/)] }),
+      expect.objectContaining({ reference_urls: ["cloudinary:ndee/cake-references/customer-id/idea"] }),
     );
   });
 

@@ -17,4 +17,16 @@ for (const hours of [-1, 8761, 0.001, Number.NaN, Infinity])
 console.log(
   "PASS migration 0039: preserves existing hours; persists whole minutes; rejects negative, excessive, nonfinite and fractional-minute values",
 );
+
+await db.query("update products set preparation_hours=0.25 where id=1");
+await db.query("insert into products values (2, 0.5), (3, 48)");
+await db.exec(fs.readFileSync("db/migrations/0047_minimum_lead_time.sql", "utf8"));
+const leadTimes = (await db.query("select id, preparation_hours from products order by id")).rows;
+assert.deepEqual(
+  leadTimes.map((row) => row.preparation_hours),
+  [24, 24, 48],
+);
+await db.exec("insert into products (id) values (4)");
+assert.equal((await db.query("select preparation_hours from products where id=4")).rows[0].preparation_hours, 24);
+console.log("PASS migration 0047: raises lead times under 24 hours, keeps longer ones, defaults new products to 24");
 await db.close();

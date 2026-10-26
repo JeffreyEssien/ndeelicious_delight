@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  adminSessionCookieOptions,
   createAdminSession,
   fingerprint,
   generateOtpCode,
   hashOtpCode,
+  REMEMBERED_SESSION_TTL_MS,
   readAdminSessionCookie,
+  SESSION_TTL_MS,
   verifyOtpCode,
 } from "./admin-session";
 
@@ -27,6 +30,15 @@ describe("first-party admin authentication primitives", () => {
     expect(readAdminSessionCookie(session.cookieValue, 2_000)?.tokenHash).toBe(session.tokenHash);
     expect(readAdminSessionCookie(`${session.cookieValue}tampered`, 2_000)).toBeNull();
     expect(readAdminSessionCookie(session.cookieValue, session.expiresAt.getTime())).toBeNull();
+  });
+
+  it("keeps remembered sessions for 30 days and drops the cookie expiry otherwise", () => {
+    expect(createAdminSession(0).expiresAt.getTime()).toBe(SESSION_TTL_MS);
+    const remembered = createAdminSession(0, true);
+    expect(remembered.expiresAt.getTime()).toBe(REMEMBERED_SESSION_TTL_MS);
+    expect(readAdminSessionCookie(remembered.cookieValue, 29 * 24 * 60 * 60_000)).not.toBeNull();
+    expect(adminSessionCookieOptions(remembered.expiresAt, true).expires).toEqual(remembered.expiresAt);
+    expect(adminSessionCookieOptions(remembered.expiresAt, false)).not.toHaveProperty("expires");
   });
 
   it("creates stable non-reversible request fingerprints", () => {

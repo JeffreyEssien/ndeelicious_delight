@@ -4,28 +4,34 @@ const mocks = vi.hoisted(() => ({
   productSingle: vi.fn(),
   imageCount: vi.fn(),
   imageSingle: vi.fn(),
-  info: vi.fn(),
-  remove: vi.fn(),
-  getPublicUrl: vi.fn(),
+  insert: vi.fn(),
+  findImage: vi.fn(),
+  deleteImage: vi.fn(),
   readAuditState: vi.fn(),
   recordAudit: vi.fn(),
 }));
 vi.mock("@/lib/audit/admin-audit-state", () => ({ readAdminAuditState: mocks.readAuditState }));
 vi.mock("@/lib/audit/admin-audit", () => ({ recordAdminAudit: mocks.recordAudit }));
+vi.mock("@/lib/cache/storefront", () => ({ invalidateStorefrontCache: vi.fn() }));
+vi.mock("@/lib/cloudinary", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/cloudinary")>()),
+  findImage: mocks.findImage,
+  deleteImage: mocks.deleteImage,
+}));
 const db = {
   from: vi.fn((table: string) => {
     if (table === "products") return { select: () => ({ eq: () => ({ maybeSingle: mocks.productSingle }) }) };
     if (table === "product_images") {
       return {
         select: () => ({ eq: mocks.imageCount }),
-        insert: () => ({ select: () => ({ single: mocks.imageSingle }) }),
+        insert: (row: unknown) => {
+          mocks.insert(row);
+          return { select: () => ({ single: mocks.imageSingle }) };
+        },
       };
     }
     throw new Error(`Unexpected table: ${table}`);
   }),
-  storage: {
-    from: vi.fn(() => ({ info: mocks.info, remove: mocks.remove, getPublicUrl: mocks.getPublicUrl })),
-  },
 };
 vi.mock("@/lib/auth/admin-request", () => ({
   requireAdminRequest: () => Promise.resolve({ ok: true, db, admin: { id: "admin-id" }, sessionId: "session-id" }),
@@ -34,7 +40,13 @@ vi.mock("@/lib/auth/admin-request", () => ({
 import { POST } from "./route";
 
 const PRODUCT_ID = "11111111-1111-4111-8111-111111111111";
-const PATH = `${PRODUCT_ID}/image.png`;
+const PUBLIC_ID = `ndee/products/${PRODUCT_ID}/photo`;
+const uploaded = {
+  publicId: PUBLIC_ID,
+  url: "https://res.cloudinary.com/demo/photo.webp",
+  bytes: 1024,
+  format: "webp",
+};
 
 function request(body: unknown) {
   return new Request("http://localhost/api/admin/products/images", {
@@ -43,22 +55,22 @@ function request(body: unknown) {
     body: JSON.stringify(body),
   });
 }
+const commit = (overrides = {}) =>
+  POST(request({ productId: PRODUCT_ID, publicId: PUBLIC_ID, altText: "Product artwork", sortOrder: 0, ...overrides }));
 
 describe("POST /api/admin/products/images", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.productSingle.mockResolvedValue({ data: { id: "product-id" } });
     mocks.imageCount.mockResolvedValue({ count: 0 });
-    mocks.info.mockResolvedValue({ data: { size: 1024, contentType: "image/png" }, error: null });
-    mocks.remove.mockResolvedValue({ error: null });
-    mocks.getPublicUrl.mockReturnValue({ data: { publicUrl: "https://example.com/product.png" } });
+    mocks.findImage.mockResolvedValue(uploaded);
     mocks.imageSingle.mockResolvedValue({
       data: {
         id: "image-id",
-        url: "https://example.com/product.png",
+        url: uploaded.url,
         alt_text: "Product artwork",
         sort_order: 0,
-        storage_path: PATH,
+        storage_path: `cloudinary:${PUBLIC_ID}`,
       },
       error: null,
     });
@@ -66,47 +78,48 @@ describe("POST /api/admin/products/images", () => {
     mocks.recordAudit.mockResolvedValue(undefined);
   });
 
-  it("rejects a path outside the product's own folder before touching storage", async () => {
-    const response = await POST(
-      request({ productId: PRODUCT_ID, path: "22222222-2222-4222-8222-222222222222/evil.png", altText: "x", sortOrder: 0 }),
-    );
+  it("rejects a photo outside the product's own folder before asking Cloudinary", async () => {
+    const response = await commit({ publicId: "ndee/products/22222222-2222-4222-8222-222222222222/evil" });
 
     expect(response.status).toBe(400);
-    expect(db.storage.from).not.toHaveBeenCalled();
+    expect(mocks.findImage).not.toHaveBeenCalled();
   });
 
-  it("rejects when the uploaded object is missing", async () => {
-    mocks.info.mockResolvedValue({ data: null, error: { message: "not found" } });
-    const response = await POST(request({ productId: PRODUCT_ID, path: PATH, altText: "Product artwork", sortOrder: 0 }));
+  it("rejects when the uploaded photo is missing", async () => {
+    mocks.findImage.mockResolvedValue(null);
+    const response = await commit();
 
     expect(response.status).toBe(400);
     expect(mocks.imageSingle).not.toHaveBeenCalled();
   });
 
-  it("rejects and removes an object whose real type is not allowed", async () => {
-    mocks.info.mockResolvedValue({ data: { size: 1024, contentType: "image/svg+xml" }, error: null });
-    const response = await POST(request({ productId: PRODUCT_ID, path: PATH, altText: "Product artwork", sortOrder: 0 }));
+  it("rejects and removes a photo whose real format is not allowed", async () => {
+    mocks.findImage.mockResolvedValue({ ...uploaded, format: "svg" });
+    const response = await commit();
 
     expect(response.status).toBe(400);
-    expect(mocks.remove).toHaveBeenCalledWith([PATH]);
+    expect(mocks.deleteImage).toHaveBeenCalledWith(PUBLIC_ID);
     expect(mocks.imageSingle).not.toHaveBeenCalled();
   });
 
-  it("rejects and removes an object larger than the limit", async () => {
-    mocks.info.mockResolvedValue({ data: { size: 6 * 1024 * 1024, contentType: "image/png" }, error: null });
-    const response = await POST(request({ productId: PRODUCT_ID, path: PATH, altText: "Product artwork", sortOrder: 0 }));
+  it("rejects and removes a photo larger than the limit", async () => {
+    mocks.findImage.mockResolvedValue({ ...uploaded, bytes: 6 * 1024 * 1024 });
+    const response = await commit();
 
     expect(response.status).toBe(400);
-    expect(mocks.remove).toHaveBeenCalledWith([PATH]);
+    expect(mocks.deleteImage).toHaveBeenCalledWith(PUBLIC_ID);
   });
 
-  it("stores verified metadata and records the audit", async () => {
-    const response = await POST(request({ productId: PRODUCT_ID, path: PATH, altText: "Product artwork", sortOrder: 0 }));
+  it("stores the Cloudinary URL and records the audit", async () => {
+    const response = await commit();
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({
       image: expect.objectContaining({ id: "image-id", altText: "Product artwork" }),
     });
+    expect(mocks.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ url: uploaded.url, storage_path: `cloudinary:${PUBLIC_ID}` }),
+    );
     expect(mocks.recordAudit).toHaveBeenCalledWith(
       db,
       expect.objectContaining({ sessionId: "session-id" }),
@@ -114,12 +127,12 @@ describe("POST /api/admin/products/images", () => {
     );
   });
 
-  it("enforces the server-side image limit and removes the orphaned object", async () => {
+  it("enforces the server-side image limit and removes the orphaned photo", async () => {
     mocks.imageCount.mockResolvedValue({ count: 12 });
-    const response = await POST(request({ productId: PRODUCT_ID, path: PATH, altText: "Product artwork", sortOrder: 0 }));
+    const response = await commit();
 
     expect(response.status).toBe(409);
-    expect(mocks.remove).toHaveBeenCalledWith([PATH]);
+    expect(mocks.deleteImage).toHaveBeenCalledWith(PUBLIC_ID);
     expect(mocks.imageSingle).not.toHaveBeenCalled();
   });
 });

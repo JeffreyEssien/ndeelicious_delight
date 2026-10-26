@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ auth: vi.fn(), upload: vi.fn(), remove: vi.fn(), audit: vi.fn() }));
 vi.mock("@/lib/auth/admin-request", () => ({ requireAdminRequest: mocks.auth }));
 vi.mock("@/lib/audit/admin-audit", () => ({ recordAdminAudit: mocks.audit }));
+vi.mock("@/lib/cloudinary", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/cloudinary")>()),
+  uploadImage: mocks.upload,
+  deleteImage: mocks.remove,
+}));
 import { POST } from "./route";
-const storage = {
-  upload: mocks.upload,
-  remove: mocks.remove,
-  getPublicUrl: () => ({ data: { publicUrl: "https://example.com/cake.jpg" } }),
-};
 function request(type = "image/jpeg", content = "photo") {
   const form = new FormData();
   form.set("file", new File([content], "cake.jpg", { type }));
@@ -17,11 +17,16 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.auth.mockResolvedValue({
     ok: true,
-    db: { storage: { from: () => storage } },
+    db: {},
     admin: { id: "admin" },
     sessionId: "session",
   });
-  mocks.upload.mockResolvedValue({ error: null });
+  mocks.upload.mockResolvedValue({
+    publicId: "ndee/cake-types/cake",
+    url: "https://res.cloudinary.com/demo/cake.jpg",
+    bytes: 5,
+    format: "jpg",
+  });
 });
 describe("cake photo upload", () => {
   it("requires administrator authorization", async () => {
@@ -41,7 +46,8 @@ describe("cake photo upload", () => {
   it("uploads an audited asset without publishing or changing a cake", async () => {
     const response = await POST(request());
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({ url: "https://example.com/cake.jpg" });
+    expect(await response.json()).toEqual({ url: "https://res.cloudinary.com/demo/cake.jpg" });
+    expect(mocks.upload).toHaveBeenCalledWith(expect.any(File), "ndee/cake-types");
     expect(mocks.audit).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -51,6 +57,6 @@ describe("cake photo upload", () => {
   it("removes the uploaded asset if its required audit fails", async () => {
     mocks.audit.mockRejectedValue(new Error("audit unavailable"));
     expect((await POST(request())).status).toBe(503);
-    expect(mocks.remove).toHaveBeenCalledOnce();
+    expect(mocks.remove).toHaveBeenCalledWith("ndee/cake-types/cake");
   });
 });

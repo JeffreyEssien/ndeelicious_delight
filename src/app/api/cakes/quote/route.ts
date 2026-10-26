@@ -12,6 +12,7 @@ import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mail
 import { sendEmailToActiveAdmins } from "@/lib/email/admin-recipients";
 import { getCakeConfiguration } from "@/lib/data/settings";
 import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
+import { deleteImage, imageFolder, toStoragePath, uploadImage } from "@/lib/cloudinary";
 
 const imageExtensions: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -69,16 +70,11 @@ export async function POST(request: Request) {
       .single();
     if (customerError) throw customerError;
     const requestNumber = `CC-${Date.now().toString().slice(-7)}`;
-    const referencePath = reference ? `${customer.id}/${crypto.randomUUID()}.${extension}` : null;
-    if (reference && referencePath) {
-      const { error: uploadError } = await service.storage
-        .from("cake-reference-images")
-        .upload(referencePath, reference, {
-          contentType: reference.type,
-          upsert: false,
-        });
-      if (uploadError) throw uploadError;
-    }
+    // Reference photos are private: stored as authenticated Cloudinary images only the admin can open.
+    const referenceImage = reference
+      ? await uploadImage(reference, imageFolder("cake-references", customer.id), "authenticated")
+      : null;
+    const referencePath = referenceImage ? toStoragePath(referenceImage.publicId) : null;
     const { error } = await service.from("custom_cake_orders").insert({
       request_number: requestNumber,
       customer_id: customer.id,
@@ -100,7 +96,7 @@ export async function POST(request: Request) {
       customer_note: parsed.data.customerNote,
     });
     if (error) {
-      if (referencePath) await service.storage.from("cake-reference-images").remove([referencePath]);
+      if (referenceImage) await deleteImage(referenceImage.publicId, "authenticated");
       throw error;
     }
     const { t, frame } = await getCustomerEmailText(service);

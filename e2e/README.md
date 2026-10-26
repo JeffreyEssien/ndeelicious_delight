@@ -26,6 +26,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=fixture-key \
 SUPABASE_SERVICE_ROLE_KEY=fixture-service-key \
 ADMIN_AUTH_SECRET=isolated-ndee-browser-secret-32-characters \
 NEXT_PUBLIC_SITE_URL=http://localhost:3100 \
+CLOUDINARY_CLOUD_NAME=fixture CLOUDINARY_API_KEY=fixture-key CLOUDINARY_API_SECRET=fixture-secret \
+CLOUDINARY_UPLOAD_PREFIX=http://127.0.0.1:4545 \
 STRIPE_SECRET_KEY= SMTP_HOST= SMTP_USER= SMTP_PASSWORD= npm run dev -- --port 3100
 ```
 

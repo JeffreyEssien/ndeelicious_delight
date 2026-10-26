@@ -21,6 +21,7 @@
     "check": "npm run quality && npm run test:css && npm run test:regression && npm run test:functional && npm run test:structural",
     "admin:bootstrap": "node scripts/bootstrap-admin.mjs",
     "db:seed": "node scripts/seed-catalog.mjs",
+    "images:migrate": "node scripts/migrate-images-to-cloudinary.mjs",
     "start": "next start",
     "test:db:local": "node scripts/test-cake-type-migrations.mjs && node scripts/test-commerce-migrations.mjs && node scripts/test-product-packs.mjs",
     "test:admin:db": "node scripts/test-admin-history.mjs && node scripts/test-admin-safe-operations.mjs && node scripts/test-admin-inventory-pagination.mjs && node scripts/test-admin-cake-publication.mjs && node scripts/test-admin-dashboard.mjs"
@@ -28,6 +29,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
+    "cloudinary": "2.11.0",
     "fflate": "^0.8.3",
     "fontkit": "^2.0.4",
     "next": "16.3.8",
