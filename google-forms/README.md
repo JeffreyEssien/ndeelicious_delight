@@ -8,9 +8,10 @@ A Google Form that creates shop products. Each response is sent by a Google Apps
 | `POST /api/integrations/products` | JSON (prices in dollars) | Creates the product through the same `admin_save_product` RPC and validation as the admin editor |
 | `POST /api/integrations/products/images` | multipart: `productId`, `altText`, `sortOrder`, `file` | Adds one photo (same rules as the admin upload) |
 
-Both require `Authorization: Bearer <PRODUCT_IMPORT_API_KEY>`. Changes are recorded in the admin audit
-log as the admin named by `PRODUCT_IMPORT_ADMIN_EMAIL`, through a five-minute session that is revoked
-after every request.
+Both require `Authorization: Bearer <PRODUCT_IMPORT_API_KEY>` and `X-Submitted-By: <admin email>`.
+The email must be in `PRODUCT_IMPORT_ADMIN_EMAILS` and belong to an active admin; the change is recorded
+in the admin audit log as that admin, through a five-minute session that is revoked after every request.
+When only one admin is listed, `X-Submitted-By` may be left out.
 
 ## 1. Configure the app
 
@@ -18,7 +19,7 @@ Add to the Vercel project (Production) and redeploy:
 
 ```
 PRODUCT_IMPORT_API_KEY=<at least 32 random characters, e.g. `openssl rand -hex 32`>
-PRODUCT_IMPORT_ADMIN_EMAIL=<email of an active admin>
+PRODUCT_IMPORT_ADMIN_EMAILS=<admin emails, comma separated, e.g. owner@example.com,manager@example.com>
 ```
 
 ## 2. Create the form
@@ -35,8 +36,10 @@ PRODUCT_IMPORT_ADMIN_EMAIL=<email of an active admin>
    *Image* files only, up to 10 files, max 10 MB each. (Apps Script cannot create this question type.)
    Photos above 4 MB are skipped because Vercel rejects larger request bodies.
 
-Only share the form with people who should add products: anyone who can submit it can publish to the shop.
-File upload questions already require respondents to sign in with Google.
+The form records each respondent's verified Google email and sends it as `X-Submitted-By`, so only
+the admins listed in `PRODUCT_IMPORT_ADMIN_EMAILS` can add products, each under their own name. A response
+from anyone else is rejected, and the result email says so. Each admin must use the Google account whose
+email matches their admin login.
 
 ## Answer format
 
@@ -55,7 +58,8 @@ After every submission an email reports the created product, or the reason it wa
 
 ```bash
 curl -X POST "$SITE/api/integrations/products" \
-  -H "Authorization: Bearer $PRODUCT_IMPORT_API_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $PRODUCT_IMPORT_API_KEY" -H "X-Submitted-By: owner@example.com" \
+  -H "Content-Type: application/json" \
   -d '{"name":"Vanilla Cupcakes","category":"PASTRIES","shortDescription":"Soft vanilla cupcakes.",
        "description":"Baked fresh with real vanilla.","price":18,"status":"DRAFT",
        "variants":[{"name":"Box of 6","price":18,"packQuantity":6},{"name":"Box of 12","price":32.5,"packQuantity":12}]}'

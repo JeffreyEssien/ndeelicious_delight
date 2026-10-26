@@ -2,6 +2,8 @@
  * Ndeeelicious product upload form (Google Apps Script).
  *
  * 1. Set Script properties API_BASE_URL and API_KEY (see README.md), optionally NOTIFY_EMAIL.
+ *    Only admins listed in the app's PRODUCT_IMPORT_ADMIN_EMAILS can submit; the form records each
+ *    respondent's verified Google email and the shop credits the product to that admin.
  * 2. Run createProductForm() once. It builds the form and installs the submit trigger.
  * 3. In the form editor, add a "File upload" question titled exactly "Photos" (Apps Script cannot create one).
  *
@@ -70,7 +72,7 @@ function createProductForm() {
         "Choose Draft to check the product in the admin before it goes live.",
     )
     .setConfirmationMessage("Thanks! The product is being added – you will get an email with the result.")
-    .setCollectEmail(true);
+    .setEmailCollectionType(FormApp.EmailCollectionType.VERIFIED);
 
   form.addTextItem().setTitle(TITLES.name).setRequired(true);
   form
@@ -168,12 +170,14 @@ function onProductSubmit(e) {
   const submitter = e.response.getRespondentEmail();
   const name = text_(answers[TITLES.name]);
   try {
+    if (!submitter) throw new Error("The form did not record your email. Sign in to Google and submit again.");
     const product = buildProduct_(answers);
-    const created = request_("/api/integrations/products", {
-      contentType: "application/json",
-      payload: JSON.stringify(product),
-    });
-    const imageErrors = uploadImages_(created.id, product.name, answers);
+    const created = request_(
+      "/api/integrations/products",
+      { contentType: "application/json", payload: JSON.stringify(product) },
+      submitter,
+    );
+    const imageErrors = uploadImages_(created.id, product.name, answers, submitter);
     notify_(
       "Product added: " + name,
       [
@@ -237,7 +241,7 @@ function parseVariants_(value) {
   });
 }
 
-function uploadImages_(productId, productName, answers) {
+function uploadImages_(productId, productName, answers, submitter) {
   const errors = [];
   const sources = []
     .concat(answers[TITLES.photos] || []) // File upload answers are Drive file IDs
@@ -254,7 +258,7 @@ function uploadImages_(productId, productName, answers) {
           sortOrder: String(index),
           file: blob,
         },
-      });
+      }, submitter);
     } catch (error) {
       errors.push(String(source).slice(0, 120) + ": " + error.message);
     }
@@ -273,11 +277,12 @@ function imageBlob_(source) {
   return response.getBlob();
 }
 
-function request_(path, options) {
+function request_(path, options, submitter) {
   const config = config_();
+  const headers = { Authorization: "Bearer " + config.apiKey, "X-Submitted-By": submitter };
   const response = UrlFetchApp.fetch(
     config.baseUrl + path,
-    Object.assign({ method: "post", muteHttpExceptions: true, headers: { Authorization: "Bearer " + config.apiKey } }, options),
+    Object.assign({ method: "post", muteHttpExceptions: true, headers: headers }, options),
   );
   let body = {};
   try {

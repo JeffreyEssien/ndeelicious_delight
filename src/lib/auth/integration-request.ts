@@ -16,13 +16,26 @@ function keyMatches(request: Request) {
 
 const failure = (error: string, status: number) => Response.json({ error }, { status });
 
+function adminEmails() {
+  return (process.env.PRODUCT_IMPORT_ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 // Server-to-server callers (the Google Form import) cannot hold an admin cookie, so they present
-// PRODUCT_IMPORT_API_KEY instead. Changes are attributed to PRODUCT_IMPORT_ADMIN_EMAIL through a
-// throwaway admin session, which keeps the audit trail's session requirement intact.
+// PRODUCT_IMPORT_API_KEY instead and name the submitting admin in X-Submitted-By. That email must be
+// listed in PRODUCT_IMPORT_ADMIN_EMAILS; with a single listed admin the header may be left out.
+// Changes are attributed through a throwaway admin session, which keeps the audit trail's
+// session requirement intact.
 export async function withIntegrationAdmin(request: Request, run: (auth: IntegrationAuth) => Promise<Response>) {
   if (!keyMatches(request)) return failure("Unauthorized.", 401);
-  const email = process.env.PRODUCT_IMPORT_ADMIN_EMAIL?.trim().toLowerCase();
-  if (!email) return failure("Product import is not configured.", 503);
+  const allowed = adminEmails();
+  if (!allowed.length) return failure("Product import is not configured.", 503);
+  const submittedBy = request.headers.get("x-submitted-by")?.trim().toLowerCase();
+  const email = submittedBy || (allowed.length === 1 ? allowed[0] : "");
+  if (!email) return failure("Say which admin is submitting (X-Submitted-By).", 400);
+  if (!allowed.includes(email)) return failure(`${email} is not allowed to add products.`, 403);
   let db: ReturnType<typeof createServiceClient>;
   try {
     db = createServiceClient();
@@ -35,7 +48,7 @@ export async function withIntegrationAdmin(request: Request, run: (auth: Integra
     .eq("email", email)
     .eq("active", true)
     .maybeSingle();
-  if (!admin) return failure("The product import admin account is missing or inactive.", 503);
+  if (!admin) return failure(`${email} is not an active admin.`, 403);
   const { data: session, error } = await db
     .from("admin_sessions")
     .insert({

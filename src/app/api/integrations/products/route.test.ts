@@ -49,10 +49,10 @@ const submission = {
     { name: "Box of 12", price: 32.5, packQuantity: 12 },
   ],
 };
-const request = (body: unknown, key = KEY) =>
+const request = (body: unknown, key = KEY, submittedBy: string | null = "Second@Example.com") =>
   new Request("https://example.com/api/integrations/products", {
     method: "POST",
-    headers: { authorization: `Bearer ${key}` },
+    headers: { authorization: `Bearer ${key}`, ...(submittedBy ? { "x-submitted-by": submittedBy } : {}) },
     body: JSON.stringify(body),
   });
 
@@ -60,7 +60,7 @@ describe("Google Form product import", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("PRODUCT_IMPORT_API_KEY", KEY);
-    vi.stubEnv("PRODUCT_IMPORT_ADMIN_EMAIL", "Owner@Example.com");
+    vi.stubEnv("PRODUCT_IMPORT_ADMIN_EMAILS", "Owner@Example.com, second@example.com");
     mocks.admin.mockResolvedValue({ data: { id: "admin-id", email: "owner@example.com", active: true } });
     mocks.taken.mockResolvedValue({ data: [{ slug: "vanilla-cupcakes" }] });
     mocks.rpc.mockResolvedValue({ data: "product-id", error: null });
@@ -70,6 +70,19 @@ describe("Google Form product import", () => {
   it("rejects a missing or wrong API key", async () => {
     expect((await POST(request(submission, "wrong"))).status).toBe(401);
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("only accepts admins on the allowlist", async () => {
+    const outsider = await POST(request(submission, KEY, "someone@example.com"));
+    expect(outsider.status).toBe(403);
+    expect((await POST(request(submission, KEY, null))).status).toBe(400);
+    expect(mocks.admin).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("uses the only listed admin when no submitter is named", async () => {
+    vi.stubEnv("PRODUCT_IMPORT_ADMIN_EMAILS", "owner@example.com");
+    expect((await POST(request(submission, KEY, null))).status).toBe(201);
   });
 
   it("converts dollars to cents, picks a free slug and revokes its session", async () => {
