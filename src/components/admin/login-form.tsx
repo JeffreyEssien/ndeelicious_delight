@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/primitives";
+import { Checkbox, Input } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 
 type Step = "email" | "code";
@@ -12,6 +12,7 @@ export function LoginForm({ initialError = "" }: { initialError?: string }) {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
+  const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(initialError);
   const [message, setMessage] = useState("");
@@ -54,7 +55,7 @@ export function LoginForm({ initialError = "" }: { initialError?: string }) {
       const response = await fetch("/api/auth/admin/verify-otp", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, token }),
+        body: JSON.stringify({ email, token, remember }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "We couldn’t verify that code.");
@@ -96,6 +97,12 @@ export function LoginForm({ initialError = "" }: { initialError?: string }) {
           onChange={(event) => setToken(event.target.value.replace(/\D/g, "").slice(0, 6))}
           className="otp-field"
           placeholder="000000"
+        />
+        <Checkbox
+          label="Keep me signed in for 30 days"
+          name="remember"
+          checked={remember}
+          onChange={(event) => setRemember(event.target.checked)}
         />
         {message && <p className="login-message">{message}</p>}
         {error && (

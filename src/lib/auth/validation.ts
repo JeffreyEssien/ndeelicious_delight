@@ -5,7 +5,11 @@ export const requestOtpSchema = z.object({
 });
 
 export const verifyOtpSchema = requestOtpSchema.extend({
-  token: z.string().trim().regex(/^\d{6}$/),
+  token: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/),
+  remember: z.boolean().optional().default(false),
 });
 
 export function isSameOrigin(request: Request) {

@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (!consumed) return invalidCode();
 
-    const session = createAdminSession(now.getTime());
+    const session = createAdminSession(now.getTime(), parsed.data.remember);
     const { error: sessionError } = await db.from("admin_sessions").insert({
       admin_id: admin.id,
       token_hash: session.tokenHash,
@@ -85,7 +85,11 @@ export async function POST(request: Request) {
     if (sessionError) throw sessionError;
 
     const response = NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
-    response.cookies.set(ADMIN_SESSION_COOKIE, session.cookieValue, adminSessionCookieOptions(session.expiresAt));
+    response.cookies.set(
+      ADMIN_SESSION_COOKIE,
+      session.cookieValue,
+      adminSessionCookieOptions(session.expiresAt, parsed.data.remember),
+    );
     return response;
   } catch (error) {
     logError("admin.otp_verification_failed", error);

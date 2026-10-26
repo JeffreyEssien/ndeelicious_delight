@@ -3,6 +3,8 @@ import { createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto
 export const ADMIN_SESSION_COOKIE = "ndee_admin_session";
 export const OTP_TTL_MS = 10 * 60_000;
 export const SESSION_TTL_MS = 8 * 60 * 60_000;
+// "Keep me signed in" sessions last 30 days; others end after 8 hours or when the browser closes.
+export const REMEMBERED_SESSION_TTL_MS = 30 * 24 * 60 * 60_000;
 export const OTP_MAX_ATTEMPTS = 5;
 
 function secret() {
@@ -36,9 +38,9 @@ export function fingerprint(value: string) {
   return hmac(`fingerprint:${value.trim().toLowerCase()}`);
 }
 
-export function createAdminSession(now = Date.now()) {
+export function createAdminSession(now = Date.now(), remember = false) {
   const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(now + SESSION_TTL_MS);
+  const expiresAt = new Date(now + (remember ? REMEMBERED_SESSION_TTL_MS : SESSION_TTL_MS));
   const expires = Math.floor(expiresAt.getTime() / 1000);
   const payload = `${token}.${expires}`;
   return {
@@ -59,13 +61,14 @@ export function readAdminSessionCookie(value: string | undefined, now = Date.now
   return { tokenHash: hmac(`session:${token}`), expiresAt: new Date(expires * 1000) };
 }
 
-export function adminSessionCookieOptions(expires: Date) {
+// Without "keep me signed in" the cookie has no expiry, so the browser drops it when it closes.
+export function adminSessionCookieOptions(expires: Date, persistent = true) {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict" as const,
     path: "/",
-    expires,
+    ...(persistent ? { expires } : {}),
     priority: "high" as const,
   };
 }
