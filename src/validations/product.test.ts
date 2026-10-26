@@ -27,14 +27,21 @@ describe("productInputSchema", () => {
     expect(categorySlug(valid.category)).toBe("pastries");
   });
 
-  it("requires descriptions for non-cakes but allows cakes to omit them", () => {
-    const blank = { ...valid, shortDescription: "", description: "" };
+  it("lets a hidden draft be saved half-finished", () => {
+    expect(
+      productInputSchema.safeParse({ ...valid, shortDescription: "", description: "", variants: [] }).success,
+    ).toBe(true);
+  });
+
+  it("requires descriptions for visible non-cakes but allows cakes to omit them", () => {
+    const blank = { ...valid, status: "ACTIVE" as const, shortDescription: "", description: "" };
     expect(productInputSchema.safeParse(blank).success).toBe(false);
     expect(productInputSchema.safeParse({ ...blank, category: "CUSTOM_CAKES" }).success).toBe(true);
   });
 
   it("rejects unsafe slugs and products without variants", () => {
-    expect(productInputSchema.safeParse({ ...valid, slug: "../Secret", variants: [] }).success).toBe(false);
+    expect(productInputSchema.safeParse({ ...valid, slug: "../Secret" }).success).toBe(false);
+    expect(productInputSchema.safeParse({ ...valid, status: "ACTIVE", variants: [] }).success).toBe(false);
   });
 
   it("rejects fractional monetary values", () => {

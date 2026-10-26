@@ -99,14 +99,17 @@ export const productInputSchema = z
   })
   .superRefine((product, context) => {
     const base = product.discountPrice ?? product.price;
+    // Hidden products (drafts, archived) may be saved half-finished so work is never lost; the rules
+    // below that only matter to customers apply once the product is visible.
+    const visible = isVisibleStatus(product.status);
     // Non-cake products still need both descriptions; cakes may leave them blank.
-    if (product.category !== "CUSTOM_CAKES") {
+    if (visible && product.category !== "CUSTOM_CAKES") {
       if (product.shortDescription.length < 2)
         context.addIssue({ code: "custom", path: ["shortDescription"], message: "Add a short description." });
       if (product.description.length < 2)
         context.addIssue({ code: "custom", path: ["description"], message: "Add a full description." });
     }
-    if (product.shoppingMode !== "MADE_TO_ORDER" && !product.variants.length)
+    if (visible && product.shoppingMode !== "MADE_TO_ORDER" && !product.variants.length)
       context.addIssue({ code: "custom", path: ["variants"], message: "Add at least one variant." });
     const ids = product.variants.flatMap((v) => (v.id ? [v.id] : []));
     if (new Set(ids).size !== ids.length)
@@ -149,11 +152,53 @@ export const productInputSchema = z
       });
     }
     if (product.status === "ACTIVE" && !product.variants.some((variant) => variant.active)) {
-      context.addIssue({ code: "custom", path: ["variants"], message: "An active product needs an active variant." });
+      context.addIssue({
+        code: "custom",
+        path: ["variants"],
+        message: "Publish at least one pack or size (with a name and price) before making the product visible.",
+      });
     }
   });
 
 export type ProductInput = z.infer<typeof productInputSchema>;
+
+export const isVisibleStatus = (status: z.infer<typeof productStatusSchema>) =>
+  status === "ACTIVE" || status === "OUT_OF_STOCK";
+
+const FIELD_LABELS: Record<string, string> = {
+  name: "Product name",
+  slug: "Product link",
+  shortDescription: "Short description",
+  description: "Full description",
+  ingredients: "Ingredients",
+  allergens: "Allergens",
+  storageInstructions: "Storage instructions",
+  preparationInstructions: "Preparation instructions",
+  lowStockThreshold: "Low-stock alert",
+  preparationHours: "Lead time",
+  optionGroups: "Flavours and fillings",
+  cakeLayers: "Cake layers",
+  images: "Photos",
+  price: "Price",
+};
+
+// Zod's own wording ("Too big: expected string to have <=500 characters") means nothing to a shop owner.
+function friendlyIssue(issue: z.core.$ZodIssue) {
+  if (!/^(too (big|small)|invalid|expected)/i.test(issue.message)) return issue.message;
+  const [field, index] = issue.path;
+  const label =
+    field === "variants" && typeof index === "number"
+      ? `Pack or size ${index + 1}`
+      : (FIELD_LABELS[String(field)] ?? "A field");
+  if (issue.code === "too_big") return `${label} is too long. Shorten it.`;
+  if (issue.code === "too_small") return `${label} is empty or too short.`;
+  return `${label} has a value that could not be read. Check it and try again.`;
+}
+
+// Every problem with a product, in words the owner can act on, so she can fix them all in one go.
+export function productIssues(error: z.ZodError) {
+  return [...new Set(error.issues.map(friendlyIssue))];
+}
 
 export function categorySlug(category: z.infer<typeof productCategorySchema>) {
   return {

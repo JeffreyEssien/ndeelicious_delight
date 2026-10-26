@@ -7,7 +7,7 @@ import { FulfilmentSettings } from "./fulfilment-settings";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type CSSProperties, type FormEvent, useEffect, useState } from "react";
+import { type CSSProperties, type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import type {
   AdminAuditLog,
   AdminCakeRequest,
@@ -132,6 +132,23 @@ export function AdminPortal({
   const [products, setProducts] = useState(initialProducts);
   const [zones, setZones] = useState(initialZones);
   const [editor, setEditor] = useState<Product | null>();
+  // A stray click outside the product drawer or an Escape press should not throw away work. Unsaved
+  // changes are also backed up on this device and offered back when the product is opened again.
+  const editorDirty = useRef(false);
+  const trackEditorDirty = useCallback((dirty: boolean) => {
+    editorDirty.current = dirty;
+  }, []);
+  const closeEditor = () => {
+    if (
+      editorDirty.current &&
+      !window.confirm(
+        "Close without saving? Your changes are kept on this device. Open the product again to restore them. (Photos not yet uploaded will need adding again.)",
+      )
+    )
+      return;
+    editorDirty.current = false;
+    setEditor(undefined);
+  };
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ALL");
   const [zoneBusy, setZoneBusy] = useState(false);
@@ -272,7 +289,7 @@ export function AdminPortal({
       {editor !== undefined && (
         <ModalOverlay
           open
-          onClose={() => setEditor(undefined)}
+          onClose={closeEditor}
           className="admin-drawer product-editor"
           scrimClassName="admin-scrim"
           ariaLabel={editor ? `Edit ${editor.name}` : "Add product"}
@@ -288,11 +305,13 @@ export function AdminPortal({
             sizeLibrary={initialCakeConfiguration.options
               .filter((option) => option.type === "size" && option.active)
               .map((option) => ({ name: option.name, price: option.priceAdjustment }))}
-            close={() => setEditor(undefined)}
+            close={closeEditor}
+            onDirtyChange={trackEditorDirty}
             onSaved={(updated) => {
               setProducts((current) =>
                 current.map((product) => (product.id === editor?.id ? { ...product, ...updated } : product)),
               );
+              editorDirty.current = false;
               setEditor(undefined);
               notify("Product saved. Storefront visibility is up to date.");
               router.refresh();

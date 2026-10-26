@@ -53,10 +53,13 @@ test("prices live on packs, options only on cakes, and every product starts at a
   }
   await editor.getByLabel("Lead time (hours)").fill("12");
   await editor.getByRole("button", { name: "Create product", exact: true }).click();
-  // The browser blocks a lead time under 24 hours before anything is sent.
-  await expect(editor).toBeVisible();
+  // A lead time under 24 hours cannot go live; the work is kept as a hidden draft with the reason.
+  await expect(editor.getByRole("status").filter({ hasText: "Saved as a hidden draft" })).toContainText(
+    "Lead time must be at least 24 hours.",
+  );
   await editor.getByLabel("Lead time (hours)").fill("48");
-  await editor.getByRole("button", { name: "Create product", exact: true }).click();
+  await editor.getByLabel("Storefront visibility").selectOption("ACTIVE");
+  await editor.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(editor).toBeHidden();
 
   const row = page.locator("tr").filter({ hasText: "Fixture Range Cupcakes" });

@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { CakeSizeLayer, Product, ProductImage, ProductStatus, ProductVariant } from "@/types";
-import { MIN_LEAD_TIME_HOURS } from "@/validations/product";
+import { isVisibleStatus, MIN_LEAD_TIME_HOURS, productInputSchema, productIssues } from "@/validations/product";
 import { Button, Checkbox, Input, Select, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 import { normalizeCakeSizeLayers, variantPrice } from "@/features/catalog/pricing";
@@ -31,12 +31,75 @@ type PendingImage = {
 const UPLOAD_CONCURRENCY = 3;
 type DraftOptionGroup = { key: string; id: string; name: string; choicesText: string; required: boolean };
 
+// Accents are dropped ("Ẹ̀wà Agoyin" → "ewa-agoyin"). A name with no letters or numbers at all (an emoji)
+// still gets a usable link.
 function slugify(value: string) {
-  return value
+  const slug = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replace(/^-|-$/g, "")
+    .slice(0, 150)
+    .replace(/-$/, "");
+  return slug.length >= 2 ? slug : `product-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+// A whole number within range, whatever was typed (blank, "abc", -3, 2.5).
+const wholeNumber = (value: unknown, min: number, max: number, fallback = min) => {
+  const number = Math.floor(Number(value));
+  return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+};
+// A money amount in cents, never negative.
+const cents = (value: string) => Math.max(0, Math.round((Number(value) || 0) * 100));
+
+const OFFLINE_MESSAGE =
+  "Could not reach the website. Check your internet connection and press Save again. Nothing you typed is lost.";
+const SIGNED_OUT_MESSAGE =
+  "You were signed out. Log in again in a new tab, then come back here and press Save. Your changes are still here.";
+
+// fetch that turns a dropped connection or an expired login into a message the owner can act on.
+async function send(url: string, init: RequestInit) {
+  let response: Response;
+  try {
+    response = await fetch(url, init);
+  } catch {
+    throw new Error(OFFLINE_MESSAGE);
+  }
+  if (response.status === 401) throw new Error(SIGNED_OUT_MESSAGE);
+  return response;
+}
+
+// Everything typed into the editor, kept on this device until it is saved, so a closed drawer, a
+// refreshed page, a lost connection or a failed save never means starting again.
+type EditorBackup = {
+  savedAt: number;
+  fields: Record<string, string | boolean>;
+  category: string;
+  collectionId: string;
+  leadTimeHours: string;
+  variants: DraftVariant[];
+  imageOrder: { id: string; altText: string }[];
+  cakeFlavours: string[];
+  cakeFillings: string[];
+};
+const backupKey = (productId: string) => `ndee:product-editor:${productId || "new"}`;
+function readBackup(key: string): EditorBackup | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as EditorBackup) : null;
+  } catch {
+    return null;
+  }
+}
+function writeBackup(key: string, backup: EditorBackup | null) {
+  try {
+    if (backup) localStorage.setItem(key, JSON.stringify(backup));
+    else localStorage.removeItem(key);
+  } catch {
+    // Storage can be full or blocked (private browsing); the editor still works without a backup.
+  }
 }
 
 // Infrastructure in front of the app (e.g. Vercel's body-size cap) can reply with plain text such as
@@ -74,10 +137,29 @@ function postWithProgress(url: string, body: FormData, onProgress: (fraction: nu
   });
 }
 
+// The values of the form's plain fields, by name.
+function formFields(form: HTMLFormElement) {
+  const fields: EditorBackup["fields"] = {};
+  for (const element of Array.from(form.elements)) {
+    if (
+      !(element instanceof HTMLInputElement) &&
+      !(element instanceof HTMLTextAreaElement) &&
+      !(element instanceof HTMLSelectElement)
+    )
+      continue;
+    // The category is held in state; files cannot be stored.
+    if (!element.name || element.name === "category" || element.type === "file") continue;
+    fields[element.name] =
+      element instanceof HTMLInputElement && element.type === "checkbox" ? element.checked : element.value;
+  }
+  return fields;
+}
+
 export function ProductEditor({
   product,
   close,
   onSaved,
+  onDirtyChange,
   flavourLibrary: initialFlavours = [],
   fillingLibrary: initialFillings = [],
   sizeLibrary: initialSizes = [],
@@ -85,6 +167,7 @@ export function ProductEditor({
   product: Product | null;
   close: () => void;
   onSaved: (updated: Partial<Product>) => void;
+  onDirtyChange?: (dirty: boolean) => void;
   flavourLibrary?: string[];
   fillingLibrary?: string[];
   sizeLibrary?: { name: string; price: number }[];
@@ -128,7 +211,13 @@ export function ProductEditor({
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
+  // Problems to fix before the product can be shown to customers, listed together.
+  const [issues, setIssues] = useState<string[]>([]);
+  const [notice, setNotice] = useState("");
+  const [offerDraftSave, setOfferDraftSave] = useState(false);
   const [savedId, setSavedId] = useState(product?.id ?? "");
+  // The status customers currently see, as last saved.
+  const [liveStatus, setLiveStatus] = useState<ProductStatus>(product?.status ?? "DRAFT");
   const [variants, setVariants] = useState<DraftVariant[]>(
     product
       ? product.variants.map((variant) => ({
@@ -216,6 +305,123 @@ export function ProductEditor({
     return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
   }
 
+  // Autosave to this device: every change is written to a backup after a short pause, and the backup is
+  // cleared once the server has the product. Opening the editor again offers to restore it.
+  const formRef = useRef<HTMLFormElement>(null);
+  const [fieldsVersion, setFieldsVersion] = useState(0);
+  const [dirty, setDirty] = useState(false);
+  const baselineRef = useRef<string | null>(null);
+  const rebaselineRef = useRef(false);
+  const [backupOffer, setBackupOffer] = useState<EditorBackup | null>(null);
+  const [restoreFields, setRestoreFields] = useState<EditorBackup["fields"] | null>(null);
+  const currentKey = backupKey(savedId);
+
+  useEffect(() => {
+    setBackupOffer(readBackup(backupKey(product?.id ?? "")));
+  }, [product?.id]);
+
+  useEffect(() => {
+    // Wait for fields and lists restored from a backup to reach the form before reading it.
+    void fieldsVersion;
+    const read = (form: HTMLFormElement): Omit<EditorBackup, "savedAt"> => ({
+      fields: formFields(form),
+      category,
+      collectionId,
+      leadTimeHours,
+      variants,
+      imageOrder: images.map((image) => ({ id: image.id, altText: image.altText })),
+      cakeFlavours,
+      cakeFillings,
+    });
+    // The starting point is read straight away on opening, before anything can be typed.
+    if (baselineRef.current === null && formRef.current) {
+      baselineRef.current = JSON.stringify(read(formRef.current));
+      return;
+    }
+    const timer = setTimeout(() => {
+      const form = formRef.current;
+      if (!form) return;
+      const snapshot = read(form);
+      const json = JSON.stringify(snapshot);
+      if (baselineRef.current === null || rebaselineRef.current) {
+        baselineRef.current = json;
+        rebaselineRef.current = false;
+      }
+      const changed = json !== baselineRef.current;
+      setDirty(changed);
+      if (changed) writeBackup(currentKey, { ...snapshot, savedAt: Date.now() });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [fieldsVersion, category, collectionId, leadTimeHours, variants, images, cakeFlavours, cakeFillings, currentKey]);
+
+  useEffect(() => {
+    onDirtyChange?.(dirty || pendingImages.length > 0);
+  }, [dirty, pendingImages.length, onDirtyChange]);
+
+  // Warn before a refresh or closed tab while something is unsaved.
+  useEffect(() => {
+    if (!dirty && !pendingImages.length) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, pendingImages.length]);
+
+  // Called once the server has everything: the current state becomes the new starting point.
+  function markSaved(previousKey: string) {
+    writeBackup(previousKey, null);
+    rebaselineRef.current = true;
+    setDirty(false);
+    setFieldsVersion((version) => version + 1);
+  }
+
+  function restoreBackup(backup: EditorBackup) {
+    setCategory(backup.category);
+    setCollectionId(backup.collectionId);
+    setLeadTimeHours(backup.leadTimeHours);
+    // If stock moved on the server since the backup (an order came in), take the current stock so the save
+    // is not refused as out of date.
+    setVariants((current) => {
+      const fresh = new Map(current.map((variant) => [variant.id, variant]));
+      return backup.variants.map((variant) => {
+        const latest = variant.id ? fresh.get(variant.id) : undefined;
+        return latest && latest.expectedStockQuantity !== variant.expectedStockQuantity
+          ? { ...variant, stockQuantity: latest.stockQuantity, expectedStockQuantity: latest.expectedStockQuantity }
+          : variant;
+      });
+    });
+    setCakeFlavours(backup.cakeFlavours);
+    setCakeFillings(backup.cakeFillings);
+    // Photos are saved as soon as they upload, so only their order and descriptions come from the backup.
+    setImages((current) => {
+      const byId = new Map(current.map((image) => [image.id, image]));
+      const ordered = (backup.imageOrder ?? []).flatMap(({ id, altText }) => {
+        const image = byId.get(id);
+        byId.delete(id);
+        return image ? [{ ...image, altText }] : [];
+      });
+      return [...ordered, ...byId.values()];
+    });
+    setRestoreFields(backup.fields);
+    setBackupOffer(null);
+  }
+
+  useEffect(() => {
+    const form = formRef.current;
+    if (!restoreFields || !form) return;
+    for (const [name, value] of Object.entries(restoreFields)) {
+      const element = form.elements.namedItem(name);
+      if (element instanceof HTMLInputElement && element.type === "checkbox") element.checked = Boolean(value);
+      else if (
+        element instanceof HTMLInputElement ||
+        element instanceof HTMLTextAreaElement ||
+        element instanceof HTMLSelectElement
+      )
+        element.value = String(value);
+    }
+    setRestoreFields(null);
+    setFieldsVersion((version) => version + 1);
+  }, [restoreFields]);
+
   function patchPack(index: number, patch: Partial<DraftVariant>) {
     setVariants((current) => current.map((v, i) => (i === index ? { ...v, ...patch } : v)));
   }
@@ -272,7 +478,7 @@ export function ProductEditor({
     patchPending(pending.key, { progress: 0 });
     // Get signed upload parameters, send the file straight to Cloudinary, then record it. Uploading
     // directly bypasses Vercel's 4.5 MB function body limit that a file sent through our server would hit.
-    const signResponse = await fetch("/api/admin/products/images/sign", {
+    const signResponse = await send("/api/admin/products/images/sign", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ productId }),
@@ -292,7 +498,7 @@ export function ProductEditor({
     if (uploaded?.error?.message) throw new Error(`Could not upload ${pending.name}: ${uploaded.error.message}.`);
     if (!uploaded?.public_id) throw new Error(`Could not upload ${pending.name}. Check your connection and try again.`);
 
-    const response = await fetch("/api/admin/products/images", {
+    const response = await send("/api/admin/products/images", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -313,47 +519,46 @@ export function ProductEditor({
     ? Math.round((uploading.reduce((sum, pending) => sum + (pending.progress ?? 0), 0) / uploading.length) * 100)
     : null;
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (busy || preparingPhotos) return;
-    setBusy(true);
-    setProgress("Saving product…");
-    setError("");
-    const form = new FormData(event.currentTarget);
-    const name = String(form.get("name"));
-    const preparationHours = Number(leadTimeHours || MIN_LEAD_TIME_HOURS);
+  // What the server stores, built from the form and the given packs.
+  function buildPayload(form: FormData, draftVariants: DraftVariant[], status: ProductStatus) {
+    const name = String(form.get("name") ?? "").trim();
     // Every pack or size carries its own selling price. The product's base price is the cheapest published
     // one (or the cheapest overall while nothing is published), and each pack is stored relative to it.
-    const priced = variants.some((variant) => variant.active) ? variants.filter((variant) => variant.active) : variants;
+    const priced = draftVariants.some((variant) => variant.active)
+      ? draftVariants.filter((variant) => variant.active)
+      : draftVariants;
     const basePrice = priced.length ? Math.min(...priced.map((variant) => variant.sellingPrice)) : 0;
-    const payload = {
+    return {
       name,
-      slug: String(form.get("slug")) || slugify(name),
-      shortDescription: String(form.get("shortDescription")),
-      description: String(form.get("description")),
-      category: String(form.get("category")),
+      slug: slugify(String(form.get("slug") ?? "") || name),
+      shortDescription: String(form.get("shortDescription") ?? ""),
+      description: String(form.get("description") ?? ""),
+      category,
       price: basePrice,
       discountPrice: null,
-      status: String(form.get("status")) as ProductStatus,
+      status,
       featured: form.get("featured") === "on",
       shoppingMode: mode,
-      preparationHours,
+      preparationHours: Number(leadTimeHours) || MIN_LEAD_TIME_HOURS,
       taxClass: String(form.get("taxClass")),
       trackInventory: form.get("trackInventory") === "on",
-      lowStockThreshold: Number(form.get("lowStockThreshold")),
-      ingredients: String(form.get("ingredients")),
-      allergens: String(form.get("allergens"))
-        .split(",")
+      lowStockThreshold: Number(form.get("lowStockThreshold") || 5),
+      ingredients: String(form.get("ingredients") ?? ""),
+      // Split on commas or new lines, dropping blanks and repeats ("Eggs, eggs,, Dairy").
+      allergens: String(form.get("allergens") ?? "")
+        .split(/[,\n]/)
         .map((item) => item.trim())
-        .filter(Boolean),
-      storageInstructions: String(form.get("storageInstructions")),
-      preparationInstructions: String(form.get("preparationInstructions")),
-      variants: variants.map((variant, index) => ({
+        .filter(
+          (item, index, all) => item && all.findIndex((other) => other.toLowerCase() === item.toLowerCase()) === index,
+        ),
+      storageInstructions: String(form.get("storageInstructions") ?? ""),
+      preparationInstructions: String(form.get("preparationInstructions") ?? ""),
+      variants: draftVariants.map((variant, index) => ({
         id: variant.id,
-        name: variant.name,
+        name: variant.name.trim(),
         priceAdjustment: variant.sellingPrice - basePrice,
-        packQuantity: variant.packQuantity ?? null,
-        stockQuantity: variant.stockQuantity,
+        packQuantity: variant.packQuantity ? wholeNumber(variant.packQuantity, 1, 2_147_483_647) : null,
+        stockQuantity: wholeNumber(variant.stockQuantity, 0, 1_000_000),
         active: variant.active,
         sortOrder: index,
         trackInventory: variant.trackInventory ?? null,
@@ -361,7 +566,7 @@ export function ProductEditor({
       })),
       images: images.map((image, index) => ({
         id: image.id,
-        altText: image.altText.trim() || name,
+        altText: (image.altText.trim() || name).slice(0, 250),
         sortOrder: index,
       })),
       optionGroups: isCake
@@ -382,31 +587,123 @@ export function ProductEditor({
             .filter((group) => group.name && group.choices.length),
       cakeLayers: isCake
         ? Object.fromEntries(
-            variants
+            draftVariants
               .filter((variant) => variant.id && normalizeCakeSizeLayers(variant.layerOptions).length)
               .map((variant) => [variant.id, normalizeCakeSizeLayers(variant.layerOptions)]),
           )
         : {},
       collectionId: collectionId || null,
     };
+  }
 
+  // Packs that are not ready for customers (no name, price or size, or a size used twice) are switched to
+  // unavailable so the rest of the product can still be saved.
+  function withIncompletePacksOff(list: DraftVariant[]) {
+    const sizes = new Set<number>();
+    return list.map((variant) => {
+      if (!variant.active) return variant;
+      const size = variant.packQuantity ?? 0;
+      const incomplete =
+        !variant.name.trim() ||
+        variant.sellingPrice <= 0 ||
+        (mode === "MADE_TO_ORDER" && (size <= 0 || sizes.has(size)));
+      if (size > 0) sizes.add(size);
+      return incomplete ? { ...variant, active: false } : variant;
+    });
+  }
+
+  // A hidden draft is saved even when details are missing or too long: text is trimmed to fit and blanks
+  // get placeholders, so the owner can always come back and finish it.
+  function asDraft(payload: ReturnType<typeof buildPayload>): ReturnType<typeof buildPayload> {
+    return {
+      ...payload,
+      status: "DRAFT",
+      preparationHours: wholeNumber(payload.preparationHours, MIN_LEAD_TIME_HOURS, 8760),
+      lowStockThreshold: wholeNumber(payload.lowStockThreshold, 0, 1_000_000, 5),
+      name: payload.name.length >= 2 ? payload.name.slice(0, 150) : `${payload.name || "Untitled"} product`.trim(),
+      shortDescription: payload.shortDescription.slice(0, 500),
+      description: payload.description.slice(0, 10_000),
+      ingredients: payload.ingredients.slice(0, 5_000),
+      storageInstructions: payload.storageInstructions.slice(0, 2_000),
+      preparationInstructions: payload.preparationInstructions.slice(0, 2_000),
+      allergens: payload.allergens.slice(0, 30).map((item) => item.slice(0, 100)),
+      variants: payload.variants.map((variant, index) => ({
+        ...variant,
+        name: (variant.name || `${isCake ? "Size" : "Pack"} ${index + 1}`).slice(0, 100),
+      })),
+    };
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await save(new FormData(event.currentTarget), false);
+  }
+
+  async function save(form: FormData, forceDraft: boolean) {
+    if (busy || preparingPhotos) return;
+    setBusy(true);
+    setProgress("Saving product…");
+    setError("");
+    setIssues([]);
+    setNotice("");
+    setOfferDraftSave(false);
+    const chosenStatus = forceDraft ? "DRAFT" : (String(form.get("status")) as ProductStatus);
+    let payload = buildPayload(form, variants, chosenStatus);
+    let toFinish: string[] = [];
+    const check = productInputSchema.safeParse(payload);
+    if (!check.success) {
+      const problems = productIssues(check.error);
+      if (isVisibleStatus(liveStatus) && isVisibleStatus(chosenStatus)) {
+        // Saving as a draft would hide a product customers can see, so that is her call.
+        setError(
+          "Not saved yet. Fix the items below, or save it as a hidden draft for now. Your changes are kept on this device.",
+        );
+        setIssues(problems);
+        setOfferDraftSave(true);
+        setBusy(false);
+        setProgress("");
+        return;
+      }
+      const draftVariants = withIncompletePacksOff(variants);
+      payload = asDraft(buildPayload(form, draftVariants, "DRAFT"));
+      toFinish = problems;
+      setVariants(draftVariants);
+    }
+
+    const previousKey = currentKey;
     try {
       const productId = savedId;
-      const response = await fetch(productId ? `/api/admin/products/${productId}` : "/api/admin/products", {
+      const response = await send(productId ? `/api/admin/products/${productId}` : "/api/admin/products", {
         method: productId ? "PATCH" : "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
       });
       const result = await readJsonResponse(response);
-      if (!response.ok) throw new Error(result.error ?? "Product could not be saved.");
+      if (!response.ok) {
+        if (Array.isArray(result.issues)) setIssues(result.issues as string[]);
+        throw new Error(result.error ?? "Product could not be saved.");
+      }
       setSavedId(result.id as string);
-      const failures = pendingImages.length ? await uploadImages(result.id as string, name) : [];
-      if (failures.length) {
-        // The product itself is saved; keep the editor open so only the failed photos need retrying.
+      setLiveStatus(payload.status);
+      // Show what was actually stored: the status, and the link if it had to change to stay unique.
+      const statusField = formRef.current?.elements.namedItem("status");
+      if (statusField instanceof HTMLSelectElement) statusField.value = payload.status;
+      const slugField = formRef.current?.elements.namedItem("slug");
+      if (slugField instanceof HTMLInputElement && typeof result.slug === "string") slugField.value = result.slug;
+      markSaved(previousKey);
+      const failures = pendingImages.length ? await uploadImages(result.id as string, payload.name) : [];
+      if (failures.length || toFinish.length) {
+        // The product itself is saved; keep the editor open so the rest can be finished.
         router.refresh();
-        setError(
-          `Product saved, but ${failures.length === 1 ? "1 photo was" : `${failures.length} photos were`} not uploaded. ${failures.join(" ")} Press Save changes to try again.`,
-        );
+        const photoNote = failures.length
+          ? `${failures.length === 1 ? "1 photo was" : `${failures.length} photos were`} not uploaded. ${failures.join(" ")} Press Save changes to try again.`
+          : "";
+        if (toFinish.length) {
+          setNotice(
+            `Saved as a hidden draft, so nothing is lost. Customers cannot see it yet. ${photoNote} To publish it, finish these and set visibility to Active:`,
+          );
+          setIssues(toFinish);
+        } else setError(`Product saved, but ${photoNote}`);
         setBusy(false);
         return;
       }
@@ -430,18 +727,57 @@ export function ProductEditor({
           <Icon name="close" />
         </button>
       </div>
-      <form onSubmit={submit} className="form-stack" aria-busy={busy}>
+      <form
+        ref={formRef}
+        onSubmit={submit}
+        onInput={() => setFieldsVersion((version) => version + 1)}
+        className="form-stack"
+        // The browser's own checks would block saving; the editor lists problems itself and can always
+        // fall back to saving a draft.
+        noValidate
+        aria-busy={busy}
+      >
+        {backupOffer && (
+          <div className="restore-banner" role="status">
+            <p>
+              <strong>You have unsaved changes</strong> from{" "}
+              {new Date(backupOffer.savedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.
+              Restore them to carry on where you left off.
+            </p>
+            <div>
+              <Button variant="secondary" onClick={() => restoreBackup(backupOffer)}>
+                Restore changes
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  writeBackup(backupKey(product?.id ?? ""), null);
+                  setBackupOffer(null);
+                }}
+              >
+                Discard
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="product-editor-section">
           <h3>Basics</h3>
-          <Input label="Product name" name="name" defaultValue={product?.name} required />
+          <Input label="Product name" name="name" defaultValue={product?.name} maxLength={150} required />
           <details>
             <summary>Product link</summary>
-            <Input label="URL slug" name="slug" defaultValue={product?.slug} placeholder="Generated from the name" />
+            <Input
+              label="URL slug"
+              name="slug"
+              defaultValue={product?.slug}
+              maxLength={150}
+              placeholder="Generated from the name"
+            />
           </details>
           <Textarea
             label={isCake ? "Short description (optional)" : "Short description"}
             name="shortDescription"
             defaultValue={product?.shortDescription}
+            maxLength={500}
             rows={2}
             required={!isCake}
           />
@@ -449,6 +785,7 @@ export function ProductEditor({
             label={isCake ? "Full description (optional)" : "Full description"}
             name="description"
             defaultValue={product?.description}
+            maxLength={10_000}
             rows={5}
             required={!isCake}
           />
@@ -677,6 +1014,7 @@ export function ProductEditor({
                 <div className="pack-editor-fields">
                   <Input
                     label="Display name"
+                    maxLength={100}
                     value={variant.name}
                     onChange={(event) => patchPack(index, { name: event.target.value })}
                     required
@@ -689,7 +1027,10 @@ export function ProductEditor({
                       step="1"
                       value={variant.packQuantity ?? ""}
                       onChange={(event) =>
-                        patchPack(index, { packQuantity: event.target.value ? Number(event.target.value) : null })
+                        patchPack(index, {
+                          packQuantity:
+                            Number(event.target.value) >= 1 ? wholeNumber(event.target.value, 1, 1_000_000) : null,
+                        })
                       }
                       required={mode === "MADE_TO_ORDER" && variant.active}
                     />
@@ -699,9 +1040,7 @@ export function ProductEditor({
                       min="0"
                       step="0.01"
                       value={variant.sellingPrice / 100}
-                      onChange={(event) =>
-                        patchPack(index, { sellingPrice: Math.round(Number(event.target.value) * 100) })
-                      }
+                      onChange={(event) => patchPack(index, { sellingPrice: cents(event.target.value) })}
                       required={variant.active}
                     />
                   </div>
@@ -737,7 +1076,10 @@ export function ProductEditor({
                                   patchPack(index, {
                                     layerOptions: (variant.layerOptions ?? []).map((entry) =>
                                       entry.layers === count
-                                        ? { ...entry, priceAdjustment: Math.round(Number(event.target.value) * 100) }
+                                        ? {
+                                            ...entry,
+                                            priceAdjustment: Math.round((Number(event.target.value) || 0) * 100),
+                                          }
                                         : entry,
                                     ),
                                   })
@@ -768,7 +1110,9 @@ export function ProductEditor({
                         min="0"
                         step="1"
                         value={variant.stockQuantity}
-                        onChange={(event) => patchPack(index, { stockQuantity: Number(event.target.value) })}
+                        onChange={(event) =>
+                          patchPack(index, { stockQuantity: wholeNumber(event.target.value, 0, 1_000_000) })
+                        }
                       />
                     )}
                     <p className="field-help">
@@ -989,26 +1333,50 @@ export function ProductEditor({
 
         <div className="product-editor-section">
           <h3>Product details</h3>
-          <Textarea label="Ingredients" name="ingredients" defaultValue={product?.ingredients} rows={3} />
+          <Textarea
+            label="Ingredients"
+            name="ingredients"
+            defaultValue={product?.ingredients}
+            maxLength={5_000}
+            rows={3}
+          />
           <Input label="Allergens (comma separated)" name="allergens" defaultValue={product?.allergens.join(", ")} />
           <Textarea
             label="Storage instructions"
             name="storageInstructions"
             defaultValue={product?.storageInstructions}
+            maxLength={2_000}
             rows={3}
           />
           <Textarea
             label="Preparation instructions"
             name="preparationInstructions"
             defaultValue={product?.preparationInstructions}
+            maxLength={2_000}
             rows={3}
           />
         </div>
 
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+        {(error || notice) && (
+          <div className={error ? "form-error" : "form-notice"} role={error ? "alert" : "status"}>
+            <p>{error || notice}</p>
+            {issues.length > 0 && (
+              <ul>
+                {issues.map((issue) => (
+                  <li key={issue}>{issue}</li>
+                ))}
+              </ul>
+            )}
+            {offerDraftSave && (
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() => formRef.current && void save(new FormData(formRef.current), true)}
+              >
+                Save as hidden draft
+              </Button>
+            )}
+          </div>
         )}
         <div className="drawer-actions">
           <Button variant="ghost" onClick={close}>

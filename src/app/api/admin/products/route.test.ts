@@ -1,12 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ category: vi.fn(), rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({ category: vi.fn(), rpc: vi.fn(), slugs: vi.fn() }));
 vi.mock("@/lib/cache/storefront", () => ({ invalidateStorefrontCache: vi.fn() }));
 vi.mock("@/lib/auth/admin-request", () => ({
   requireAdminRequest: async () => ({
     ok: true,
     db: {
       from: () => ({
-        select: () => ({ eq: () => ({ single: mocks.category, maybeSingle: async () => ({ data: null }) }) }),
+        select: () => {
+          const query = {
+            eq: () => query,
+            neq: () => query,
+            limit: mocks.slugs,
+            single: mocks.category,
+            maybeSingle: async () => ({ data: null }),
+          };
+          return query;
+        },
         update: () => ({ eq: async () => ({ error: null }) }),
       }),
       rpc: mocks.rpc,
@@ -46,11 +55,26 @@ describe("atomic product endpoints", () => {
     vi.clearAllMocks();
     mocks.category.mockResolvedValue({ data: { id: "category-id" } });
     mocks.rpc.mockResolvedValue({ data: "product-id", error: null });
+    mocks.slugs.mockResolvedValue({ data: [], error: null });
+  });
+  it("numbers the product link instead of refusing a save when the link is taken", async () => {
+    mocks.slugs.mockResolvedValueOnce({ data: [{ id: "other" }], error: null });
+    const response = await POST(request());
+    expect(response.status).toBe(201);
+    expect((await response.json()).slug).toBe("made-to-order-cupcakes-2");
+    expect(mocks.rpc.mock.calls[0][1].p_product.slug).toBe("made-to-order-cupcakes-2");
+  });
+  it("lists every problem at once", async () => {
+    const response = await POST(request({ ...valid, name: "", shortDescription: "", variants: [] }));
+    const body = await response.json();
+    expect(response.status).toBe(400);
+    expect(body.issues.length).toBeGreaterThanOrEqual(3);
+    expect(body.issues.join(" ")).not.toMatch(/expected|Too small/);
   });
   it("creates packs and prices with one atomic operation", async () => {
     const response = await POST(request());
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({ ok: true, id: "product-id" });
+    expect(await response.json()).toEqual({ ok: true, id: "product-id", slug: "made-to-order-cupcakes" });
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith(
       "admin_save_product",
       expect.objectContaining({
