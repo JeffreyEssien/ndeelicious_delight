@@ -18,7 +18,17 @@ type DraftVariant = Omit<ProductVariant, "id"> & {
   expectedStockQuantity?: number;
   layerOptions?: CakeSizeLayer[];
 };
-type PendingImage = { key: string; file: File; altText: string; previewUrl: string };
+// A photo waiting to upload. `file` is null while it is still being converted; `progress` (0–1) is set
+// while it uploads.
+type PendingImage = {
+  key: string;
+  name: string;
+  file: File | null;
+  altText: string;
+  previewUrl: string | null;
+  progress: number | null;
+};
+const UPLOAD_CONCURRENCY = 3;
 type DraftOptionGroup = { key: string; id: string; name: string; choicesText: string; required: boolean };
 
 function slugify(value: string) {
@@ -43,6 +53,25 @@ async function readJsonResponse(response: Response): Promise<{ error?: string; [
         : `The server returned an unexpected response (${response.status}). Please try again.`;
     return { error: message };
   }
+}
+
+type CloudinaryReply = { public_id?: string; error?: { message?: string } };
+
+// Posts the photo to Cloudinary, reporting upload progress. Resolves null when the connection drops.
+function postWithProgress(url: string, body: FormData, onProgress: (fraction: number) => void) {
+  return new Promise<CloudinaryReply | null>((resolve) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", url);
+    request.responseType = "json";
+    request.timeout = 120_000;
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(event.loaded / event.total);
+    };
+    request.onload = () => resolve(request.response as CloudinaryReply | null);
+    request.onerror = () => resolve(null);
+    request.ontimeout = () => resolve(null);
+    request.send(body);
+  });
 }
 
 export function ProductEditor({
@@ -98,7 +127,6 @@ export function ProductEditor({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
-  const [preparingPhotos, setPreparingPhotos] = useState(false);
   const [error, setError] = useState("");
   const [savedId, setSavedId] = useState(product?.id ?? "");
   const [variants, setVariants] = useState<DraftVariant[]>(
@@ -117,41 +145,55 @@ export function ProductEditor({
   const [images, setImages] = useState<ProductImage[]>(product?.images ?? []);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [photoError, setPhotoError] = useState("");
+  const preparingPhotos = pendingImages.some((pending) => !pending.file);
   // Preview URLs hold the photo in memory until revoked; release any still pending when the editor closes.
   const pendingRef = useRef(pendingImages);
   pendingRef.current = pendingImages;
   useEffect(
     () => () => {
-      for (const pending of pendingRef.current) URL.revokeObjectURL(pending.previewUrl);
+      for (const pending of pendingRef.current) if (pending.previewUrl) URL.revokeObjectURL(pending.previewUrl);
     },
     [],
   );
+  function patchPending(key: string, patch: Partial<PendingImage>) {
+    setPendingImages((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
+  }
   function removePending(key: string) {
     setPendingImages((current) =>
       current.filter((item) => {
-        if (item.key === key) URL.revokeObjectURL(item.previewUrl);
+        if (item.key === key && item.previewUrl) URL.revokeObjectURL(item.previewUrl);
         return item.key !== key;
       }),
     );
   }
 
+  // Each photo shows straight away with a loader while it is converted to a standard WebP/JPEG.
   async function addPhotos(files: File[]) {
     const remaining = 12 - images.length - pendingImages.length;
-    const selected = files.slice(0, remaining);
+    const selected = files.slice(0, remaining).map((file) => ({ file, key: crypto.randomUUID() }));
     const problems = files.length > remaining ? [`Only ${remaining} more photo(s) fit; a product can have 12.`] : [];
-    setPreparingPhotos(true);
-    const prepared: PendingImage[] = [];
-    for (const file of selected) {
+    setPhotoError("");
+    setPendingImages((current) => [
+      ...current,
+      ...selected.map(({ file, key }) => ({
+        key,
+        name: file.name,
+        file: null,
+        altText: "",
+        previewUrl: null,
+        progress: null,
+      })),
+    ]);
+    for (const { file, key } of selected) {
       try {
         const ready = await prepareImageForUpload(file);
-        prepared.push({ key: crypto.randomUUID(), file: ready, altText: "", previewUrl: URL.createObjectURL(ready) });
+        patchPending(key, { file: ready, previewUrl: URL.createObjectURL(ready) });
       } catch (reason) {
+        removePending(key);
         problems.push(reason instanceof Error ? reason.message : `${file.name} could not be added.`);
       }
     }
-    setPendingImages((current) => [...current, ...prepared]);
     setPhotoError(problems.join(" "));
-    setPreparingPhotos(false);
   }
   const [optionGroups] = useState<DraftOptionGroup[]>(
     (product?.optionGroups ?? []).map((group) => ({
@@ -195,21 +237,39 @@ export function ProductEditor({
     });
   }
 
-  // Uploads every pending photo, carrying on past failures, and returns one message per failed photo.
+  // Uploads the pending photos a few at a time, carrying on past failures, and returns one message per
+  // failed photo. Uploaded photos join the gallery in the order they were added.
   async function uploadImages(productId: string, productName: string) {
+    const queue = [...pendingImages.entries()];
+    const uploaded: (ProductImage | null)[] = [];
     const failures: string[] = [];
-    for (const [index, pending] of pendingImages.entries()) {
-      setProgress(`Uploading photo ${index + 1} of ${pendingImages.length}…`);
-      try {
-        await uploadImage(productId, productName, pending, images.length + index);
-      } catch (reason) {
-        failures.push(reason instanceof Error ? reason.message : `Could not upload ${pending.file.name}.`);
+    async function worker() {
+      for (let next = queue.shift(); next; next = queue.shift()) {
+        const [index, pending] = next;
+        try {
+          uploaded[index] = await uploadImage(productId, productName, pending, images.length + index);
+        } catch (reason) {
+          patchPending(pending.key, { progress: null });
+          failures.push(reason instanceof Error ? reason.message : `Could not upload ${pending.name}.`);
+        }
       }
     }
+    await Promise.all(Array.from({ length: UPLOAD_CONCURRENCY }, worker));
+    const done = uploaded.filter((image): image is ProductImage => Boolean(image));
+    setImages((current) => [...current, ...done]);
+    for (const [index, pending] of pendingImages.entries()) if (uploaded[index]) removePending(pending.key);
     return failures;
   }
 
-  async function uploadImage(productId: string, productName: string, pending: PendingImage, sortOrder: number) {
+  async function uploadImage(
+    productId: string,
+    productName: string,
+    pending: PendingImage,
+    sortOrder: number,
+  ): Promise<ProductImage> {
+    const file = pending.file;
+    if (!file) throw new Error(`${pending.name} is still being prepared.`);
+    patchPending(pending.key, { progress: 0 });
     // Get signed upload parameters, send the file straight to Cloudinary, then record it. Uploading
     // directly bypasses Vercel's 4.5 MB function body limit that a file sent through our server would hit.
     const signResponse = await fetch("/api/admin/products/images/sign", {
@@ -218,17 +278,19 @@ export function ProductEditor({
       body: JSON.stringify({ productId }),
     });
     const sign = await readJsonResponse(signResponse);
-    if (!signResponse.ok) throw new Error(sign.error ?? `Could not upload ${pending.file.name}.`);
+    if (!signResponse.ok) throw new Error(sign.error ?? `Could not upload ${pending.name}.`);
 
     const upload = new FormData();
     for (const [key, value] of Object.entries(sign.fields as Record<string, string | number>))
       upload.set(key, String(value));
-    upload.set("file", pending.file);
-    const uploaded = await fetch(sign.uploadUrl as string, { method: "POST", body: upload })
-      .then((response) => (response.ok ? response.json() : null))
-      .catch(() => null);
-    if (!uploaded?.public_id)
-      throw new Error(`Could not upload ${pending.file.name}. Check your connection and try again.`);
+    upload.set("file", file);
+    const onProgress = (fraction: number) => patchPending(pending.key, { progress: fraction });
+    // A dropped connection is retried once before giving up.
+    let uploaded = await postWithProgress(sign.uploadUrl as string, upload, onProgress);
+    if (!uploaded) uploaded = await postWithProgress(sign.uploadUrl as string, upload, onProgress);
+    // Cloudinary explains a refusal; show that rather than blaming the connection.
+    if (uploaded?.error?.message) throw new Error(`Could not upload ${pending.name}: ${uploaded.error.message}.`);
+    if (!uploaded?.public_id) throw new Error(`Could not upload ${pending.name}. Check your connection and try again.`);
 
     const response = await fetch("/api/admin/products/images", {
       method: "POST",
@@ -241,10 +303,15 @@ export function ProductEditor({
       }),
     });
     const payload = await readJsonResponse(response);
-    if (!response.ok) throw new Error(payload.error ?? `Could not upload ${pending.file.name}.`);
-    setImages((current) => [...current, payload.image as ProductImage]);
-    removePending(pending.key);
+    if (!response.ok) throw new Error(payload.error ?? `Could not upload ${pending.name}.`);
+    patchPending(pending.key, { progress: 1 });
+    return payload.image as ProductImage;
   }
+
+  const uploading = pendingImages.filter((pending) => pending.progress !== null);
+  const uploadPercent = uploading.length
+    ? Math.round((uploading.reduce((sum, pending) => sum + (pending.progress ?? 0), 0) / uploading.length) * 100)
+    : null;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -865,23 +932,38 @@ export function ProductEditor({
               </div>
             </div>
           ))}
-          {pendingImages.map((pending, index) => (
+          {pendingImages.map((pending) => (
             <div className="pending-image" key={pending.key}>
-              {/* biome-ignore lint/performance/noImgElement: local blob preview, nothing to optimise */}
-              <img src={pending.previewUrl} alt="" width={64} height={64} />
+              <div className="pending-image-thumb" aria-busy={!pending.file || pending.progress !== null}>
+                {pending.previewUrl ? (
+                  // biome-ignore lint/performance/noImgElement: local blob preview, nothing to optimise
+                  <img src={pending.previewUrl} alt="" width={64} height={64} />
+                ) : (
+                  <span className="photo-loader" role="status" aria-label={`Preparing ${pending.name}`} />
+                )}
+                {pending.progress !== null && (
+                  <span
+                    className="photo-upload-meter"
+                    role="progressbar"
+                    aria-label={`Uploading ${pending.name}`}
+                    aria-valuenow={Math.round(pending.progress * 100)}
+                  >
+                    <span style={{ width: `${Math.round(pending.progress * 100)}%` }} />
+                  </span>
+                )}
+              </div>
               <Input
                 label="Photo description (optional)"
-                placeholder="Not uploaded yet — saves with the product"
+                placeholder={pending.file ? "Not uploaded yet — saves with the product" : "Preparing photo…"}
                 value={pending.altText}
-                onChange={(event) =>
-                  setPendingImages((current) =>
-                    current.map((item, itemIndex) =>
-                      itemIndex === index ? { ...item, altText: event.target.value } : item,
-                    ),
-                  )
-                }
+                onChange={(event) => patchPending(pending.key, { altText: event.target.value })}
               />
-              <button type="button" className="text-button danger-text" onClick={() => removePending(pending.key)}>
+              <button
+                type="button"
+                className="text-button danger-text"
+                disabled={busy}
+                onClick={() => removePending(pending.key)}
+              >
                 Remove
               </button>
             </div>
@@ -934,7 +1016,9 @@ export function ProductEditor({
           </Button>
           <Button type="submit" disabled={busy || preparingPhotos}>
             {busy
-              ? progress || "Saving…"
+              ? uploadPercent !== null
+                ? `Uploading photos… ${uploadPercent}%`
+                : progress || "Saving…"
               : preparingPhotos
                 ? "Preparing photos…"
                 : savedId

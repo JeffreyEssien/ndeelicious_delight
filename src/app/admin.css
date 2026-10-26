@@ -2446,6 +2446,50 @@ html[data-theme] .admin-sidebar {
   border-radius: var(--radius-sm);
   object-fit: cover;
 }
+.pending-image-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 64px;
+  min-height: 64px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.photo-loader {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: photo-spin 0.8s linear infinite;
+}
+@keyframes photo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.photo-upload-meter {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  left: 4px;
+  height: 4px;
+  border-radius: 99px;
+  background: rgb(255 255 255 / 0.7);
+  overflow: hidden;
+}
+.photo-upload-meter span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 200ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-loader {
+    animation-duration: 2.4s;
+  }
+}
 .field-help {
   margin: 0;
   color: var(--muted);
