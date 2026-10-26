@@ -812,6 +812,20 @@
   margin: 0;
   color: var(--muted);
 }
+/* The shared newsletter form is styled for the dark footer; on this light band its
+   white text and arrow would be invisible. */
+.newsletter-band .newsletter-form {
+  border-bottom-color: var(--line);
+}
+.newsletter-band .newsletter-form input {
+  color: var(--color-text);
+}
+.newsletter-band .newsletter-form button {
+  color: var(--berry);
+}
+.newsletter-band .newsletter-success {
+  color: var(--success) !important;
+}
 .stockist-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1637,16 +1651,44 @@
   }
 }
 
+/* Logo plus search, favourites, basket and menu must fit inside the gutters, or the
+   menu button is pushed off-screen on common phones (360–390px). */
+@media (max-width: 430px) {
+  .brand-logo-compact {
+    width: 120px;
+    height: 44px;
+    border-radius: 9px;
+  }
+  .nav-actions {
+    gap: 0;
+  }
+  .site-header .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+  .site-header .cart-button {
+    gap: 4px;
+    padding: 0 6px;
+  }
+}
+
+@media (max-width: 359px) {
+  .brand-logo-compact {
+    width: 100px;
+    height: 37px;
+  }
+  .site-header .icon-button {
+    width: 40px;
+    height: 40px;
+  }
+  .site-header .cart-button {
+    padding: 0 4px;
+  }
+}
+
 @media (max-width: 339px) {
   .product-grid,
   .catalogue-results .product-grid {
     grid-template-columns: 1fr;
-  }
-  .brand-logo-compact {
-    width: 124px;
-    height: 46px;
-  }
-  .nav-actions {
-    gap: 0;
   }
 }

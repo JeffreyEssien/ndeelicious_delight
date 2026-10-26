@@ -1045,7 +1045,8 @@ h2 {
 }
 .sidebar-budget-or {
   margin: 0;
-  color: var(--muted);
+  /* Muted text falls below 4.5:1 on the tinted budget panel. */
+  color: var(--color-text);
   font-size: 12px;
 }
 .product-meta {
