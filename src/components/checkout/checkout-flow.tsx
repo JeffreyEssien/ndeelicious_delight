@@ -1,7 +1,7 @@
 "use client";
-import { variantPrice } from "@/features/catalog/pricing";
+import { lineUnitPrice } from "@/features/catalog/pricing";
 import { useCustomerText } from "@/components/customer-text-provider";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { lineKey, useCart, useDeliveryZones, useProducts } from "@/components/providers";
@@ -9,6 +9,7 @@ import { formatMoney } from "@/lib/format";
 import { Icon } from "@/components/ui/icons";
 import { Input, Textarea } from "@/components/ui/primitives";
 import { resolveDeliveryArea } from "@/features/fulfilment/resolver";
+import { normalizeCanadianPostalCode } from "@/features/fulfilment/postal-code";
 import { resolveCheckoutFulfilment } from "@/features/fulfilment/checkout";
 import { calculateOrderQuote } from "@/features/checkout/pricing";
 import type { DeliveryArea } from "@/features/fulfilment/types";
@@ -115,6 +116,18 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
     setApplied(false);
     setDiscount(0);
   }, [cart.lines]);
+  // Wide screens hide the <summary> toggle, but browsers keep a closed <details> body hidden
+  // whatever its CSS display, so open it there or desktop shoppers never see their total.
+  const keepSummaryOpenOnWideScreens = useCallback((details: HTMLDetailsElement | null) => {
+    if (!details) return;
+    const wide = window.matchMedia("(min-width: 801px)");
+    const sync = () => {
+      if (wide.matches) details.open = true;
+    };
+    sync();
+    wide.addEventListener("change", sync);
+    return () => wide.removeEventListener("change", sync);
+  }, []);
   const resolved = useMemo(
     () =>
       cart.lines.flatMap((line) => {
@@ -275,6 +288,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
       }));
     }
   }
+  if (!cart.ready) return null;
   if (!resolved.length)
     return (
       <div className="empty-state checkout-empty">
@@ -490,7 +504,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                 <span>{fulfilment === "delivery" ? t("Deliver to") : t("Collection")}</span>
                 <p>
                   {fulfilment === "delivery"
-                    ? `${info.street}${info.addressLine2 ? `, ${info.addressLine2}` : ""}, ${info.city}, ${info.province} ${info.postalCode}`
+                    ? `${info.street}${info.addressLine2 ? `, ${info.addressLine2}` : ""}, ${info.city}, ${info.province} ${normalizeCanadianPostalCode(info.postalCode) ?? info.postalCode}`
                     : business.address || business.businessName}
                 </p>
                 <button type="button" onClick={() => setStep(1)}>
@@ -553,7 +567,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
           </div>
         )}
       </section>
-      <details className="checkout-summary">
+      <details className="checkout-summary" ref={keepSummaryOpenOnWideScreens}>
         <summary>
           <span>{t("Order summary")}</span>
           <b>{money(total)}</b>
@@ -589,7 +603,7 @@ export function CheckoutFlow({ business }: { business: BusinessSettings }) {
                   </small>
                 )}
               </span>
-              <strong>{money(variantPrice(p, v) * quantity)}</strong>
+              <strong>{money(lineUnitPrice(p, v, selections) * quantity)}</strong>
             </div>
           ))}
           <dl>

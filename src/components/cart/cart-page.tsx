@@ -16,6 +16,7 @@ export function CartPage() {
     const variant = product?.variants.find((item) => item.id === line.variantId);
     return product && variant ? [{ line, product, variant }] : [];
   });
+  if (!cart.ready) return null;
   if (!lines.length)
     return (
       <div className="empty-state cart-empty">
