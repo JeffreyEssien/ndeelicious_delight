@@ -1,9 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/admin/login-form";
 import { BrandLogo } from "@/components/layout/brand-logo";
-export default async function Page({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const error = (await searchParams).error;
+import { requireAdminPageSession } from "@/lib/auth/admin-request";
+import { adminReturnPath } from "@/lib/auth/admin-session";
+export default async function Page({ searchParams }: { searchParams: Promise<{ error?: string; next?: string }> }) {
+  const { error, next } = await searchParams;
+  const returnTo = adminReturnPath(next);
+  // Already signed in (e.g. a remembered session): skip the login code.
+  const session = await requireAdminPageSession().catch(() => null);
+  if (session) redirect(returnTo);
   const initialError =
     error === "unauthorized"
       ? "This account is not approved for admin access."
@@ -20,7 +27,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
           <span className="overline">Secure bakery operations</span>
           <h1>Welcome back.</h1>
           <p>Enter your approved admin email and we’ll send a one-time login code.</p>
-          <LoginForm initialError={initialError} />
+          <LoginForm initialError={initialError} returnTo={returnTo} />
         </div>
       </section>
       <div className="login-image">
