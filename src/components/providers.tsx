@@ -9,7 +9,7 @@ import {
   getPurchasableVariants,
   variantQuantityLimit,
 } from "@/features/catalog/availability";
-import { lineUnitPrice } from "@/features/catalog/pricing";
+import { hasCakeMessage, lineUnitPrice } from "@/features/catalog/pricing";
 import { trackCommerceEvent } from "@/lib/analytics/client";
 
 type Toast = { id: number; message: string };
@@ -107,6 +107,10 @@ export function Providers({
         if (product.category === "CUSTOM_CAKES") {
           if (requiredGroups.length && !selections?.some((s) => s.value)) {
             notify("Choose your flavours before adding this cake.");
+            return;
+          }
+          if (product.cakeMessageRequired && !hasCakeMessage(selections)) {
+            notify("Write your cake message before adding this cake.");
             return;
           }
         } else {

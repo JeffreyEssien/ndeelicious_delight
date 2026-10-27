@@ -58,6 +58,7 @@ export function productRow(input: ProductInput, categoryId: string) {
     preparation_instructions: input.preparationInstructions || null,
     option_groups: input.optionGroups ?? [],
     cake_layers: input.cakeLayers ?? {},
+    cake_message_required: input.category === "CUSTOM_CAKES" && input.cakeMessageRequired,
     updated_at: new Date().toISOString(),
   };
 }

@@ -95,6 +95,7 @@ export const productInputSchema = z
         z.array(z.object({ layers: z.number().int().min(1).max(6), priceAdjustment: z.number().int() })).max(6),
       )
       .default({}),
+    cakeMessageRequired: z.boolean().default(false),
     images: z.array(productImageInputSchema).max(12),
     collectionId: z.union([z.uuid(), z.literal(""), z.null()]).optional(),
   })
@@ -179,6 +180,7 @@ const FIELD_LABELS: Record<string, string> = {
   preparationHours: "Preparation time",
   optionGroups: "Flavours and fillings",
   cakeLayers: "Cake layers",
+  cakeMessageRequired: "Cake message",
   images: "Photos",
   price: "Price",
 };

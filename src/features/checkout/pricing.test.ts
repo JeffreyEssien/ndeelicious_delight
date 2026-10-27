@@ -66,6 +66,23 @@ describe("calculateOrderQuote", () => {
     expect(tall.lines[0].unitPrice).toBe(base.lines[0].unitPrice + 1200000);
     expect(tall.lines[0].lineTotal).toBe((base.lines[0].unitPrice + 1200000) * 2);
   });
+  it("requires a cake message only on cakes the admin marked as needing one", () => {
+    const p1 = products.find((p) => p.id === "p1");
+    if (!p1) throw new Error("fixture p1 missing");
+    expect(p1.category).toBe("CUSTOM_CAKES");
+    const order = (cakeMessageRequired: boolean, selections: { group: string; value: string }[] = []) =>
+      calculateOrderQuote({
+        cart: [{ productId: "p1", variantId: "v3", quantity: 1, selections }],
+        products: [{ ...p1, cakeMessageRequired }],
+        fulfilment: "pickup",
+      });
+    expect(order(false).lines).toHaveLength(1);
+    expect(() => order(true)).toThrow(CommerceError);
+    expect(() => order(true, [{ group: "Cake message", value: "   " }])).toThrow(/message/);
+    expect(order(true, [{ group: "Cake message", value: "Happy Birthday Lara" }]).lines[0].selections).toEqual([
+      { group: "Cake message", value: "Happy Birthday Lara" },
+    ]);
+  });
   it("applies capped percentage coupons", () => {
     const quote = calculateOrderQuote({
       cart: [{ productId: "p1", variantId: "v3", quantity: 1 }],
