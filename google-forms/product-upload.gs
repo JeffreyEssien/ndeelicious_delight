@@ -9,6 +9,11 @@
  *
  * Each submission creates a product through POST /api/integrations/products, then uploads every photo
  * through POST /api/integrations/products/images. The result is emailed to NOTIFY_EMAIL (default: you).
+ *
+ * Retrying: a failure email has a link to fix the answers and resubmit that same response. To retry
+ * failures unchanged (for example after the site was down), run retryFailedSubmissions(). A response that
+ * already created a product is never imported twice. Forms created before retrying existed: run
+ * enableFixLinks() once.
  */
 
 const TITLES = {
@@ -72,7 +77,8 @@ function createProductForm() {
         "Choose Draft to check the product in the admin before it goes live.",
     )
     .setConfirmationMessage("Thanks! The product is being added – you will get an email with the result.")
-    .setEmailCollectionType(FormApp.EmailCollectionType.VERIFIED);
+    .setEmailCollectionType(FormApp.EmailCollectionType.VERIFIED)
+    .setAllowResponseEdits(true); // powers the "fix and resubmit" link in failure emails
 
   form.addTextItem().setTitle(TITLES.name).setRequired(true);
   form
@@ -161,22 +167,79 @@ function createProductForm() {
   console.log('Now add a "File upload" question titled "Photos" in the form editor.');
 }
 
-/** Installed trigger: runs for every form response. */
+/** Installed trigger: runs for every new or edited form response. */
 function onProductSubmit(e) {
+  processResponse_(e.response);
+}
+
+/** Run this to retry every failed submission as it is, e.g. after the site was down. */
+function retryFailedSubmissions() {
+  const failed = failedSubmissions_();
+  if (!failed.length) {
+    console.log("Nothing to retry: no failed submissions.");
+    return;
+  }
+  const form = productForm_();
+  failed.forEach((entry) => {
+    let response;
+    try {
+      response = form.getResponse(entry.id);
+    } catch (_) {
+      // The response was deleted from the form; nothing left to retry.
+      forget_("failed:" + entry.id);
+      console.log("Skipped " + entry.name + ": the response no longer exists.");
+      return;
+    }
+    const added = processResponse_(response);
+    console.log((added ? "Added " : "Still failing ") + entry.name);
+  });
+}
+
+/** Run this to list failed submissions and why they failed, in the execution log. */
+function listFailedSubmissions() {
+  const failed = failedSubmissions_();
+  if (!failed.length) console.log("No failed submissions.");
+  failed.forEach((entry) => console.log(entry.at + "  " + entry.name + "  —  " + entry.reason));
+}
+
+/** Run once on a form created before retrying existed, to turn on the "fix and resubmit" links. */
+function enableFixLinks() {
+  productForm_().setAllowResponseEdits(true);
+  console.log("Fix links are on. Failure emails will include a link to correct and resubmit.");
+}
+
+// Imports one response and emails the result. Returns true when the product exists afterwards.
+function processResponse_(response) {
+  const id = response.getId();
   const answers = {};
-  e.response.getItemResponses().forEach((item) => {
+  response.getItemResponses().forEach((item) => {
     answers[item.getItem().getTitle()] = item.getResponse();
   });
-  const submitter = e.response.getRespondentEmail();
-  const name = text_(answers[TITLES.name]);
+  const submitter = response.getRespondentEmail();
+  const name = text_(answers[TITLES.name]) || "(no name)";
+  const signature = submitter ? "\n\nSubmitted by " + submitter : "";
+
+  // An edited or retried response that already created a product must not create a second one.
+  const done = remembered_("done:" + id);
+  if (done) {
+    notify_(
+      "Already added: " + name,
+      '"' + name + '" was already created from this form response (' + done.slug + "), so nothing was added again.\n" +
+        "To change it, edit the product in the admin: " + config_().baseUrl + "/admin/products" + signature,
+    );
+    return true;
+  }
+
   try {
-    if (!submitter) throw new Error("The form did not record your email. Sign in to Google and submit again.");
+    if (!submitter) throw new Error("The form did not record an email. Sign in to Google and submit again.");
     const product = buildProduct_(answers);
     const created = request_(
       "/api/integrations/products",
       { contentType: "application/json", payload: JSON.stringify(product) },
       submitter,
     );
+    remember_("done:" + id, { productId: created.id, slug: created.slug });
+    forget_("failed:" + id);
     const imageErrors = uploadImages_(created.id, product.name, answers, submitter);
     notify_(
       "Product added: " + name,
@@ -184,20 +247,65 @@ function onProductSubmit(e) {
         '"' + name + '" was created as ' + created.status + " (" + created.slug + ").",
         "Shop link: " + config_().baseUrl + "/product/" + created.slug,
         "Admin: " + config_().baseUrl + "/admin/products",
-        imageErrors.length ? "\nSome photos were not added:\n- " + imageErrors.join("\n- ") : "",
-        submitter ? "\nSubmitted by " + submitter : "",
-      ].join("\n"),
+        imageErrors.length
+          ? "\nSome photos were not added. Add them to the product in the admin:\n- " + imageErrors.join("\n- ")
+          : "",
+      ].join("\n") + signature,
     );
+    return true;
   } catch (error) {
     console.error(error);
+    remember_("failed:" + id, { name: name, reason: error.message, at: new Date().toISOString() });
+    let fixLink = "";
+    try {
+      fixLink = response.getEditResponseUrl() || "";
+    } catch (_) {
+      // Response editing is off for this form; run enableFixLinks() to get fix links.
+    }
     notify_(
       "Product NOT added: " + name,
-      "The form response could not be imported.\n\nReason: " +
-        error.message +
-        "\n\nFix the answer and submit the form again." +
-        (submitter ? "\n\nSubmitted by " + submitter : ""),
+      [
+        "The form response could not be imported.",
+        "",
+        "Reason: " + error.message,
+        "",
+        fixLink
+          ? "To fix it: open this link, correct the answer, and submit. It retries automatically:\n" + fixLink
+          : "To fix it: submit the form again with the answer corrected.",
+        "",
+        "If nothing needs changing (for example the site was briefly down), open the script and run " +
+          "retryFailedSubmissions to try again as is.",
+      ].join("\n") + signature,
     );
+    return false;
   }
+}
+
+function productForm_() {
+  const id = PropertiesService.getScriptProperties().getProperty("FORM_ID");
+  if (!id) throw new Error("FORM_ID is missing. Run createProductForm first.");
+  return FormApp.openById(id);
+}
+
+function failedSubmissions_() {
+  const properties = PropertiesService.getScriptProperties().getProperties();
+  return Object.keys(properties)
+    .filter((key) => key.indexOf("failed:") === 0)
+    .map((key) => Object.assign({ id: key.slice("failed:".length) }, JSON.parse(properties[key])))
+    .sort((a, b) => (a.at < b.at ? -1 : 1));
+}
+
+function remember_(key, value) {
+  PropertiesService.getScriptProperties().setProperty(key, JSON.stringify(value));
+}
+
+function remembered_(key) {
+  const value = PropertiesService.getScriptProperties().getProperty(key);
+  return value ? JSON.parse(value) : null;
+}
+
+function forget_(key) {
+  PropertiesService.getScriptProperties().deleteProperty(key);
 }
 
 function buildProduct_(answers) {

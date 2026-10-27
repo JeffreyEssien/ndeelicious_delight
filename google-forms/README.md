@@ -52,7 +52,24 @@ email matches their admin login.
 - The product link is generated from the name; repeats get `-2`, `-3`, … appended.
 
 After every submission an email reports the created product, or the reason it was rejected
-(for example "description: Add a full description."). Fix the answer and submit again.
+(for example "description: Add a full description.").
+
+## Retrying a failed submission
+
+Every answer and photo stays in the form's **Responses** tab and the form owner's Google Drive, so a
+failed submission is never lost. The script remembers each failure, and the failure email offers two ways
+to retry:
+
+- **Fix and resubmit:** the email links to that response. Open it, correct the answer, and submit; the
+  import runs again with the original photos.
+- **Retry as is** (for example after the site was briefly down): open the script and run
+  `retryFailedSubmissions`. `listFailedSubmissions` prints every failure and its reason to the execution log.
+
+A response that already created a product is never imported twice: editing or retrying it again only
+sends an "Already added" email. Photos that failed on a product that was added are added in the admin.
+
+Forms created before retrying existed: run `enableFixLinks` once to turn on the fix links. It enables
+response editing, so respondents also see Google's "Edit your response" link after submitting.
 
 ## Calling the API directly
 
