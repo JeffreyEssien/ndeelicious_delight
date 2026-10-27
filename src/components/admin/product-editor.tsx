@@ -733,7 +733,13 @@ export function ProductEditor({
       <form
         ref={formRef}
         onSubmit={submit}
-        onInput={() => setFieldsVersion((version) => version + 1)}
+        // Fields held in state (category, sub-category) are tracked through that state. Re-rendering on their
+        // input event puts the old value back before their change event arrives, which undid picks on phones.
+        onInput={(event) => {
+          const target = event.target as HTMLInputElement;
+          if (!target.name || target.name === "category") return;
+          setFieldsVersion((version) => version + 1);
+        }}
         className="form-stack"
         // The browser's own checks would block saving; the editor lists problems itself and can always
         // fall back to saving a draft.
