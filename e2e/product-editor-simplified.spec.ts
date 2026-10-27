@@ -61,3 +61,19 @@ test("prices live on packs, options only on cakes, and every product starts at a
   const row = page.locator("tr").filter({ hasText: "Fixture Range Cupcakes" });
   await expect(row).toContainText(/18\.00\s*–\s*.*32\.50/);
 });
+
+test("a category picked on a phone sticks when input and change arrive separately", async ({ page }) => {
+  await page.goto("/admin/products");
+  await page.getByRole("button", { name: "Add product", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "Add product", exact: true });
+  const category = editor.getByRole("combobox", { name: "Category", exact: true });
+  // Phones fire input and change as separate tasks, so React renders between them.
+  await category.evaluate(async (select: HTMLSelectElement) => {
+    select.value = "CUSTOM_CAKES";
+    select.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await expect(category).toHaveValue("CUSTOM_CAKES");
+  await expect(editor.getByRole("heading", { name: "Flavours & fillings" })).toBeVisible();
+});
