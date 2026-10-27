@@ -32,9 +32,12 @@ PRODUCT_IMPORT_ADMIN_EMAILS=<admin emails, comma separated, e.g. owner@example.c
    - `NOTIFY_EMAIL` — optional; where results are emailed (defaults to your Google account)
 4. Select `createProductForm` and click **Run**. Approve the permissions (Forms, Drive, external
    requests, email). The execution log prints the form's edit and share links.
-5. Open the edit link and add a question: **File upload**, titled exactly `Photos`, allow
+5. Open the edit link and add a question: **File upload**, titled `Photos` (any title works), allow
    *Image* files only, up to 10 files, max 10 MB each. (Apps Script cannot create this question type.)
-   Photos above 4 MB are skipped because Vercel rejects larger request bodies.
+   Photos that are over 4 MB (Vercel's request limit) or in iPhone's HEIC format are sent as a JPEG copy
+   made by Google Drive, at most 2000 px on the longest side. Image links to other websites are not
+   converted, so they must already be a JPG, PNG, WebP or AVIF under 4 MB. A Drive photo the shop refuses
+   is retried once as the JPEG copy.
 
 The form records each respondent's verified Google email and sends it as `X-Submitted-By`, so only
 the admins listed in `PRODUCT_IMPORT_ADMIN_EMAILS` can add products, each under their own name. A response
@@ -48,6 +51,8 @@ email matches their admin login.
 - **Sizes / packs** — one per line, `Name | Price | Pack size or serves | Stock`; only the name is required.
   Blank means one option at the main price with a pack size of 1.
 - **Sub-category** must match an existing sub-category name for that category.
+- **Preparation time** is how long the product takes to make, in hours and minutes; blank means none.
+  Every order also waits the shop's 24-hour minimum lead time, and customers get whichever is longer.
 - **Publish** defaults to Draft. Drafts are reviewed and published from **Admin → Products**.
 - The product link is generated from the name; repeats get `-2`, `-3`, … appended.
 
@@ -67,6 +72,14 @@ to retry:
 
 A response that already created a product is never imported twice: editing or retrying it again only
 sends an "Already added" email. Photos that failed on a product that was added are added in the admin.
+
+## Updating an existing form
+
+Paste the latest `product-upload.gs` over `Code.gs` and save. Then, depending on when the form was made:
+
+- Forms that still ask for **Lead time (hours)**: run `updatePreparationQuestions` once. That question
+  becomes *Preparation time (hours)*, keeping earlier answers, and a *Preparation time (minutes)* question
+  is added after it. The form's links stay the same.
 
 Forms created before retrying existed: run `enableFixLinks` once to turn on the fix links. It enables
 response editing, so respondents also see Google's "Edit your response" link after submitting.

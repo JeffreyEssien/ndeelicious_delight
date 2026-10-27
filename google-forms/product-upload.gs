@@ -5,7 +5,7 @@
  *    Only admins listed in the app's PRODUCT_IMPORT_ADMIN_EMAILS can submit; the form records each
  *    respondent's verified Google email and the shop credits the product to that admin.
  * 2. Run createProductForm() once. It builds the form and installs the submit trigger.
- * 3. In the form editor, add a "File upload" question titled exactly "Photos" (Apps Script cannot create one).
+ * 3. In the form editor, add a "File upload" question for photos (Apps Script cannot create one).
  *
  * Each submission creates a product through POST /api/integrations/products, then uploads every photo
  * through POST /api/integrations/products/images. The result is emailed to NOTIFY_EMAIL (default: you).
@@ -13,7 +13,7 @@
  * Retrying: a failure email has a link to fix the answers and resubmit that same response. To retry
  * failures unchanged (for example after the site was down), run retryFailedSubmissions(). A response that
  * already created a product is never imported twice. Forms created before retrying existed: run
- * enableFixLinks() once.
+ * enableFixLinks() once. Forms that still ask for "Lead time (hours)": run updatePreparationQuestions() once.
  */
 
 const TITLES = {
@@ -28,7 +28,8 @@ const TITLES = {
   status: "Publish",
   featured: "Feature on the home page?",
   taxClass: "Tax classification",
-  preparationHours: "Lead time (hours)",
+  preparationHours: "Preparation time (hours)",
+  preparationMinutes: "Preparation time (minutes)",
   trackInventory: "Track stock?",
   lowStockThreshold: "Low stock alert at",
   ingredients: "Ingredients",
@@ -61,11 +62,19 @@ const TAX_CLASSES = {
   "Standard taxable": "STANDARD_TAXABLE",
 };
 
+// Older forms asked for one combined lead time; their answers are read as preparation hours.
+const LEGACY_LEAD_TIME_TITLE = "Lead time (hours)";
+const PREPARATION_HELP =
+  "How long this product takes to make. Blank means none. Every order also waits the shop's 24-hour " +
+  "minimum lead time; customers get whichever is longer.";
+
 const ALLERGENS = ["Wheat / gluten", "Milk", "Eggs", "Peanuts", "Tree nuts", "Soy", "Sesame"];
 
 // Vercel rejects request bodies over 4.5 MB, so photos are capped below that.
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+// Longest side of the copy made for photos that are too big or not a web format, as in the admin editor.
+const RESIZED_IMAGE_PIXELS = 2000;
 
 /** Run once. Creates the form and the submit trigger. */
 function createProductForm() {
@@ -129,11 +138,7 @@ function createProductForm() {
     .setTitle(TITLES.taxClass)
     .setHelpText("Confirm the CRA classification. Leave as Setup required if unsure.")
     .setChoiceValues(Object.keys(TAX_CLASSES));
-  form
-    .addTextItem()
-    .setTitle(TITLES.preparationHours)
-    .setHelpText("How long after an order is placed it can be ready. At least 24; blank means 24 (48 = two days).")
-    .setValidation(money);
+  addPreparationQuestions_(form);
   form.addMultipleChoiceItem().setTitle(TITLES.trackInventory).setChoiceValues(["No", "Yes"]);
   form
     .addTextItem()
@@ -208,13 +213,69 @@ function enableFixLinks() {
   console.log("Fix links are on. Failure emails will include a link to correct and resubmit.");
 }
 
+/**
+ * Run once on a form that still asks for "Lead time (hours)". That question becomes
+ * "Preparation time (hours)" (earlier answers are kept) and a minutes question is added after it.
+ */
+function updatePreparationQuestions() {
+  const form = productForm_();
+  const titles = form.getItems().map((item) => item.getTitle());
+  if (titles.indexOf(TITLES.preparationMinutes) >= 0) {
+    console.log("The form already asks for preparation time in hours and minutes.");
+    return;
+  }
+  const legacy = form.getItems().filter((item) => item.getTitle() === LEGACY_LEAD_TIME_TITLE)[0];
+  if (!legacy) throw new Error('No "' + LEGACY_LEAD_TIME_TITLE + '" question found. Add the questions by hand.');
+  const hours = legacy
+    .asTextItem()
+    .setTitle(TITLES.preparationHours)
+    .setHelpText(PREPARATION_HELP)
+    .setValidation(preparationValidation_(null));
+  const minutes = form
+    .addTextItem()
+    .setTitle(TITLES.preparationMinutes)
+    .setValidation(preparationValidation_(59));
+  form.moveItem(minutes, hours.getIndex() + 1);
+  console.log("Done. The form now asks for preparation time in hours and minutes.");
+}
+
+function addPreparationQuestions_(form) {
+  form
+    .addTextItem()
+    .setTitle(TITLES.preparationHours)
+    .setHelpText(PREPARATION_HELP)
+    .setValidation(preparationValidation_(null));
+  form.addTextItem().setTitle(TITLES.preparationMinutes).setValidation(preparationValidation_(59));
+}
+
+function preparationValidation_(max) {
+  const validation = FormApp.createTextValidation();
+  return (max == null ? validation.requireNumberGreaterThanOrEqualTo(0) : validation.requireNumberBetween(0, max))
+    .setHelpText(max == null ? "Enter a number of hours, e.g. 2" : "Enter minutes from 0 to 59, e.g. 45")
+    .build();
+}
+
+// Hours plus minutes, in hours rounded to whole minutes. Blank means no preparation time.
+function preparationHours_(answers) {
+  const hoursAnswer = answers[TITLES.preparationHours] || answers[LEGACY_LEAD_TIME_TITLE];
+  const hours = hoursAnswer ? number_(hoursAnswer, TITLES.preparationHours) : 0;
+  const minutes = answers[TITLES.preparationMinutes]
+    ? number_(answers[TITLES.preparationMinutes], TITLES.preparationMinutes)
+    : 0;
+  return Math.round(hours * 60 + minutes) / 60;
+}
+
 // Imports one response and emails the result. Returns true when the product exists afterwards.
 function processResponse_(response) {
   const id = response.getId();
   const answers = {};
+  const photos = [];
   response.getItemResponses().forEach((item) => {
     answers[item.getItem().getTitle()] = item.getResponse();
+    // Photos come from any File upload question, so a renamed "Photos" question still works.
+    if (item.getItem().getType() === FormApp.ItemType.FILE_UPLOAD) photos.push.apply(photos, item.getResponse() || []);
   });
+  answers[TITLES.photos] = photos;
   const submitter = response.getRespondentEmail();
   const name = text_(answers[TITLES.name]) || "(no name)";
   const signature = submitter ? "\n\nSubmitted by " + submitter : "";
@@ -322,7 +383,7 @@ function buildProduct_(answers) {
     status: STATUSES[text_(answers[TITLES.status])] || "DRAFT",
     featured: text_(answers[TITLES.featured]) === "Yes",
     taxClass: TAX_CLASSES[text_(answers[TITLES.taxClass])] || "REQUIRES_REVIEW",
-    preparationHours: answers[TITLES.preparationHours] ? number_(answers[TITLES.preparationHours], TITLES.preparationHours) : 24,
+    preparationHours: preparationHours_(answers),
     trackInventory: text_(answers[TITLES.trackInventory]) === "Yes",
     lowStockThreshold: answers[TITLES.lowStockThreshold] ? number_(answers[TITLES.lowStockThreshold], TITLES.lowStockThreshold) : 0,
     ingredients: text_(answers[TITLES.ingredients]),
@@ -355,10 +416,7 @@ function uploadImages_(productId, productName, answers, submitter) {
     .concat(answers[TITLES.photos] || []) // File upload answers are Drive file IDs
     .concat(lines_(answers[TITLES.imageLinks]));
   sources.slice(0, 12).forEach((source, index) => {
-    try {
-      const blob = imageBlob_(source);
-      if (IMAGE_TYPES.indexOf(blob.getContentType()) < 0) throw new Error("not a JPG, PNG, WebP or AVIF image");
-      if (blob.getBytes().length > MAX_IMAGE_BYTES) throw new Error("larger than 4 MB");
+    const send = (blob) =>
       request_("/api/integrations/products/images", {
         payload: {
           productId: productId,
@@ -367,19 +425,68 @@ function uploadImages_(productId, productName, answers, submitter) {
           file: blob,
         },
       }, submitter);
+    try {
+      const image = uploadableImage_(source);
+      try {
+        send(image.blob);
+      } catch (error) {
+        // The shop can refuse a photo whose name says JPG but whose contents are not (often iPhone HEIC).
+        if (!image.driveId || image.resized) throw error;
+        send(resizedDriveImage_(image.driveId));
+      }
     } catch (error) {
-      errors.push(String(source).slice(0, 120) + ": " + error.message);
+      const label = /^[\w-]{20,}$/.test(source) ? "Photo " + (index + 1) : String(source).slice(0, 120);
+      errors.push(label + ": " + error.message);
     }
   });
   if (sources.length > 12) errors.push("Only the first 12 photos were used.");
   return errors;
 }
 
-function imageBlob_(source) {
+// Phone photos are often over 4 MB or in iPhone's HEIC format. A Drive photo that would be refused is
+// replaced by a JPEG copy Drive renders, at most 2000 px on its longest side. Web links must already fit.
+function uploadableImage_(source) {
   const driveId = /^[\w-]{20,}$/.test(source)
     ? source
     : (String(source).match(/(?:\/d\/|[?&]id=)([\w-]{20,})/) || [])[1];
-  if (driveId) return DriveApp.getFileById(driveId).getBlob();
+  const blob = driveId ? DriveApp.getFileById(driveId).getBlob() : downloadImage_(source);
+  const problem = imageProblem_(blob);
+  if (!problem) return { blob: blob, driveId: driveId, resized: false };
+  if (!driveId) throw new Error(problem);
+  return { blob: resizedDriveImage_(driveId, problem), driveId: driveId, resized: true };
+}
+
+function imageProblem_(blob) {
+  if (IMAGE_TYPES.indexOf(blob.getContentType()) < 0) return "not a JPG, PNG, WebP or AVIF image";
+  if (blob.getBytes().length > MAX_IMAGE_BYTES) return "larger than 4 MB";
+  return "";
+}
+
+// Drive's preview of the file at a larger size. A photo uploaded moments ago may not have a preview yet,
+// so this waits and tries again a few times.
+function resizedDriveImage_(fileId, reason) {
+  const auth = { Authorization: "Bearer " + ScriptApp.getOAuthToken() };
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt) Utilities.sleep(5000);
+    const file = UrlFetchApp.fetch(
+      "https://www.googleapis.com/drive/v3/files/" + fileId + "?fields=thumbnailLink&supportsAllDrives=true",
+      { headers: auth, muteHttpExceptions: true },
+    );
+    const link = file.getResponseCode() < 300 ? JSON.parse(file.getContentText()).thumbnailLink : "";
+    if (!link) continue;
+    const url = link.replace(/=s\d+[^=]*$/, "") + "=s" + RESIZED_IMAGE_PIXELS;
+    for (const headers of [auth, {}]) {
+      const image = UrlFetchApp.fetch(url, { headers: headers, muteHttpExceptions: true });
+      if (image.getResponseCode() >= 300) continue;
+      const problem = imageProblem_(image.getBlob());
+      if (problem) throw new Error((reason ? reason + "; " : "") + "Google Drive's copy was " + problem);
+      return image.getBlob().setName(fileId + ".jpg");
+    }
+  }
+  throw new Error((reason ? reason + "; " : "") + "Google Drive could not make a JPEG copy of it");
+}
+
+function downloadImage_(source) {
   const response = UrlFetchApp.fetch(source, { muteHttpExceptions: true, followRedirects: true });
   if (response.getResponseCode() >= 400) throw new Error("download failed (" + response.getResponseCode() + ")");
   return response.getBlob();

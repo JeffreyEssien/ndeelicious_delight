@@ -11,3 +11,5 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 # Git
 
 Always pull before pushing so you know what is already on the remote. Fetch the base branch and the branch you are pushing, review what changed, merge it in, and re-run the checks before pushing. Watch for migration numbers in `db/migrations/` that another branch has already used.
+
+Branches: `main` is production and `dev` is integration. Work goes on `feature/<name>` or `fix/<name>`, branched from `dev`, with pull requests into `dev`; `dev` is merged into `main` to release. Do not create branches outside these.

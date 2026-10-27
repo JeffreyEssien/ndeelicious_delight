@@ -90,7 +90,9 @@ export async function addProductImage(db: SupabaseClient, actor: AdminAuditActor
   try {
     image = await uploadImage(file, productImageFolder(parsed.data.productId));
   } catch (error) {
-    return error instanceof CloudinaryNotConfiguredError ? notConfigured() : failure("Image upload failed.", 502);
+    // Cloudinary's own reason ("Invalid image file") tells the form owner what to change.
+    if (error instanceof CloudinaryNotConfiguredError) return notConfigured();
+    return failure(`Image upload failed: ${error instanceof Error ? error.message : "unknown error"}`, 502);
   }
   return recordProductImage(db, actor, { ...parsed.data, image });
 }
