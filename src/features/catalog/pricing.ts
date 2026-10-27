@@ -65,6 +65,12 @@ export function cakeLayerAdjustment(
 
 // Authoritative per-unit price for a cart line: the size price plus any layer adjustment.
 // Used by the server, the cart subtotal and every price display so they cannot drift.
+// The product page stores the customer's cake message as a "Cake message" selection.
+export const CAKE_MESSAGE_GROUP = "Cake message";
+export function hasCakeMessage(selections: readonly CartSelection[] | undefined) {
+  return Boolean(selections?.some((selection) => selection.group === CAKE_MESSAGE_GROUP && selection.value.trim()));
+}
+
 export function lineUnitPrice(product: Product, variant: ProductVariant, selections?: readonly CartSelection[]) {
   return variantPrice(product, variant) + cakeLayerAdjustment(product, variant.id, selections);
 }

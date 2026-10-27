@@ -592,6 +592,7 @@ export function ProductEditor({
               .map((variant) => [variant.id, normalizeCakeSizeLayers(variant.layerOptions)]),
           )
         : {},
+      cakeMessageRequired: isCake && form.get("cakeMessageRequired") === "on",
       collectionId: collectionId || null,
     };
   }
@@ -1225,6 +1226,15 @@ export function ProductEditor({
                 )}
               </fieldset>
             </div>
+            <Checkbox
+              label="Customer must write a message for this cake"
+              name="cakeMessageRequired"
+              defaultChecked={product?.cakeMessageRequired}
+            />
+            <p className="field-help">
+              When ticked, customers see a message box and must fill it in before adding this cake to the basket. When
+              not ticked, the box is hidden.
+            </p>
           </div>
         ) : null}
 

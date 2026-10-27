@@ -36,6 +36,8 @@ export type Product = {
   preparationInstructions?: string;
   optionGroups?: CakeOptionGroup[];
   cakeLayers?: Record<string, CakeSizeLayer[]>;
+  // Cakes only: show the "message on the cake" box and require it before adding to the basket.
+  cakeMessageRequired?: boolean;
 };
 
 // A cake size can offer several layer counts (e.g. 8" as 2 or 3 layers); each layer count
