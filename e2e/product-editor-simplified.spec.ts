@@ -28,7 +28,8 @@ test("prices live on packs, options only on cakes, and every product starts at a
   await expect(editor.getByLabel("Price (CAD)", { exact: true })).toHaveCount(0);
   await expect(editor.getByLabel("Sale price (CAD)", { exact: true })).toHaveCount(0);
   await expect(editor.getByRole("heading", { name: "Options & flavours" })).toHaveCount(0);
-  await expect(editor.getByLabel("Lead time (hours)")).toHaveValue("24");
+  await expect(editor.getByLabel("Preparation time (hours)")).toHaveValue("0");
+  await expect(editor.getByLabel("Preparation time (minutes)")).toHaveValue("0");
 
   await editor.getByRole("combobox", { name: "Category", exact: true }).selectOption("CUSTOM_CAKES");
   await expect(editor.getByRole("heading", { name: "Flavours & fillings" })).toBeVisible();
@@ -51,15 +52,10 @@ test("prices live on packs, options only on cakes, and every product starts at a
     await card.getByLabel("Published (available to customers)").check();
     await card.getByRole("button", { name: "Done", exact: true }).click();
   }
-  await editor.getByLabel("Lead time (hours)").fill("12");
+  // Preparation time is separate from the 24-hour minimum lead time, so it can be minutes.
+  await editor.getByLabel("Preparation time (hours)").fill("0");
+  await editor.getByLabel("Preparation time (minutes)").fill("45");
   await editor.getByRole("button", { name: "Create product", exact: true }).click();
-  // A lead time under 24 hours cannot go live; the work is kept as a hidden draft with the reason.
-  await expect(editor.getByRole("status").filter({ hasText: "Saved as a hidden draft" })).toContainText(
-    "Lead time must be at least 24 hours.",
-  );
-  await editor.getByLabel("Lead time (hours)").fill("48");
-  await editor.getByLabel("Storefront visibility").selectOption("ACTIVE");
-  await editor.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(editor).toBeHidden();
 
   const row = page.locator("tr").filter({ hasText: "Fixture Range Cupcakes" });
