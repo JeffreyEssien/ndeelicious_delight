@@ -34,7 +34,9 @@ PRODUCT_IMPORT_ADMIN_EMAILS=<admin emails, comma separated, e.g. owner@example.c
    requests, email). The execution log prints the form's edit and share links.
 5. Open the edit link and add a question: **File upload**, titled exactly `Photos`, allow
    *Image* files only, up to 10 files, max 10 MB each. (Apps Script cannot create this question type.)
-   Photos above 4 MB are skipped because Vercel rejects larger request bodies.
+   Photos that are over 4 MB (Vercel's request limit) or in iPhone's HEIC format are sent as a JPEG copy
+   made by Google Drive, at most 2000 px on the longest side. Image links to other websites are not
+   converted, so they must already be a JPG, PNG, WebP or AVIF under 4 MB.
 
 The form records each respondent's verified Google email and sends it as `X-Submitted-By`, so only
 the admins listed in `PRODUCT_IMPORT_ADMIN_EMAILS` can add products, each under their own name. A response

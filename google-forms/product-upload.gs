@@ -73,6 +73,8 @@ const ALLERGENS = ["Wheat / gluten", "Milk", "Eggs", "Peanuts", "Tree nuts", "So
 // Vercel rejects request bodies over 4.5 MB, so photos are capped below that.
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+// Longest side of the copy made for photos that are too big or not a web format, as in the admin editor.
+const RESIZED_IMAGE_PIXELS = 2000;
 
 /** Run once. Creates the form and the submit trigger. */
 function createProductForm() {
@@ -411,9 +413,7 @@ function uploadImages_(productId, productName, answers, submitter) {
     .concat(lines_(answers[TITLES.imageLinks]));
   sources.slice(0, 12).forEach((source, index) => {
     try {
-      const blob = imageBlob_(source);
-      if (IMAGE_TYPES.indexOf(blob.getContentType()) < 0) throw new Error("not a JPG, PNG, WebP or AVIF image");
-      if (blob.getBytes().length > MAX_IMAGE_BYTES) throw new Error("larger than 4 MB");
+      const blob = uploadableImage_(source);
       request_("/api/integrations/products/images", {
         payload: {
           productId: productId,
@@ -430,11 +430,50 @@ function uploadImages_(productId, productName, answers, submitter) {
   return errors;
 }
 
-function imageBlob_(source) {
+// Phone photos are often over 4 MB or in iPhone's HEIC format. A Drive photo that would be refused is
+// replaced by a JPEG copy Drive renders, at most 2000 px on its longest side. Web links must already fit.
+function uploadableImage_(source) {
   const driveId = /^[\w-]{20,}$/.test(source)
     ? source
     : (String(source).match(/(?:\/d\/|[?&]id=)([\w-]{20,})/) || [])[1];
-  if (driveId) return DriveApp.getFileById(driveId).getBlob();
+  const blob = driveId ? DriveApp.getFileById(driveId).getBlob() : downloadImage_(source);
+  const problem = imageProblem_(blob);
+  if (!problem) return blob;
+  if (!driveId) throw new Error(problem);
+  const resized = resizedDriveImage_(driveId);
+  const resizedProblem = imageProblem_(resized);
+  if (resizedProblem) throw new Error(problem + "; the smaller copy was " + resizedProblem);
+  return resized.setName(String(blob.getName() || "photo").replace(/\.[^.]*$/, "") + ".jpg");
+}
+
+function imageProblem_(blob) {
+  if (IMAGE_TYPES.indexOf(blob.getContentType()) < 0) return "not a JPG, PNG, WebP or AVIF image";
+  if (blob.getBytes().length > MAX_IMAGE_BYTES) return "larger than 4 MB";
+  return "";
+}
+
+// Drive's preview of the file at a larger size. A photo uploaded moments ago may not have a preview yet,
+// so this waits and tries again a few times.
+function resizedDriveImage_(fileId) {
+  const auth = { Authorization: "Bearer " + ScriptApp.getOAuthToken() };
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt) Utilities.sleep(5000);
+    const file = UrlFetchApp.fetch(
+      "https://www.googleapis.com/drive/v3/files/" + fileId + "?fields=thumbnailLink&supportsAllDrives=true",
+      { headers: auth, muteHttpExceptions: true },
+    );
+    const link = file.getResponseCode() < 300 ? JSON.parse(file.getContentText()).thumbnailLink : "";
+    if (!link) continue;
+    const url = link.replace(/=s\d+[^=]*$/, "") + "=s" + RESIZED_IMAGE_PIXELS;
+    for (const headers of [auth, {}]) {
+      const image = UrlFetchApp.fetch(url, { headers: headers, muteHttpExceptions: true });
+      if (image.getResponseCode() < 300) return image.getBlob();
+    }
+  }
+  throw new Error("Google Drive could not make a smaller copy of it");
+}
+
+function downloadImage_(source) {
   const response = UrlFetchApp.fetch(source, { muteHttpExceptions: true, followRedirects: true });
   if (response.getResponseCode() >= 400) throw new Error("download failed (" + response.getResponseCode() + ")");
   return response.getBlob();
