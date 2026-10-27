@@ -13,7 +13,7 @@
  * Retrying: a failure email has a link to fix the answers and resubmit that same response. To retry
  * failures unchanged (for example after the site was down), run retryFailedSubmissions(). A response that
  * already created a product is never imported twice. Forms created before retrying existed: run
- * enableFixLinks() once.
+ * enableFixLinks() once. Forms that still ask for "Lead time (hours)": run updatePreparationQuestions() once.
  */
 
 const TITLES = {
@@ -28,7 +28,8 @@ const TITLES = {
   status: "Publish",
   featured: "Feature on the home page?",
   taxClass: "Tax classification",
-  preparationHours: "Lead time (hours)",
+  preparationHours: "Preparation time (hours)",
+  preparationMinutes: "Preparation time (minutes)",
   trackInventory: "Track stock?",
   lowStockThreshold: "Low stock alert at",
   ingredients: "Ingredients",
@@ -60,6 +61,12 @@ const TAX_CLASSES = {
   "Eligible edible wedding cake (zero rated)": "WEDDING_CAKE",
   "Standard taxable": "STANDARD_TAXABLE",
 };
+
+// Older forms asked for one combined lead time; their answers are read as preparation hours.
+const LEGACY_LEAD_TIME_TITLE = "Lead time (hours)";
+const PREPARATION_HELP =
+  "How long this product takes to make. Blank means none. Every order also waits the shop's 24-hour " +
+  "minimum lead time; customers get whichever is longer.";
 
 const ALLERGENS = ["Wheat / gluten", "Milk", "Eggs", "Peanuts", "Tree nuts", "Soy", "Sesame"];
 
@@ -129,11 +136,7 @@ function createProductForm() {
     .setTitle(TITLES.taxClass)
     .setHelpText("Confirm the CRA classification. Leave as Setup required if unsure.")
     .setChoiceValues(Object.keys(TAX_CLASSES));
-  form
-    .addTextItem()
-    .setTitle(TITLES.preparationHours)
-    .setHelpText("How long after an order is placed it can be ready. At least 24; blank means 24 (48 = two days).")
-    .setValidation(money);
+  addPreparationQuestions_(form);
   form.addMultipleChoiceItem().setTitle(TITLES.trackInventory).setChoiceValues(["No", "Yes"]);
   form
     .addTextItem()
@@ -206,6 +209,58 @@ function listFailedSubmissions() {
 function enableFixLinks() {
   productForm_().setAllowResponseEdits(true);
   console.log("Fix links are on. Failure emails will include a link to correct and resubmit.");
+}
+
+/**
+ * Run once on a form that still asks for "Lead time (hours)". That question becomes
+ * "Preparation time (hours)" (earlier answers are kept) and a minutes question is added after it.
+ */
+function updatePreparationQuestions() {
+  const form = productForm_();
+  const titles = form.getItems().map((item) => item.getTitle());
+  if (titles.indexOf(TITLES.preparationMinutes) >= 0) {
+    console.log("The form already asks for preparation time in hours and minutes.");
+    return;
+  }
+  const legacy = form.getItems().filter((item) => item.getTitle() === LEGACY_LEAD_TIME_TITLE)[0];
+  if (!legacy) throw new Error('No "' + LEGACY_LEAD_TIME_TITLE + '" question found. Add the questions by hand.');
+  const hours = legacy
+    .asTextItem()
+    .setTitle(TITLES.preparationHours)
+    .setHelpText(PREPARATION_HELP)
+    .setValidation(preparationValidation_(null));
+  const minutes = form
+    .addTextItem()
+    .setTitle(TITLES.preparationMinutes)
+    .setValidation(preparationValidation_(59));
+  form.moveItem(minutes, hours.getIndex() + 1);
+  console.log("Done. The form now asks for preparation time in hours and minutes.");
+}
+
+function addPreparationQuestions_(form) {
+  form
+    .addTextItem()
+    .setTitle(TITLES.preparationHours)
+    .setHelpText(PREPARATION_HELP)
+    .setValidation(preparationValidation_(null));
+  form.addTextItem().setTitle(TITLES.preparationMinutes).setValidation(preparationValidation_(59));
+}
+
+function preparationValidation_(max) {
+  const validation = FormApp.createTextValidation();
+  return (max == null ? validation.requireNumberGreaterThanOrEqualTo(0) : validation.requireNumberBetween(0, max))
+    .setHelpText(max == null ? "Enter a number of hours, e.g. 2" : "Enter minutes from 0 to 59, e.g. 45")
+    .build();
+}
+
+// Hours plus minutes, in hours rounded to whole minutes. Blank means no preparation time.
+function preparationHours_(answers) {
+  const hoursAnswer = answers[TITLES.preparationHours] || answers[LEGACY_LEAD_TIME_TITLE];
+  const hours = hoursAnswer ? number_(hoursAnswer, TITLES.preparationHours) : 0;
+  const minutes = answers[TITLES.preparationMinutes]
+    ? number_(answers[TITLES.preparationMinutes], TITLES.preparationMinutes)
+    : 0;
+  return Math.round(hours * 60 + minutes) / 60;
 }
 
 // Imports one response and emails the result. Returns true when the product exists afterwards.
@@ -322,7 +377,7 @@ function buildProduct_(answers) {
     status: STATUSES[text_(answers[TITLES.status])] || "DRAFT",
     featured: text_(answers[TITLES.featured]) === "Yes",
     taxClass: TAX_CLASSES[text_(answers[TITLES.taxClass])] || "REQUIRES_REVIEW",
-    preparationHours: answers[TITLES.preparationHours] ? number_(answers[TITLES.preparationHours], TITLES.preparationHours) : 24,
+    preparationHours: preparationHours_(answers),
     trackInventory: text_(answers[TITLES.trackInventory]) === "Yes",
     lowStockThreshold: answers[TITLES.lowStockThreshold] ? number_(answers[TITLES.lowStockThreshold], TITLES.lowStockThreshold) : 0,
     ingredients: text_(answers[TITLES.ingredients]),

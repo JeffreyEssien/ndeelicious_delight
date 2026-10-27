@@ -48,6 +48,8 @@ email matches their admin login.
 - **Sizes / packs** — one per line, `Name | Price | Pack size or serves | Stock`; only the name is required.
   Blank means one option at the main price with a pack size of 1.
 - **Sub-category** must match an existing sub-category name for that category.
+- **Preparation time** is how long the product takes to make, in hours and minutes; blank means none.
+  Every order also waits the shop's 24-hour minimum lead time, and customers get whichever is longer.
 - **Publish** defaults to Draft. Drafts are reviewed and published from **Admin → Products**.
 - The product link is generated from the name; repeats get `-2`, `-3`, … appended.
 
@@ -67,6 +69,14 @@ to retry:
 
 A response that already created a product is never imported twice: editing or retrying it again only
 sends an "Already added" email. Photos that failed on a product that was added are added in the admin.
+
+## Updating an existing form
+
+Paste the latest `product-upload.gs` over `Code.gs` and save. Then, depending on when the form was made:
+
+- Forms that still ask for **Lead time (hours)**: run `updatePreparationQuestions` once. That question
+  becomes *Preparation time (hours)*, keeping earlier answers, and a *Preparation time (minutes)* question
+  is added after it. The form's links stay the same.
 
 Forms created before retrying existed: run `enableFixLinks` once to turn on the fix links. It enables
 response editing, so respondents also see Google's "Edit your response" link after submitting.
