@@ -5,7 +5,7 @@
  *    Only admins listed in the app's PRODUCT_IMPORT_ADMIN_EMAILS can submit; the form records each
  *    respondent's verified Google email and the shop credits the product to that admin.
  * 2. Run createProductForm() once. It builds the form and installs the submit trigger.
- * 3. In the form editor, add a "File upload" question titled exactly "Photos" (Apps Script cannot create one).
+ * 3. In the form editor, add a "File upload" question for photos (Apps Script cannot create one).
  *
  * Each submission creates a product through POST /api/integrations/products, then uploads every photo
  * through POST /api/integrations/products/images. The result is emailed to NOTIFY_EMAIL (default: you).
@@ -269,9 +269,13 @@ function preparationHours_(answers) {
 function processResponse_(response) {
   const id = response.getId();
   const answers = {};
+  const photos = [];
   response.getItemResponses().forEach((item) => {
     answers[item.getItem().getTitle()] = item.getResponse();
+    // Photos come from any File upload question, so a renamed "Photos" question still works.
+    if (item.getItem().getType() === FormApp.ItemType.FILE_UPLOAD) photos.push.apply(photos, item.getResponse() || []);
   });
+  answers[TITLES.photos] = photos;
   const submitter = response.getRespondentEmail();
   const name = text_(answers[TITLES.name]) || "(no name)";
   const signature = submitter ? "\n\nSubmitted by " + submitter : "";
@@ -412,8 +416,7 @@ function uploadImages_(productId, productName, answers, submitter) {
     .concat(answers[TITLES.photos] || []) // File upload answers are Drive file IDs
     .concat(lines_(answers[TITLES.imageLinks]));
   sources.slice(0, 12).forEach((source, index) => {
-    try {
-      const blob = uploadableImage_(source);
+    const send = (blob) =>
       request_("/api/integrations/products/images", {
         payload: {
           productId: productId,
@@ -422,8 +425,18 @@ function uploadImages_(productId, productName, answers, submitter) {
           file: blob,
         },
       }, submitter);
+    try {
+      const image = uploadableImage_(source);
+      try {
+        send(image.blob);
+      } catch (error) {
+        // The shop can refuse a photo whose name says JPG but whose contents are not (often iPhone HEIC).
+        if (!image.driveId || image.resized) throw error;
+        send(resizedDriveImage_(image.driveId));
+      }
     } catch (error) {
-      errors.push(String(source).slice(0, 120) + ": " + error.message);
+      const label = /^[\w-]{20,}$/.test(source) ? "Photo " + (index + 1) : String(source).slice(0, 120);
+      errors.push(label + ": " + error.message);
     }
   });
   if (sources.length > 12) errors.push("Only the first 12 photos were used.");
@@ -438,12 +451,9 @@ function uploadableImage_(source) {
     : (String(source).match(/(?:\/d\/|[?&]id=)([\w-]{20,})/) || [])[1];
   const blob = driveId ? DriveApp.getFileById(driveId).getBlob() : downloadImage_(source);
   const problem = imageProblem_(blob);
-  if (!problem) return blob;
+  if (!problem) return { blob: blob, driveId: driveId, resized: false };
   if (!driveId) throw new Error(problem);
-  const resized = resizedDriveImage_(driveId);
-  const resizedProblem = imageProblem_(resized);
-  if (resizedProblem) throw new Error(problem + "; the smaller copy was " + resizedProblem);
-  return resized.setName(String(blob.getName() || "photo").replace(/\.[^.]*$/, "") + ".jpg");
+  return { blob: resizedDriveImage_(driveId, problem), driveId: driveId, resized: true };
 }
 
 function imageProblem_(blob) {
@@ -454,7 +464,7 @@ function imageProblem_(blob) {
 
 // Drive's preview of the file at a larger size. A photo uploaded moments ago may not have a preview yet,
 // so this waits and tries again a few times.
-function resizedDriveImage_(fileId) {
+function resizedDriveImage_(fileId, reason) {
   const auth = { Authorization: "Bearer " + ScriptApp.getOAuthToken() };
   for (let attempt = 0; attempt < 4; attempt++) {
     if (attempt) Utilities.sleep(5000);
@@ -467,10 +477,13 @@ function resizedDriveImage_(fileId) {
     const url = link.replace(/=s\d+[^=]*$/, "") + "=s" + RESIZED_IMAGE_PIXELS;
     for (const headers of [auth, {}]) {
       const image = UrlFetchApp.fetch(url, { headers: headers, muteHttpExceptions: true });
-      if (image.getResponseCode() < 300) return image.getBlob();
+      if (image.getResponseCode() >= 300) continue;
+      const problem = imageProblem_(image.getBlob());
+      if (problem) throw new Error((reason ? reason + "; " : "") + "Google Drive's copy was " + problem);
+      return image.getBlob().setName(fileId + ".jpg");
     }
   }
-  throw new Error("Google Drive could not make a smaller copy of it");
+  throw new Error((reason ? reason + "; " : "") + "Google Drive could not make a JPEG copy of it");
 }
 
 function downloadImage_(source) {
