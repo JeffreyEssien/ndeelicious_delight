@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  adminReturnPath,
   adminSessionCookieOptions,
   createAdminSession,
   fingerprint,
@@ -39,6 +40,17 @@ describe("first-party admin authentication primitives", () => {
     expect(readAdminSessionCookie(remembered.cookieValue, 29 * 24 * 60 * 60_000)).not.toBeNull();
     expect(adminSessionCookieOptions(remembered.expiresAt, true).expires).toEqual(remembered.expiresAt);
     expect(adminSessionCookieOptions(remembered.expiresAt, false)).not.toHaveProperty("expires");
+  });
+
+  it("sends the session cookie when an admin link is opened from email or another app", () => {
+    expect(adminSessionCookieOptions(new Date(0)).sameSite).toBe("lax");
+  });
+
+  it("only returns to admin pages after login", () => {
+    expect(adminReturnPath("/admin/orders?page=2")).toBe("/admin/orders?page=2");
+    expect(adminReturnPath("/admin")).toBe("/admin");
+    for (const unsafe of [undefined, "", "https://evil.example", "//evil.example", "/administrator", "/admin/login"])
+      expect(adminReturnPath(unsafe)).toBe("/admin");
   });
 
   it("creates stable non-reversible request fingerprints", () => {

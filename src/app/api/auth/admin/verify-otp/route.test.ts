@@ -71,7 +71,7 @@ describe("POST /api/auth/admin/verify-otp", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("set-cookie")).toContain("ndee_admin_session=");
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
-    expect(response.headers.get("set-cookie")).toContain("SameSite=strict");
+    expect(response.headers.get("set-cookie")).toContain("SameSite=lax");
     expect(insertedSession?.token_hash).toMatch(/^[a-f0-9]{64}$/);
     expect(String(insertedSession?.token_hash)).not.toContain(code);
   });

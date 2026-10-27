@@ -50,6 +50,12 @@ export function createAdminSession(now = Date.now(), remember = false) {
   };
 }
 
+// Where to send an admin after login: only a page inside /admin, never another site.
+export function adminReturnPath(value: string | null | undefined) {
+  if (!value || !/^\/admin(?:[/?#]|$)/.test(value) || value.startsWith("/admin/login")) return "/admin";
+  return value;
+}
+
 export function readAdminSessionCookie(value: string | undefined, now = Date.now()) {
   if (!value) return null;
   const [token, expiresValue, signature, ...extra] = value.split(".");
@@ -62,11 +68,14 @@ export function readAdminSessionCookie(value: string | undefined, now = Date.now
 }
 
 // Without "keep me signed in" the cookie has no expiry, so the browser drops it when it closes.
+// SameSite=Lax, not Strict: Strict withholds the cookie when an admin page is opened from an email,
+// WhatsApp or a home-screen shortcut, which sent signed-in admins back to the login code. Lax still
+// withholds it from cross-site POSTs, and every admin API also checks the request origin.
 export function adminSessionCookieOptions(expires: Date, persistent = true) {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict" as const,
+    sameSite: "lax" as const,
     path: "/",
     ...(persistent ? { expires } : {}),
     priority: "high" as const,
