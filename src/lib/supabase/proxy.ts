@@ -11,5 +11,8 @@ export async function updateSession(request: NextRequest) {
   } catch {
     return NextResponse.redirect(new URL("/admin/login?error=configuration", request.url));
   }
-  return NextResponse.redirect(new URL("/admin/login", request.url));
+  // Remember the page that was asked for so login can return there.
+  const login = new URL("/admin/login", request.url);
+  login.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`);
+  return NextResponse.redirect(login);
 }

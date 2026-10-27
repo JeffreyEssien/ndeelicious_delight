@@ -7,7 +7,7 @@ import { Icon } from "@/components/ui/icons";
 
 type Step = "email" | "code";
 
-export function LoginForm({ initialError = "" }: { initialError?: string }) {
+export function LoginForm({ initialError = "", returnTo = "/admin" }: { initialError?: string; returnTo?: string }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
@@ -59,7 +59,7 @@ export function LoginForm({ initialError = "" }: { initialError?: string }) {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "We couldn’t verify that code.");
-      router.replace("/admin");
+      router.replace(returnTo);
       router.refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "We couldn’t verify that code.");
