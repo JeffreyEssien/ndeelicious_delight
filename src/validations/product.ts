@@ -57,12 +57,13 @@ export const productInputSchema = z
     category: productCategorySchema,
     shoppingMode: z.enum(["READY_TO_ORDER", "MADE_TO_ORDER", "READY_TO_BAKE"]).default("READY_TO_ORDER"),
     taxClass: z.enum(taxClasses).default("REQUIRES_REVIEW"),
+    // Time to make this product. Scheduling separately applies the shop-wide minimum lead time on top.
     preparationHours: z
-      .number({ error: "Enter the lead time in hours." })
-      .min(MIN_LEAD_TIME_HOURS, `Lead time must be at least ${MIN_LEAD_TIME_HOURS} hours.`)
-      .max(8760, "Lead time must be under a year.")
+      .number({ error: "Enter the preparation time in hours and minutes." })
+      .min(0, "Preparation time cannot be negative.")
+      .max(8760, "Preparation time must be under a year.")
       .refine((hours) => Math.abs(hours * 60 - Math.round(hours * 60)) < 0.000001, "Use whole minutes.")
-      .default(MIN_LEAD_TIME_HOURS),
+      .default(0),
     price: z
       .number({ error: "Enter a price, for example 24.50." })
       .int()
@@ -176,7 +177,7 @@ const FIELD_LABELS: Record<string, string> = {
   storageInstructions: "Storage instructions",
   preparationInstructions: "Preparation instructions",
   lowStockThreshold: "Low-stock alert",
-  preparationHours: "Lead time",
+  preparationHours: "Preparation time",
   optionGroups: "Flavours and fillings",
   cakeLayers: "Cake layers",
   cakeMessageRequired: "Cake message",

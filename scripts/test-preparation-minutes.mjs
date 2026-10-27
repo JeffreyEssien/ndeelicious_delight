@@ -29,4 +29,18 @@ assert.deepEqual(
 await db.exec("insert into products (id) values (4)");
 assert.equal((await db.query("select preparation_hours from products where id=4")).rows[0].preparation_hours, 24);
 console.log("PASS migration 0047: raises lead times under 24 hours, keeps longer ones, defaults new products to 24");
+
+await db.exec(fs.readFileSync("db/migrations/0049_separate_preparation_time.sql", "utf8"));
+const preparationTimes = (await db.query("select id, preparation_hours from products order by id")).rows;
+assert.deepEqual(
+  preparationTimes.map((row) => row.preparation_hours),
+  [0, 0, 48, 0],
+);
+await db.exec("insert into products (id) values (5)");
+assert.equal((await db.query("select preparation_hours from products where id=5")).rows[0].preparation_hours, 0);
+await db.query("update products set preparation_hours=$1 where id=5", [45 / 60]);
+assert.equal((await db.query("select preparation_hours from products where id=5")).rows[0].preparation_hours, 45 / 60);
+console.log(
+  "PASS migration 0049: resets 24-hour lead times to no preparation time, keeps longer ones, defaults new products to 0",
+);
 await db.close();

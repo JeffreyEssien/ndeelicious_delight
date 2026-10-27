@@ -89,11 +89,11 @@ it("stores explicit pack quantities and rejects zero, fractional or negative pie
     ).toBe(packQuantity);
 });
 
-it("persists whole-minute lead times of at least 24 hours without rounding", () => {
-  for (const minutes of [1440, 1441, 1455, 1530, 525600]) {
+it("persists whole-minute preparation times without rounding", () => {
+  for (const minutes of [0, 1, 45, 90, 1440, 1455, 525600]) {
     expect(productInputSchema.parse({ ...valid, preparationHours: minutes / 60 }).preparationHours).toBe(minutes / 60);
   }
-  for (const preparationHours of [-1, 0, 23.5, 9000, 24.001, Number.NaN])
+  for (const preparationHours of [-1, -1 / 60, 9000, 24.001, 0.001, Number.NaN])
     expect(productInputSchema.safeParse({ ...valid, preparationHours }).success).toBe(false);
 });
 

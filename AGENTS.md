@@ -7,3 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Git
+
+Always pull before pushing so you know what is already on the remote. Fetch the base branch and the branch you are pushing, review what changed, merge it in, and re-run the checks before pushing. Watch for migration numbers in `db/migrations/` that another branch has already used.

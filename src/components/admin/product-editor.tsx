@@ -78,7 +78,7 @@ type EditorBackup = {
   fields: Record<string, string | boolean>;
   category: string;
   collectionId: string;
-  leadTimeHours: string;
+  preparation: { hours: string; minutes: string };
   variants: DraftVariant[];
   imageOrder: { id: string; altText: string }[];
   cakeFlavours: string[];
@@ -189,10 +189,11 @@ export function ProductEditor({
       })
       .catch(() => {});
   }, []);
-  // One lead time for every product, in hours: how long after an order is placed it can be ready.
-  const [leadTimeHours, setLeadTimeHours] = useState(
-    String(Math.max(MIN_LEAD_TIME_HOURS, Math.ceil(product?.preparationHours ?? MIN_LEAD_TIME_HOURS))),
-  );
+  // How long this product takes to make, in hours and minutes. The shop-wide minimum lead time is separate.
+  const [preparation, setPreparation] = useState(() => {
+    const total = Math.round((product?.preparationHours ?? 0) * 60);
+    return { hours: String(Math.floor(total / 60)), minutes: String(total % 60) };
+  });
   const [editingPack, setEditingPack] = useState<string | null>(null);
   const [category, setCategory] = useState<string>(product?.category ?? "PASTRIES");
   // Behaviour follows the category: Ready to bake is bake-at-home, everything else is made to order.
@@ -327,7 +328,7 @@ export function ProductEditor({
       fields: formFields(form),
       category,
       collectionId,
-      leadTimeHours,
+      preparation,
       variants,
       imageOrder: images.map((image) => ({ id: image.id, altText: image.altText })),
       cakeFlavours,
@@ -352,7 +353,7 @@ export function ProductEditor({
       if (changed) writeBackup(currentKey, { ...snapshot, savedAt: Date.now() });
     }, 300);
     return () => clearTimeout(timer);
-  }, [fieldsVersion, category, collectionId, leadTimeHours, variants, images, cakeFlavours, cakeFillings, currentKey]);
+  }, [fieldsVersion, category, collectionId, preparation, variants, images, cakeFlavours, cakeFillings, currentKey]);
 
   useEffect(() => {
     onDirtyChange?.(dirty || pendingImages.length > 0);
@@ -377,7 +378,8 @@ export function ProductEditor({
   function restoreBackup(backup: EditorBackup) {
     setCategory(backup.category);
     setCollectionId(backup.collectionId);
-    setLeadTimeHours(backup.leadTimeHours);
+    // Older backups held one combined lead time instead; keep the product's current preparation time for those.
+    if (backup.preparation) setPreparation(backup.preparation);
     // If stock moved on the server since the backup (an order came in), take the current stock so the save
     // is not refused as out of date.
     setVariants((current) => {
@@ -539,7 +541,7 @@ export function ProductEditor({
       status,
       featured: form.get("featured") === "on",
       shoppingMode: mode,
-      preparationHours: Number(leadTimeHours) || MIN_LEAD_TIME_HOURS,
+      preparationHours: (Number(preparation.hours) || 0) + (Number(preparation.minutes) || 0) / 60,
       taxClass: String(form.get("taxClass")),
       trackInventory: form.get("trackInventory") === "on",
       lowStockThreshold: Number(form.get("lowStockThreshold") || 5),
@@ -619,7 +621,7 @@ export function ProductEditor({
     return {
       ...payload,
       status: "DRAFT",
-      preparationHours: wholeNumber(payload.preparationHours, MIN_LEAD_TIME_HOURS, 8760),
+      preparationHours: wholeNumber(payload.preparationHours * 60, 0, 8760 * 60) / 60,
       lowStockThreshold: wholeNumber(payload.lowStockThreshold, 0, 1_000_000, 5),
       name: payload.name.length >= 2 ? payload.name.slice(0, 150) : `${payload.name || "Untitled"} product`.trim(),
       shortDescription: payload.shortDescription.slice(0, 500),
@@ -844,19 +846,29 @@ export function ProductEditor({
             Confirm CRA classification, serving size and packaging. Sweet servings qualify for the six-or-more rule only
             when sold together without individual taxable packaging.
           </p>
-          <Input
-            label="Lead time (hours)"
-            type="number"
-            min={MIN_LEAD_TIME_HOURS}
-            max="8760"
-            step="1"
-            value={leadTimeHours}
-            onChange={(event) => setLeadTimeHours(event.target.value)}
-            required
-          />
+          <div className="field-row">
+            <Input
+              label="Preparation time (hours)"
+              type="number"
+              min="0"
+              max="8760"
+              step="1"
+              value={preparation.hours}
+              onChange={(event) => setPreparation((current) => ({ ...current, hours: event.target.value }))}
+            />
+            <Input
+              label="Preparation time (minutes)"
+              type="number"
+              min="0"
+              max="59"
+              step="1"
+              value={preparation.minutes}
+              onChange={(event) => setPreparation((current) => ({ ...current, minutes: event.target.value }))}
+            />
+          </div>
           <p className="field-help">
-            How long after an order is placed it can be ready. At least {MIN_LEAD_TIME_HOURS} hours; for example 48 for
-            two days.
+            How long this product takes to make, for example 0 hours 45 minutes. Every order also has the shop&apos;s
+            minimum lead time of {MIN_LEAD_TIME_HOURS} hours; customers get whichever is longer.
           </p>
           <h3>Inventory</h3>
           <Checkbox label="Track inventory" name="trackInventory" defaultChecked={product?.trackInventory ?? true} />

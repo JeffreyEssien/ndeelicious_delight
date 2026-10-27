@@ -68,7 +68,7 @@ test("nonsense numbers and incomplete packs never block a save", async ({ page }
   await editor.getByLabel("Short description").fill("Crunchy fried snack.");
   await editor.getByLabel("Full description").fill("Crunchy, lightly sweet fried dough.");
   await editor.getByLabel("Storefront visibility").selectOption("ACTIVE");
-  await editor.getByLabel("Lead time (hours)").fill("5");
+  await editor.getByLabel("Preparation time (hours)").fill("-5");
   await editor.getByLabel("Low-stock alert").fill("-3");
   await editor.getByLabel("Allergens (comma separated)").fill("Eggs, eggs,, Dairy ,");
   // A pack with a negative price and no size, and two packs with the same size.
@@ -90,10 +90,10 @@ test("nonsense numbers and incomplete packs never block a save", async ({ page }
   await editor.getByRole("button", { name: "Create product", exact: true }).click();
 
   const notice = editor.getByRole("status").filter({ hasText: "Saved as a hidden draft" });
-  await expect(notice).toContainText("Lead time must be at least 24 hours.");
+  await expect(notice).toContainText("Preparation time cannot be negative.");
   const stored = await storedProduct(page, "Chin Chin");
   expect(stored.status).toBe("DRAFT");
-  expect(stored.preparation_hours).toBe(24);
+  expect(stored.preparation_hours).toBe(0);
   expect(stored.low_stock_threshold).toBe(0);
   expect(stored.allergens).toEqual(["Eggs", "Dairy"]);
   // The incomplete pack and the repeated size were switched off; the good pack stayed published.
