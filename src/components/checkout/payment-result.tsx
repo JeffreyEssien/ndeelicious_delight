@@ -3,7 +3,7 @@ import { useCustomerText } from "@/components/customer-text-provider";
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useCart } from "@/components/providers";
+import { useCart, useToast } from "@/components/providers";
 import { Icon } from "@/components/ui/icons";
 import type { StorefrontContent } from "@/types/content";
 
@@ -27,6 +27,7 @@ export function PaymentResult({
   const t = useCustomerText("payment result");
 
   const cart = useCart();
+  const notify = useToast();
   const cleared = useRef(false);
   const [payment, setPayment] = useState<PaymentState | null>(null);
   const [error, setError] = useState("");
@@ -79,8 +80,9 @@ export function PaymentResult({
     if (payment?.status === "SUCCEEDED" && !cleared.current) {
       cleared.current = true;
       cart.clear();
+      notify(t("Payment received. Thank you for your order!"));
     }
-  }, [cart, payment?.status]);
+  }, [cart, notify, t, payment?.status]);
 
   async function retry() {
     setRetrying(true);

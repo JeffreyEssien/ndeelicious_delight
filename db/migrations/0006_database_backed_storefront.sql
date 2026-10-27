@@ -8,9 +8,9 @@ values (
     "contactEmail": "",
     "phone": "",
     "whatsapp": "",
-    "address": "Lagos, Nigeria",
+    "address": "Halifax, Nova Scotia",
     "openingHours": "",
-    "currency": "NGN",
+    "currency": "CAD",
     "cakeLeadHours": 72,
     "instagramUrl": ""
   }'::jsonb
@@ -23,20 +23,20 @@ values (
   $content$
   {
     "global": {
-      "announcement": {"text":"Delivery is available in configured Lagos zones","linkLabel":"View details","href":"/delivery-information"},
+      "announcement": {"text":"Delivery is available across our Halifax-area delivery zones","linkLabel":"View details","href":"/delivery-information"},
       "navigation": [
         {"label":"Shop","href":"/shop"},
         {"label":"Custom cakes","href":"/custom-cakes"},
         {"label":"Ready to bake","href":"/ready-to-bake"},
         {"label":"Our story","href":"/about"}
       ],
-      "footerDescription":"Beautifully made cakes and pastries for Lagos celebrations, slow mornings and everything between.",
+      "footerDescription":"Beautifully made cakes and pastries for Halifax celebrations, slow mornings and everything between.",
       "newsletterTitle":"A little sweetness, occasionally",
       "newsletterText":"New bakes, celebration inspiration and first dibs."
     },
     "home": {
       "hero": {
-        "eyebrow":"Handmade in Lagos",
+        "eyebrow":"Handmade in Halifax",
         "headline":"Made for life’s\nsweetest moments.",
         "supportingText":"Celebration cakes, fresh pastries and oven-ready favourites, made slowly and shared joyfully.",
         "image":"/hero-bakery.jpg",
@@ -64,7 +64,7 @@ values (
     },
     "about": {
       "hero":{"eyebrow":"Our story","headline":"Made slowly.\nShared joyfully.","supportingText":"Ndeeelicious Delight began with a simple belief: the things we gather around should feel as thoughtful as the moments themselves.","image":"/pastries.jpg","imageAlt":"Fresh pastries in the Ndeeelicious Delight bakery"},
-      "story":{"eyebrow":"From our kitchen","headline":"Flavour first.\nBeauty, always.","paragraphs":["We bake in small batches from our Lagos kitchen, choosing good ingredients and giving every dough, sponge and buttercream the time it deserves.","Our cakes are expressive but considered. Our pastries are deeply buttery and properly laminated. Everything is made to taste as wonderful as it looks."]},
+      "story":{"eyebrow":"From our kitchen","headline":"Flavour first.\nBeauty, always.","paragraphs":["We bake in small batches from our Halifax kitchen, choosing good ingredients and giving every dough, sponge and buttercream the time it deserves.","Our cakes are expressive but considered. Our pastries are deeply buttery and properly laminated. Everything is made to taste as wonderful as it looks."]},
       "values":[{"title":"Craft over shortcuts","body":"Patient methods, handmade finishes and real attention."},{"title":"Warmth in every detail","body":"From first click to final slice, it should feel personal."},{"title":"Joy without the fuss","body":"Beautiful ordering that stays refreshingly simple."}],
       "cta":{"eyebrow":"Taste the difference","headline":"Something lovely is waiting.","buttonLabel":"Shop the bakery"}
     },
@@ -74,8 +74,8 @@ values (
     "delivery":{"hero":{"eyebrow":"From our kitchen to your table","headline":"Delivery, made clear.","supportingText":"We prepare every order around an agreed date and handle it carefully on the journey."},"intro":{"eyebrow":"Current delivery zones","headline":"Where we go","body":"Fees are calculated from the zone selected at checkout."},"steps":[{"title":"Choose your date","body":"Available dates appear during ordering. Custom-cake lead time follows the current bakery setting."},{"title":"We confirm the window","body":"You’ll receive the expected delivery or collection time with your confirmation."},{"title":"Follow your order","body":"Status updates keep you informed from preparation through delivery."}],"pickup":{"eyebrow":"Prefer to collect?","headline":"Pickup is always free.","body":"Select pickup at checkout. We’ll send the collection details after confirmation."}},
     "faq":{"hero":{"eyebrow":"Helpful answers","headline":"Frequently asked.","supportingText":"Everything worth knowing before your first bite."},"groups":[{"title":"Ordering","questions":[{"question":"How far ahead should I order?","answer":"Lead times depend on the product and current bakery capacity. The custom-cake builder always shows the active minimum notice."},{"question":"Can I change an order after placing it?","answer":"Contact us as soon as possible. Changes depend on how far your order has progressed and may affect the final price."}]},{"title":"Delivery & collection","questions":[{"question":"Where do you deliver?","answer":"The delivery page lists every currently active zone and its live fee."},{"question":"Can I collect my order?","answer":"Yes. Choose pickup at checkout and we’ll confirm the collection window and directions."}]},{"title":"Cakes & ingredients","questions":[{"question":"Can you copy another baker’s cake exactly?","answer":"We use inspiration images as a direction and create an original interpretation in our own style."},{"question":"Do you cater for allergies?","answer":"Allergens are listed on product pages. Contact us before ordering if you need more detail."}]}]},
     "headers":{"shop":{"eyebrow":"The bakery counter","headline":"Find your favourite.","supportingText":"Made in small batches, packed with care and ready for your table."},"pastries":{"eyebrow":"Baked fresh","headline":"Morning pastries.","supportingText":"Buttery layers and flavours drawn from the live bakery catalogue."},"cart":{"eyebrow":"Almost yours","headline":"Your basket.","supportingText":""},"track":{"eyebrow":"From oven to your door","headline":"Track your order.","supportingText":"Enter the details from your confirmation email."}},
-    "orderSuccess":{"eyebrow":"Order received","headline":"Your order is looking lovely.","body":"Your order has been saved and is awaiting payment confirmation.","steps":[{"title":"Payment confirmation","body":"A receipt will be sent by email."},{"title":"We begin preparing","body":"The bakery confirms your fulfilment window."},{"title":"Follow every update","body":"Track progress with your order number."}]},
-    "product":{"deliveryTitle":"Careful Lagos delivery","deliveryText":"Choose your active zone at checkout","preparationTitle":"Made to order","preparationText":"Freshly prepared for your confirmed date"},
+    "orderSuccess":{"eyebrow":"Payment received","headline":"Your order is looking lovely.","body":"Thank you! Your payment went through and your order is confirmed.","steps":[{"title":"Receipt on its way","body":"Your receipt will arrive by email."},{"title":"We begin preparing","body":"The bakery confirms your fulfilment window."},{"title":"Follow every update","body":"Track progress with your order number."}]},
+    "product":{"deliveryTitle":"Careful local delivery","deliveryText":"Choose your active zone at checkout","preparationTitle":"Made to order","preparationText":"Freshly prepared for your confirmed date"},
     "policies":{"privacy":{"title":"Privacy policy","updated":"15 September 2026","eyebrow":"Last updated","sections":[{"heading":"What we collect","body":"We collect information needed to process orders, provide support and improve the bakery experience, including contact, delivery and purchase information."},{"heading":"How we use it","body":"We use your details to fulfil orders, send transactional updates, prevent fraud and respond to enquiries. Marketing messages are sent only when you choose to receive them."},{"heading":"Your choices","body":"You can request access, correction or deletion of eligible personal information by contacting us."},{"heading":"Keeping information safe","body":"We use appropriate access controls and trusted service providers. Payment card information is handled by our payment provider and is not stored by Ndeeelicious Delight."}]},"terms":{"title":"Terms of service","updated":"15 September 2026","eyebrow":"Last updated","sections":[{"heading":"Orders","body":"An order is confirmed after valid payment or, for quoted cakes, after written acceptance and the required payment. Please review names, dates and contact information carefully."},{"heading":"Custom work","body":"Inspiration images guide the direction of an original Ndeeelicious Delight design. Handmade work naturally varies and exact colour matching cannot be guaranteed."},{"heading":"Changes and cancellations","body":"Contact us promptly. Eligibility depends on notice and preparation already completed. Custom and perishable goods may have limited cancellation rights."},{"heading":"Availability","body":"We may contact you if an ingredient or product becomes unavailable. We will offer a suitable alternative or refund where appropriate."}]},"refund":{"title":"Refund policy","updated":"15 September 2026","eyebrow":"Clear and considered","sections":[{"heading":"If something isn’t right","body":"Contact us within 24 hours of delivery with your order number and clear photographs. We review quality concerns fairly and promptly."},{"heading":"Perishable products","body":"Because our products are made fresh and often personalized, change-of-mind returns are not generally possible. This does not affect remedies for products that arrive damaged or materially incorrect."},{"heading":"Cancellations","body":"Refund eligibility depends on the notice provided and preparation already completed. Custom design deposits may become non-refundable once work begins."}]}}
   }
   $content$::jsonb

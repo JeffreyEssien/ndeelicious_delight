@@ -15,7 +15,7 @@ set
     '{orderSuccess}',
     coalesce(
       value #> '{orderSuccess}',
-      '{"eyebrow":"Order received","headline":"Your order is looking lovely.","body":"Your order has been saved and is awaiting payment confirmation.","steps":[{"title":"Payment confirmation","body":"A receipt will be sent by email."},{"title":"We begin preparing","body":"The bakery confirms your fulfilment window."},{"title":"Follow every update","body":"Track progress with your order number."}]}'::jsonb
+      '{"eyebrow":"Payment received","headline":"Your order is looking lovely.","body":"Thank you! Your payment went through and your order is confirmed.","steps":[{"title":"Receipt on its way","body":"Your receipt will arrive by email."},{"title":"We begin preparing","body":"The bakery confirms your fulfilment window."},{"title":"Follow every update","body":"Track progress with your order number."}]}'::jsonb
     ),
     true
   ),

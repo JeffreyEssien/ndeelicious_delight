@@ -22,6 +22,8 @@ export function lineKey(line: Pick<CartLine, "productId" | "variantId" | "select
 }
 
 type CartValue = {
+  // False until the saved basket has been read from localStorage after hydration.
+  ready: boolean;
   lines: CartLine[];
   count: number;
   open: boolean;
@@ -81,6 +83,7 @@ export function Providers({
   }, []);
   const value = useMemo<CartValue>(
     () => ({
+      ready,
       lines,
       count: lines.reduce((n, l) => n + l.quantity, 0),
       open,
@@ -173,7 +176,7 @@ export function Providers({
         return sum + (p && v ? lineUnitPrice(p, v, line.selections) : 0) * line.quantity;
       }, 0),
     }),
-    [lines, open, products, notify],
+    [ready, lines, open, products, notify],
   );
   return (
     <BusinessContext.Provider value={business}>
