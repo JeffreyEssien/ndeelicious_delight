@@ -12,7 +12,7 @@ import {
   isVariantInventoryTracked,
   variantQuantityLimit,
 } from "@/features/catalog/availability";
-import { lineUnitPrice, variantPrice } from "@/features/catalog/pricing";
+import { CAKE_MESSAGE_GROUP, lineUnitPrice, variantPrice } from "@/features/catalog/pricing";
 import { earliestFulfilment } from "@/features/fulfilment/schedule";
 import { trackCommerceEvent } from "@/lib/analytics/client";
 
@@ -21,6 +21,8 @@ export function ProductPurchase({ product }: { product: Product }) {
   const params = useSearchParams();
   const madeToOrder = product.shoppingMode === "MADE_TO_ORDER";
   const isCake = product.category === "CUSTOM_CAKES";
+  // The message box only appears on cakes the admin marked as needing one, and then it is required.
+  const needsCakeMessage = isCake && Boolean(product.cakeMessageRequired);
   const optionGroups = product.optionGroups ?? [];
   const requested = product.variants.find((v) => v.id === params.get("variant") && isVariantPurchasable(product, v));
   const [variant, setVariant] = useState(
@@ -106,10 +108,13 @@ export function ProductPurchase({ product }: { product: Product }) {
     ...(isCake && selected && layerSizes.length === 1 && choices.Layers
       ? [{ group: "Layers", value: choices.Layers }]
       : []),
-    ...(isCake && cakeMessage.trim() ? [{ group: "Cake message", value: cakeMessage.trim().slice(0, 200) }] : []),
+    ...(needsCakeMessage && cakeMessage.trim()
+      ? [{ group: CAKE_MESSAGE_GROUP, value: cakeMessage.trim().slice(0, 200) }]
+      : []),
   ];
   const missingChoice = pickers.find((picker) => picker.required && !choices[picker.key]);
-  const unavailable = !selected || limit < 1 || Boolean(missingChoice);
+  const missingMessage = needsCakeMessage && !cakeMessage.trim();
+  const unavailable = !selected || limit < 1 || Boolean(missingChoice) || missingMessage;
   let availabilityLabel = "Enter your postal code at checkout to confirm delivery availability.";
   if (business.pickupEnabled) {
     try {
@@ -205,13 +210,14 @@ export function ProductPurchase({ product }: { product: Product }) {
           ))}
         </fieldset>
       )}
-      {isCake && selected && (
+      {needsCakeMessage && selected && (
         <label className="cake-message-field">
           <span>{t("What message would you like on the cake")}</span>
           <textarea
             value={cakeMessage}
             maxLength={200}
             rows={3}
+            required
             placeholder={t("e.g. Happy Birthday Lara")}
             onChange={(event) => setCakeMessage(event.target.value)}
           />
@@ -263,11 +269,13 @@ export function ProductPurchase({ product }: { product: Product }) {
             ? t(isCake ? "Choose a size" : madeToOrder ? "Choose a pack" : "Choose an option")
             : missingChoice
               ? t("Choose {value1}", { value1: missingChoice.label })
-              : limit < 1
-                ? t("Unavailable")
-                : t("Add to basket · {value1}", {
-                    value1: formatMoney(lineUnitPrice(product, selected, selections) * count),
-                  })}
+              : missingMessage
+                ? t("Write your cake message")
+                : limit < 1
+                  ? t("Unavailable")
+                  : t("Add to basket · {value1}", {
+                      value1: formatMoney(lineUnitPrice(product, selected, selections) * count),
+                    })}
         </button>
       </div>
       {(optionGroups.length > 0 || variant) && (
@@ -286,7 +294,11 @@ export function ProductPurchase({ product }: { product: Product }) {
       )}
       <p className="stock-note">
         {unavailable
-          ? t("Choose an available option above.")
+          ? t(
+              selected && !missingChoice && limit >= 1 && missingMessage
+                ? "Write the message you would like on the cake above."
+                : "Choose an available option above.",
+            )
           : selected && isVariantInventoryTracked(product, selected)
             ? `${selected.stockQuantity} ${sellingPacks ? "packs" : "items"} available.`
             : t(madeToOrder ? "Prepared to order for you." : "Available to add to your basket.")}

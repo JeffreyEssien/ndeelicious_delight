@@ -1,7 +1,7 @@
 import { calculateLineTaxes } from "@/features/tax/calculator";
 import type { DeliveryTaxMode, TaxSnapshot } from "@/features/tax/types";
 import { isVariantInventoryTracked, isVariantPurchasable } from "@/features/catalog/availability";
-import { lineUnitPrice } from "@/features/catalog/pricing";
+import { hasCakeMessage, lineUnitPrice } from "@/features/catalog/pricing";
 import type { CartLine, Fulfilment, Product } from "@/types";
 import { MIN_LEAD_TIME_HOURS } from "@/validations/product";
 import { formatMoney } from "@/lib/format";
@@ -106,6 +106,8 @@ export function calculateOrderQuote(input: {
       if (line.quantity > available)
         throw new CommerceError("INSUFFICIENT_STOCK", `Only ${available} of ${product.name} remain.`);
     }
+    if (product.category === "CUSTOM_CAKES" && product.cakeMessageRequired && !hasCakeMessage(line.selections))
+      throw new CommerceError("CAKE_MESSAGE_REQUIRED", `Add the message you would like on ${product.name}.`);
     const unitPrice = lineUnitPrice(product, variant, line.selections);
     if (!Number.isSafeInteger(unitPrice) || unitPrice < 0)
       throw new CommerceError("INVALID_PRICE", "This item’s price needs review.");

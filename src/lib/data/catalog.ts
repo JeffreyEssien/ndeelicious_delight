@@ -30,6 +30,7 @@ type ProductRow = {
   preparation_instructions: string | null;
   option_groups: CakeOptionGroup[] | null;
   cake_layers: unknown;
+  cake_message_required: boolean | null;
   categories: { id: string; slug: string } | { id: string; slug: string }[] | null;
   product_variants: {
     id: string;
@@ -106,6 +107,7 @@ function mapProduct(row: ProductRow, includeInactiveVariants = false): Product {
     preparationInstructions: row.preparation_instructions ?? undefined,
     optionGroups: Array.isArray(row.option_groups) ? row.option_groups : [],
     cakeLayers: normalizeCakeLayers(row.cake_layers),
+    cakeMessageRequired: row.cake_message_required ?? false,
   };
 }
 
@@ -115,7 +117,7 @@ async function loadProducts(options: { includeInactive?: boolean; client?: Supab
     .from("products")
     .select(`
       id,slug,name,short_description,description,sku,shopping_mode,preparation_hours,tax_class,base_price,discount_price,status,featured,collection_id,
-      track_inventory,stock_quantity,low_stock_threshold,ingredients,allergens,storage_instructions,preparation_instructions,option_groups,cake_layers,
+      track_inventory,stock_quantity,low_stock_threshold,ingredients,allergens,storage_instructions,preparation_instructions,option_groups,cake_layers,cake_message_required,
       categories(id,slug),product_variants(id,name,sku,price_adjustment,pack_quantity,sort_order,track_inventory,retired_at,stock_quantity,active),
       product_images(id,url,alt_text,sort_order,storage_path)
     `)
