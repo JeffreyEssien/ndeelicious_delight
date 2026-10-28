@@ -2,7 +2,7 @@
 import { useSearchParams } from "next/navigation";
 import { useCustomerText } from "@/components/customer-text-provider";
 
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useBusinessSettings, useMoney, useProducts } from "@/components/providers";
 import { BudgetResults } from "./budget-results";
 import { productStartingPrice, shoppingMode } from "@/features/catalog/pricing";
@@ -61,6 +61,40 @@ export function Catalogue({
   const [budgetError, setBudgetError] = useState("");
   const perPage = 6;
   const presets = useMemo(() => deriveBudgetPresets(products), [products]);
+  const cheapest = useMemo(
+    () => Math.min(...products.filter(isProductPurchasable).map(availableProductPrice)),
+    [products],
+  );
+  const budgetSection = useRef<HTMLElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  // On phones and tablets the filters and budget slide in as a drawer; Escape closes it.
+  useEffect(() => {
+    if (!filters) return;
+    closeButton.current?.focus();
+    const close = (event: KeyboardEvent) => event.key === "Escape" && setFilters(false);
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [filters]);
+  const categories: Array<[Category | "ALL", string]> = [
+    ["ALL", t("All treats")],
+    ["PASTRIES", t("Ready to order")],
+    ["READY_TO_BAKE", t("Ready to bake")],
+    ["CUSTOM_CAKES", t("Custom cakes")],
+  ];
+  function chooseCategory(value: Category | "ALL") {
+    setCategory(value);
+    setCollection("ALL");
+    setMode(undefined);
+    setPage(1);
+  }
+  function openBudget() {
+    setFilters(true);
+    // Wait for the drawer to slide in, then bring the budget to the top of it.
+    window.setTimeout(() => {
+      budgetSection.current?.scrollIntoView({ block: "start" });
+      budgetSection.current?.querySelector("button")?.focus();
+    }, 250);
+  }
   const filteredProducts = useMemo(
     () =>
       products.filter(
@@ -151,10 +185,120 @@ export function Catalogue({
         </label>
       </div>
       <div className={`catalogue-layout ${budget !== undefined ? "budget-active" : ""}`}>
+        <div className="catalogue-results">
+          {/* Phones and tablets: one tap between categories, right above the products. */}
+          <fieldset className="catalogue-chips">
+            <legend className="sr-only">{t("Category")}</legend>
+            {categories.map(([value, label]) => (
+              <button
+                type="button"
+                key={value}
+                className={category === value ? "active" : ""}
+                aria-pressed={category === value}
+                onClick={() => chooseCategory(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </fieldset>
+          {budget !== undefined ? (
+            <BudgetResults
+              products={filteredProducts}
+              sort={sort}
+              maximum={budget}
+              configuration={cakeConfiguration}
+              clear={() => {
+                setBudget(undefined);
+                rememberBudget(undefined);
+                setBudgetInput("");
+                reset();
+              }}
+            />
+          ) : (
+            <>
+              <p className="result-count">
+                {items.length} {items.length === 1 ? t("treat") : t("treats")}
+                {budget !== undefined ? t(" within {value1}", { value1: money(budget) }) : ""}
+                {mode && (
+                  <>
+                    {" · "}
+                    {t(shoppingModeLabels[mode])}{" "}
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => {
+                        setMode(undefined);
+                        reset();
+                      }}
+                    >
+                      {t("Show all")}
+                    </button>
+                  </>
+                )}
+              </p>
+              {items.length ? (
+                <>
+                  <ProductGrid items={visible} />
+                  <Pagination page={page} pages={Math.ceil(items.length / perPage)} onChange={setPage} />
+                  {/* The budget finder as a side attraction under the products (phones and tablets). */}
+                  {presets.length > 0 && Number.isFinite(cheapest) && (
+                    <aside className="budget-teaser">
+                      <div>
+                        <b>{budgetContent.headline}</b>
+                        <span>{t("Treats from {value1}", { value1: money(cheapest) })}</span>
+                      </div>
+                      <button type="button" className="button button-secondary" onClick={openBudget}>
+                        {t("Set a budget")} <Icon name="arrow" />
+                      </button>
+                    </aside>
+                  )}
+                </>
+              ) : (
+                <EmptyState
+                  title={t("Nothing matched that search")}
+                  body={
+                    closest.length
+                      ? `${budgetContent.closestPrefix} ${money(availableProductPrice(closest[0]))}.`
+                      : "Try a broader search, another budget, or clear your filters."
+                  }
+                  action={
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => {
+                        if (closest.length) {
+                          const next = availableProductPrice(closest.at(-1) ?? closest[0]);
+                          setBudget(next);
+                          rememberBudget(next);
+                          setFilters(false);
+                          setBudgetInput(String(next / 100));
+                        } else {
+                          setQuery("");
+                          setCategory("ALL");
+                          setCollection("ALL");
+                          setMode(undefined);
+                          setAvailable(false);
+                          setBudget(undefined);
+                          rememberBudget(undefined);
+                          setBudgetInput("");
+                        }
+                        reset();
+                      }}
+                    >
+                      {closest.length ? budgetContent.raiseBudgetLabel : "Clear filters"}
+                    </button>
+                  }
+                />
+              )}
+            </>
+          )}
+        </div>
+        {/* Filters and the budget finder: a sidebar beside the products, or a drawer on smaller screens. */}
         <aside className={`filters shop-filter-sidebar ${filters ? "is-open" : ""}`}>
           <div className="mobile-only panel-head">
             <h3>{t("Filters & budget")}</h3>
             <button
+              ref={closeButton}
               type="button"
               className="icon-button"
               onClick={() => setFilters(false)}
@@ -163,7 +307,7 @@ export function Catalogue({
               <Icon name="close" />
             </button>
           </div>
-          <section className="sidebar-budget" aria-labelledby={"sidebar-budget-title"}>
+          <section ref={budgetSection} className="sidebar-budget" aria-labelledby={"sidebar-budget-title"}>
             <h3 id="sidebar-budget-title">{budgetContent.headline}</h3>
             <div className="sidebar-budget-presets">
               {presets.map((preset) => (
@@ -176,6 +320,7 @@ export function Catalogue({
                     rememberBudget(preset.maximum);
                     setBudgetInput(String(preset.maximum / 100));
                     setBudgetError("");
+                    setFilters(false);
                     reset();
                   }}
                 >
@@ -214,23 +359,13 @@ export function Catalogue({
           </section>
           <fieldset>
             <legend>{t("Category")}</legend>
-            {[
-              ["ALL", t("All treats")],
-              ["PASTRIES", t("Ready to order")],
-              ["READY_TO_BAKE", t("Ready to bake")],
-              ["CUSTOM_CAKES", t("Custom cakes")],
-            ].map(([value, label]) => (
+            {categories.map(([value, label]) => (
               <label key={value}>
                 <input
                   type="radio"
                   name="category"
                   checked={category === value}
-                  onChange={() => {
-                    setCategory(value as Category | "ALL");
-                    setCollection("ALL");
-                    setMode(undefined);
-                    reset();
-                  }}
+                  onChange={() => chooseCategory(value)}
                 />
                 <span>{label}</span>
               </label>
@@ -288,87 +423,6 @@ export function Catalogue({
             {items.length} {t("products")}
           </button>
         </aside>
-        <div className="catalogue-results">
-          {budget !== undefined ? (
-            <BudgetResults
-              products={filteredProducts}
-              sort={sort}
-              maximum={budget}
-              configuration={cakeConfiguration}
-              clear={() => {
-                setBudget(undefined);
-                rememberBudget(undefined);
-                setBudgetInput("");
-                reset();
-              }}
-            />
-          ) : (
-            <>
-              <p className="result-count">
-                {items.length} {items.length === 1 ? t("treat") : t("treats")}
-                {budget !== undefined ? t(" within {value1}", { value1: money(budget) }) : ""}
-                {mode && (
-                  <>
-                    {" · "}
-                    {t(shoppingModeLabels[mode])}{" "}
-                    <button
-                      type="button"
-                      className="text-button"
-                      onClick={() => {
-                        setMode(undefined);
-                        reset();
-                      }}
-                    >
-                      {t("Show all")}
-                    </button>
-                  </>
-                )}
-              </p>
-              {items.length ? (
-                <>
-                  <ProductGrid items={visible} />
-                  <Pagination page={page} pages={Math.ceil(items.length / perPage)} onChange={setPage} />
-                </>
-              ) : (
-                <EmptyState
-                  title={t("Nothing matched that search")}
-                  body={
-                    closest.length
-                      ? `${budgetContent.closestPrefix} ${money(availableProductPrice(closest[0]))}.`
-                      : "Try a broader search, another budget, or clear your filters."
-                  }
-                  action={
-                    <button
-                      type="button"
-                      className="button button-secondary"
-                      onClick={() => {
-                        if (closest.length) {
-                          const next = availableProductPrice(closest.at(-1) ?? closest[0]);
-                          setBudget(next);
-                          rememberBudget(next);
-                          setFilters(false);
-                          setBudgetInput(String(next / 100));
-                        } else {
-                          setQuery("");
-                          setCategory("ALL");
-                          setCollection("ALL");
-                          setMode(undefined);
-                          setAvailable(false);
-                          setBudget(undefined);
-                          rememberBudget(undefined);
-                          setBudgetInput("");
-                        }
-                        reset();
-                      }}
-                    >
-                      {closest.length ? budgetContent.raiseBudgetLabel : "Clear filters"}
-                    </button>
-                  }
-                />
-              )}
-            </>
-          )}
-        </div>
       </div>
       {filters && (
         <button
