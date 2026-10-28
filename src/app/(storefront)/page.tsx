@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ProductCarousel } from "@/components/product/product-carousel";
-import { PromoCarousel, type PromoSlide } from "@/components/product/promo-carousel";
+import { PromoShowcase, type PromoSlide } from "@/components/product/promo-carousel";
 import { ContentLines } from "@/components/ui/content-lines";
 import { Icon } from "@/components/ui/icons";
 import { getProducts } from "@/lib/data/catalog";
@@ -156,21 +156,18 @@ export default async function Home() {
           </Link>
         </div>
       </section>
-      <section className="ready-feature">
-        <div className="site-container ready-grid">
-          <div>
-            <span className="overline">{home.readyFeature.eyebrow}</span>
-            <h2>
-              <ContentLines text={home.readyFeature.headline} />
-            </h2>
-            <p>{home.readyFeature.body}</p>
-            <Link href="/ready-to-bake" className="button button-secondary">
-              {home.readyFeature.buttonLabel} <Icon name="arrow" />
-            </Link>
-          </div>
-          <PromoCarousel slides={promoSlides} label={t("Ready-to-bake range")} />
+      <PromoShowcase slides={promoSlides} label={t("Ready-to-bake range")}>
+        <div>
+          <span className="overline">{home.readyFeature.eyebrow}</span>
+          <h2>
+            <ContentLines text={home.readyFeature.headline} />
+          </h2>
+          <p>{home.readyFeature.body}</p>
+          <Link href="/ready-to-bake" className="button button-secondary">
+            {home.readyFeature.buttonLabel} <Icon name="arrow" />
+          </Link>
         </div>
-      </section>
+      </PromoShowcase>
       {!!gallery.length && (
         <section className="section gallery-section">
           <div className="site-container">

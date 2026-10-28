@@ -3,16 +3,41 @@ import { useCustomerText } from "@/components/customer-text-provider";
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { canAutoplay, carouselIndex } from "@/features/catalog/carousel-state";
+import { type PromoTheme, themeFromPixels } from "@/features/catalog/promo-theme";
 
-export type PromoSlide = { src: string; alt: string; label: string; href: string };
+// `theme` is optional: without it the colours are read from the image once it loads.
+export type PromoSlide = { src: string; alt: string; label: string; href: string; theme?: PromoTheme };
 
 const INTERVAL_MS = 4500;
 
+function readTheme(image: HTMLImageElement) {
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 32;
+    canvas.height = 32;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) return undefined;
+    context.drawImage(image, 0, 0, 32, 32);
+    return themeFromPixels(context.getImageData(0, 0, 32, 32).data);
+  } catch {
+    // A cross-origin image without CORS headers cannot be read; keep the default colours.
+    return undefined;
+  }
+}
+
 // A stacked deck of portrait promo images: the active card sits in front and the
 // next one peeks out behind it, so visitors can see there is more to come.
-export function PromoCarousel({ slides, label }: { slides: PromoSlide[]; label: string }) {
+export function PromoCarousel({
+  slides,
+  label,
+  onThemeChange,
+}: {
+  slides: PromoSlide[];
+  label: string;
+  onThemeChange?: (theme: PromoTheme | undefined) => void;
+}) {
   const t = useCustomerText("promo carousel");
   const [index, setIndex] = useState(0);
   const [userPaused, setUserPaused] = useState(false);
@@ -20,6 +45,7 @@ export function PromoCarousel({ slides, label }: { slides: PromoSlide[]; label: 
   const [focusWithin, setFocusWithin] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const [readThemes, setReadThemes] = useState<Record<string, PromoTheme>>({});
   const pointerStart = useRef<{ x: number; y: number; id: number } | null>(null);
   const count = slides.length;
 
@@ -48,6 +74,9 @@ export function PromoCarousel({ slides, label }: { slides: PromoSlide[]; label: 
     query.addEventListener("change", sync);
     return () => query.removeEventListener("change", sync);
   }, []);
+
+  const activeTheme = slides[index]?.theme ?? readThemes[slides[index]?.src];
+  useEffect(() => onThemeChange?.(activeTheme), [activeTheme, onThemeChange]);
 
   const running = canAutoplay({ enabled: true, userPaused, hovered, focusWithin, reducedMotion, count });
   useEffect(() => {
@@ -110,6 +139,11 @@ export function PromoCarousel({ slides, label }: { slides: PromoSlide[]; label: 
                 quality={75}
                 loading={slideIndex === 0 ? "eager" : undefined}
                 sizes={"(max-width: 800px) 86vw, 440px"}
+                onLoad={(event) => {
+                  if (slide.theme || readThemes[slide.src]) return;
+                  const theme = readTheme(event.currentTarget);
+                  if (theme) setReadThemes((current) => ({ ...current, [slide.src]: theme }));
+                }}
               />
             </Link>
           );
@@ -157,6 +191,30 @@ export function PromoCarousel({ slides, label }: { slides: PromoSlide[]; label: 
       <p className="sr-only" aria-live={"polite"} aria-atomic={"true"}>
         {announcement}
       </p>
+    </section>
+  );
+}
+
+// The ready-to-bake band: its background, glow and accent colours follow the image on show.
+export function PromoShowcase({
+  slides,
+  label,
+  children,
+}: {
+  slides: PromoSlide[];
+  label: string;
+  children: ReactNode;
+}) {
+  const [theme, setTheme] = useState<PromoTheme>();
+  const style = theme
+    ? ({ "--promo-bg": theme.background, "--promo-glow": theme.glow, "--promo-accent": theme.accent } as CSSProperties)
+    : undefined;
+  return (
+    <section className="ready-feature promo-themed" style={style}>
+      <div className="site-container ready-grid">
+        {children}
+        <PromoCarousel slides={slides} label={label} onThemeChange={setTheme} />
+      </div>
     </section>
   );
 }
