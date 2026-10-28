@@ -50,6 +50,11 @@ const labels: Record<string, string> = {
   signatureRole: "Signer's title",
 };
 
+// Names that mean something different on one page, by page then field.
+const sectionLabels: Record<string, Record<string, string>> = {
+  about: { hero: "Tagline and photo (bottom of the page)", cta: "Shop button" },
+};
+
 function humanize(value: string) {
   return labels[value] ?? humanizeContentKey(value);
 }
@@ -204,7 +209,7 @@ function ContentBlock({
   const groupPath = [...path, name];
   return (
     <details className="content-block" open={open}>
-      <summary>{humanize(name)}</summary>
+      <summary>{sectionLabels[String(path[0])]?.[name] ?? humanize(name)}</summary>
       <div className="content-block-body">
         {isObject(value) ? (
           Object.entries(value).map(([key, item]) => (

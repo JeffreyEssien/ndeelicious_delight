@@ -16,23 +16,17 @@ export default async function Page() {
   const { founder, vision } = about;
   return (
     <>
-      <section className="split-hero about-hero">
-        <div>
-          <span className="overline">{about.hero.eyebrow}</span>
-          <h1>
-            <ContentLines text={about.hero.headline} />
-          </h1>
-          <p>{about.hero.supportingText}</p>
-        </div>
-        <div>
-          <Image src={about.hero.image ?? ""} alt={about.hero.imageAlt ?? ""} fill priority />
-        </div>
-      </section>
       <section className="site-container founder-section" aria-labelledby="founder-heading">
         <figure className="founder-portrait">
           <div className="founder-photo">
             {founder.image ? (
-              <Image src={founder.image} alt={founder.imageAlt} fill sizes={"(max-width: 900px) 100vw, 40vw"} />
+              <Image
+                src={founder.image}
+                alt={founder.imageAlt}
+                fill
+                priority
+                sizes={"(max-width: 900px) 100vw, 40vw"}
+              />
             ) : (
               // Until a photo is chosen in the admin, a monogram keeps the layout whole.
               <span className="founder-monogram" aria-hidden="true">
@@ -47,9 +41,9 @@ export default async function Page() {
         </figure>
         <div className="founder-copy">
           <span className="overline">{founder.eyebrow}</span>
-          <h2 id="founder-heading">
+          <h1 id="founder-heading">
             <ContentLines text={founder.headline} />
-          </h2>
+          </h1>
           <p className="founder-motto">{founder.motto}</p>
           {founder.lead && <p className="founder-lead">{founder.lead}</p>}
           {founder.paragraphs.map((paragraph) => (
@@ -86,6 +80,26 @@ export default async function Page() {
             </p>
           )}
         </div>
+      </section>
+      {/* The brand line and its photo close the page (stored as the page's "hero" content). */}
+      <section className="about-tagline">
+        <div className="about-tagline-copy">
+          <span className="overline">{about.hero.eyebrow}</span>
+          <h2>
+            <ContentLines text={about.hero.headline} />
+          </h2>
+          <p>{about.hero.supportingText}</p>
+        </div>
+        {about.hero.image && (
+          <div className="about-tagline-image">
+            <Image
+              src={about.hero.image}
+              alt={about.hero.imageAlt ?? ""}
+              fill
+              sizes={"(max-width: 800px) 100vw, 50vw"}
+            />
+          </div>
+        )}
       </section>
       <section className="center-cta">
         <span className="overline">{about.cta.eyebrow}</span>
