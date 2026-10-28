@@ -865,19 +865,190 @@
 .cake-type-group:first-child .cake-type-group-title {
   margin-top: 0;
 }
-.story-section {
+/* Our Story: the founder, then the vision. */
+.founder-section {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 80px;
-  padding-block: 112px;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: clamp(40px, 6vw, 96px);
+  padding-block: clamp(72px, 9vw, 120px);
 }
-.story-section h2 {
+.founder-portrait {
+  position: sticky;
+  top: 120px;
   margin: 0;
 }
-.story-section p {
+.founder-photo {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--color-on-primary) 18%, transparent), transparent 55%),
+    var(--berry);
+  box-shadow: 0 30px 70px color-mix(in srgb, var(--color-text) 16%, transparent);
+}
+.founder-photo img {
+  object-fit: cover;
+  /* Portraits keep the head in frame; any trimming comes off the bottom. */
+  object-position: center top;
+}
+.founder-monogram {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--color-on-primary);
+  font-family: var(--font-serif);
+  font-size: clamp(120px, 16vw, 220px);
+  line-height: 1;
+  opacity: 0.9;
+}
+.founder-portrait figcaption {
+  display: grid;
+  gap: 4px;
+  margin-top: 18px;
+}
+.founder-portrait figcaption b {
+  font-size: 20px;
+}
+.founder-portrait figcaption span {
+  color: var(--muted);
+  font-size: 14px;
+}
+.founder-copy h1 {
+  margin: 0 0 18px;
+  font-size: clamp(40px, 5vw, 64px);
+  line-height: 1;
+}
+.founder-copy .founder-motto {
+  margin: 0 0 28px;
+  padding-left: 18px;
+  border-left: 3px solid var(--berry);
+  color: var(--berry);
+  font-family: var(--font-serif);
+  font-size: clamp(20px, 2.2vw, 26px);
+  font-style: italic;
+  line-height: 1.35;
+}
+.founder-copy p {
+  max-width: 640px;
+  margin: 0 0 18px;
   color: var(--muted);
   font-size: 17px;
   line-height: 1.75;
+}
+.founder-copy .founder-lead {
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+.founder-highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin: 36px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.founder-highlights li {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--berry);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.founder-highlights b {
+  font-size: 15px;
+}
+.founder-highlights span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.about-tagline {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 460px;
+  background: var(--berry);
+  color: var(--color-on-primary);
+}
+.about-tagline-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(48px, 7vw, 96px) max(7vw, 32px);
+}
+.about-tagline .overline {
+  color: color-mix(in srgb, var(--color-on-primary) 80%, transparent);
+}
+.about-tagline h2 {
+  margin: 0 0 20px;
+  color: var(--color-on-primary);
+  font-size: clamp(40px, 5vw, 68px);
+  line-height: 1;
+}
+.about-tagline p {
+  max-width: 480px;
+  margin: 0;
+  color: color-mix(in srgb, var(--color-on-primary) 85%, transparent);
+  font-size: 18px;
+  line-height: 1.6;
+}
+.about-tagline-image {
+  position: relative;
+  min-height: 360px;
+}
+.about-tagline-image img {
+  object-fit: cover;
+}
+.vision-section {
+  padding-block: clamp(72px, 9vw, 120px);
+  background: var(--berry-soft);
+}
+.vision-inner {
+  max-width: 820px;
+  text-align: center;
+}
+.vision-inner h2 {
+  margin: 0 0 22px;
+  font-size: clamp(36px, 4.5vw, 56px);
+}
+.vision-inner .vision-statement {
+  margin: 0 auto 32px;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: clamp(22px, 2.6vw, 32px);
+  line-height: 1.35;
+}
+.vision-inner p {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.75;
+}
+.vision-inner .vision-closing {
+  margin-top: 32px;
+  color: var(--berry);
+  font-size: 19px;
+  font-weight: 700;
+}
+.vision-signature {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  margin-top: 28px;
+}
+.vision-signature span:first-child {
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+.vision-signature b {
+  color: var(--ink);
+  font-size: 22px;
 }
 .center-cta {
   padding: 112px 24px;
@@ -1324,7 +1495,8 @@
   .editorial,
   .ready-grid,
   .split-hero,
-  .story-section,
+  .about-tagline,
+  .founder-section,
   .contact-grid,
   .delivery-zones,
   .product-detail,
@@ -1347,10 +1519,14 @@
   }
   .section-head,
   .ready-grid,
-  .story-section,
+  .founder-section,
   .contact-grid,
   .delivery-zones {
     gap: 32px;
+  }
+  .founder-portrait {
+    position: static;
+    width: min(100%, 420px);
   }
   .category-showcase {
     grid-template-columns: 1fr;
