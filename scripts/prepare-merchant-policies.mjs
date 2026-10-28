@@ -73,12 +73,6 @@ if (process.argv.includes("--apply")) {
       "Custom cakes and frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls, made in Halifax, Nova Scotia, Canada.";
     content.home.intro.body =
       "Custom cakes for your celebrations and frozen Nigerian-style meat pies, chicken pies and beef sausage rolls ready to bake at home. Food Safety & Handler Certified.";
-    content.about.hero.supportingText = `${copy.businessName} is based in ${copy.location}, offering custom cakes and frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls.`;
-    content.about.story.paragraphs = [
-      "Based in Halifax, Nova Scotia, Canada, we make custom cakes for your celebrations and Nigerian-style meat pies, chicken pies and beef sausage rolls for you to enjoy at home.",
-      "Our frozen, ready-to-bake pies let you enjoy a freshly baked favourite when it suits you. Follow the product's preparation and storage instructions.",
-      "Food Safety & Handler Certified.",
-    ];
     content.contact.hero.supportingText = `Custom cakes and frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls in ${copy.location}. Contact us for order support, cake enquiries and collection arrangements.`;
     content.customCakes.hero.eyebrow = "Custom cakes in Halifax, Nova Scotia";
     content.readyToBake.hero.eyebrow = "Nigerian-style favourites, ready to bake";
@@ -86,9 +80,6 @@ if (process.argv.includes("--apply")) {
     content.readyToBake.hero.supportingText =
       "Frozen, ready-to-bake Nigerian-style meat pies, chicken pies and beef sausage rolls, available at selected stores across Halifax HRM. Follow the instructions supplied with each product.";
     content.readyToBake.stockists = copy.stockists;
-    content.about.story.paragraphs.push(
-      "Find our meat pies, chicken pies and beef sausage rolls at selected stores across Halifax HRM. Contact each stockist for current availability.",
-    );
     content.readyToBake.steps = [
       { title: "Store safely", body: "Follow the storage instructions supplied with your frozen pies." },
       {

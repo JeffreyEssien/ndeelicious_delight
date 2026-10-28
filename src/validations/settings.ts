@@ -1,4 +1,5 @@
 import { z } from "zod";
+import aboutStory from "@/content/about-story.json";
 import { fulfilmentScheduleSchema } from "@/features/fulfilment/validation";
 
 const text = (maximum = 2_000) => z.string().trim().max(maximum);
@@ -59,6 +60,26 @@ const heroSchema = z.object({
 });
 const titleBodySchema = z.object({ title: text(160), body: text(1_500) });
 const sectionHeadingSchema = z.object({ eyebrow: text(120), headline: text(300) });
+// The Our Story page. Saved content from before these sections existed falls back to the founder's
+// own words, so the page never breaks while the owner has not edited it yet.
+const founderSchema = sectionHeadingSchema.extend({
+  name: text(80),
+  role: text(160),
+  motto: text(300),
+  lead: text(600),
+  paragraphs: z.array(text(2_000)).max(12),
+  highlights: z.array(titleBodySchema).max(6),
+  image: text(2_000),
+  imageAlt: text(300),
+});
+const visionSchema = sectionHeadingSchema.extend({
+  statement: text(600),
+  paragraphs: z.array(text(2_000)).max(12),
+  closing: text(400),
+  signOff: text(80),
+  signature: text(80),
+  signatureRole: text(160),
+});
 
 export const storefrontContentSchema = z.object({
   customerText: z.record(z.string().max(200), z.record(z.string().max(5000), z.string().max(5000))).default({}),
@@ -109,8 +130,8 @@ export const storefrontContentSchema = z.object({
   }),
   about: z.object({
     hero: heroSchema,
-    story: sectionHeadingSchema.extend({ paragraphs: z.array(text(2_000)).max(12) }),
-    values: z.array(titleBodySchema).max(12),
+    founder: founderSchema.default(() => structuredClone(aboutStory.founder)),
+    vision: visionSchema.default(() => structuredClone(aboutStory.vision)),
     cta: sectionHeadingSchema.extend({ buttonLabel: text(80) }),
   }),
   contact: z.object({ hero: heroSchema }),

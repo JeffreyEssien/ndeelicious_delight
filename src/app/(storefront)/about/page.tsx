@@ -13,6 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Page() {
   const { about } = await getStorefrontContent();
+  const { founder, vision } = about;
   return (
     <>
       <section className="split-hero about-hero">
@@ -27,28 +28,63 @@ export default async function Page() {
           <Image src={about.hero.image ?? ""} alt={about.hero.imageAlt ?? ""} fill priority />
         </div>
       </section>
-      <section className="site-container story-section">
-        <div>
-          <span className="overline">{about.story.eyebrow}</span>
-          <h2>
-            <ContentLines text={about.story.headline} />
+      <section className="site-container founder-section" aria-labelledby="founder-heading">
+        <figure className="founder-portrait">
+          <div className="founder-photo">
+            {founder.image ? (
+              <Image src={founder.image} alt={founder.imageAlt} fill sizes={"(max-width: 900px) 100vw, 40vw"} />
+            ) : (
+              // Until a photo is chosen in the admin, a monogram keeps the layout whole.
+              <span className="founder-monogram" aria-hidden="true">
+                {founder.name.trim().charAt(0) || "N"}
+              </span>
+            )}
+          </div>
+          <figcaption>
+            <b>{founder.name}</b>
+            <span>{founder.role}</span>
+          </figcaption>
+        </figure>
+        <div className="founder-copy">
+          <span className="overline">{founder.eyebrow}</span>
+          <h2 id="founder-heading">
+            <ContentLines text={founder.headline} />
           </h2>
-        </div>
-        <div>
-          {about.story.paragraphs.map((paragraph) => (
+          <p className="founder-motto">{founder.motto}</p>
+          {founder.lead && <p className="founder-lead">{founder.lead}</p>}
+          {founder.paragraphs.map((paragraph) => (
             <p key={paragraph}>{paragraph}</p>
           ))}
+          {founder.highlights.length > 0 && (
+            <ul className="founder-highlights">
+              {founder.highlights.map((highlight) => (
+                <li key={highlight.title}>
+                  <b>{highlight.title}</b>
+                  <span>{highlight.body}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
-      <section className="section section-tint">
-        <div className="site-container values">
-          {about.values.map((value, index) => (
-            <div key={value.title}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              <h3>{value.title}</h3>
-              <p>{value.body}</p>
-            </div>
+      <section className="vision-section" aria-labelledby="vision-heading">
+        <div className="site-container vision-inner">
+          <span className="overline">{vision.eyebrow}</span>
+          <h2 id="vision-heading">
+            <ContentLines text={vision.headline} />
+          </h2>
+          <p className="vision-statement">{vision.statement}</p>
+          {vision.paragraphs.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
           ))}
+          {vision.closing && <p className="vision-closing">{vision.closing}</p>}
+          {vision.signature && (
+            <p className="vision-signature">
+              {vision.signOff && <span>{vision.signOff}</span>}
+              <b>{vision.signature}</b>
+              {vision.signatureRole && <span>{vision.signatureRole}</span>}
+            </p>
+          )}
         </div>
       </section>
       <section className="center-cta">
