@@ -36,6 +36,18 @@ const labels: Record<string, string> = {
   preparationTitle: "Preparation heading",
   preparationText: "Preparation message",
   updated: "Last updated text",
+  founder: "Meet the founder",
+  vision: "Our vision",
+  name: "Name",
+  role: "Title",
+  motto: "Motto",
+  lead: "Opening line",
+  highlights: "Highlights",
+  statement: "Vision statement",
+  closing: "Closing line",
+  signOff: "Sign-off",
+  signature: "Signed by",
+  signatureRole: "Signer's title",
 };
 
 function humanize(value: string) {
@@ -67,7 +79,9 @@ function updateAtPath(root: JsonValue, path: Path, replacement: JsonValue): Json
 function multilineField(key: string, value: string) {
   return (
     value.length > 90 ||
-    ["answer", "body", "description", "footerDescription", "headline", "supportingText"].includes(key)
+    ["answer", "body", "description", "footerDescription", "headline", "supportingText", "statement", "lead"].includes(
+      key,
+    )
   );
 }
 

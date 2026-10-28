@@ -1,0 +1,52 @@
+{
+  "hero": {
+    "eyebrow": "Ndeeelicious Delight",
+    "headline": "Tradition Meets Convenience.",
+    "supportingText": "Inspired by heritage. Guided by science. Made for your convenience."
+  },
+  "founder": {
+    "eyebrow": "Meet the founder",
+    "headline": "Meet Ndidiamaka",
+    "name": "Ndidiamaka",
+    "role": "Founder & CEO of Ndeeelicious Delight",
+    "motto": "Where Culinary Traditions Meet Science, Innovation, and Convenience.",
+    "lead": "Behind every delightful bite is a story of passion, knowledge, and purpose.",
+    "paragraphs": [
+      "I'm Ndidiamaka, the founder and CEO of Ndeeelicious Delight, a Nova Scotia-based bakery inspired by my love for baking, my Nigerian culinary heritage, and my vision of making traditional culinary experiences more convenient for people everywhere.",
+      "My journey began in Lagos, Nigeria, where I worked as a Customer Representative at one of the city's largest and most renowned bakeries. That experience gave me valuable insight into the bakery industry, customer expectations, product quality, and the important role that food plays in bringing people together. It also strengthened my desire to build something of my own.",
+      "With a Master's degree in Chemical Engineering and professional training as a Fermentation Technician, I bring a unique scientific perspective to the world of baking. I have always believed that baking is both an art and a science. From understanding ingredient interactions and fermentation processes to achieving consistency, texture, flavour, and quality, my educational background has equipped me with transferable skills that I apply to developing and producing our products.",
+      "Combining my industry experience, scientific knowledge, and entrepreneurial vision, I founded Ndeeelicious Delight to bring the authentic flavours of Nigerian-inspired pastries to a wider audience while making them more accessible and convenient.",
+      "Today, we specialize in handcrafted pastries, custom cakes, and our signature ready-to-bake Nigerian-style meat pies, chicken pies, and beef sausage rolls. Our products are thoughtfully prepared to deliver delicious flavours, quality, and convenience without compromising the culinary traditions that inspire them."
+    ],
+    "highlights": [
+      {
+        "title": "Rooted in Lagos",
+        "body": "Began at one of Lagos's largest and most renowned bakeries."
+      },
+      {
+        "title": "Master's in Chemical Engineering",
+        "body": "A scientist's eye for consistency, texture, flavour and quality."
+      },
+      {
+        "title": "Fermentation Technician",
+        "body": "Professionally trained in the processes behind great baking."
+      }
+    ],
+    "image": "",
+    "imageAlt": "Ndidiamaka, founder and CEO of Ndeeelicious Delight"
+  },
+  "vision": {
+    "eyebrow": "Ndeeelicious Delight",
+    "headline": "Our Vision",
+    "statement": "At Ndeeelicious Delight, our vision is to bring convenience through culinary traditions across North America and, ultimately, the world.",
+    "paragraphs": [
+      "We believe that traditional foods should be accessible, enjoyable, and convenient, no matter how busy life becomes. Through our ready-to-bake products, we are reimagining how people experience beloved culinary traditions — making it easier for families, individuals, and food lovers to enjoy authentic flavours in their own homes.",
+      "As we grow, we remain committed to combining tradition with innovation, maintaining quality, and creating products that make everyday meals and special moments more delightful.",
+      "Thank you for being part of our journey. Every customer, every partnership, and every bite brings us closer to our vision."
+    ],
+    "closing": "Welcome to Ndeeelicious Delight — where tradition meets convenience, and every bite is such a delight!",
+    "signOff": "With love,",
+    "signature": "Ndidiamaka",
+    "signatureRole": "Founder & CEO, Ndeeelicious Delight"
+  }
+}
