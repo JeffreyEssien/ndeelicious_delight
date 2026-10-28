@@ -286,10 +286,6 @@ test.describe("responsive customer system", () => {
   test("owner-managed long copy wraps without widening the page", async ({ page }) => {
     await page.goto("/shop");
     await settle(page);
-    await page.locator(".announcement").evaluate((node) => {
-      node.textContent =
-        "A deliberately long delivery announcement for customers across every configured Canadian service area";
-    });
     const title = page.locator(".product-card h3").first();
     if (await title.count()) {
       await title.evaluate((node) => {

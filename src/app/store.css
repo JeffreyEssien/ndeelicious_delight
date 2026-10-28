@@ -945,29 +945,40 @@
   line-height: 1.55;
 }
 .founder-highlights {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
-  margin: 36px 0 0;
+  max-width: 640px;
+  margin: 48px 0 0;
   padding: 0;
   list-style: none;
+  counter-reset: highlight;
+  border-top: 1px solid var(--line);
 }
+/* An editorial list rather than boxed cards: a numeral, a title, one line of detail. */
 .founder-highlights li {
   display: grid;
-  gap: 6px;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-top: 3px solid var(--berry);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
+  grid-template-columns: 48px minmax(0, 1fr);
+  column-gap: 16px;
+  row-gap: 4px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--line);
+  counter-increment: highlight;
+}
+.founder-highlights li::before {
+  grid-row: span 2;
+  content: counter(highlight, decimal-leading-zero);
+  color: var(--berry);
+  font-family: var(--font-serif);
+  font-size: 28px;
+  line-height: 1.1;
 }
 .founder-highlights b {
-  font-size: 15px;
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1.35;
 }
 .founder-highlights span {
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.6;
 }
 .about-tagline {
   display: grid;
@@ -1459,13 +1470,8 @@
   .site-container {
     width: min(100% - 32px, var(--max));
   }
-  .announcement {
-    max-height: 3.5em;
-    overflow: hidden;
-    font-size: 10px;
-  }
   .hero {
-    min-height: max(620px, calc(100svh - 102px));
+    min-height: max(620px, calc(100svh - 70px));
     align-items: flex-end;
   }
   .hero > img {

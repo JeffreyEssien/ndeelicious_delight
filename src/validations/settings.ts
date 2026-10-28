@@ -84,7 +84,6 @@ const visionSchema = sectionHeadingSchema.extend({
 export const storefrontContentSchema = z.object({
   customerText: z.record(z.string().max(200), z.record(z.string().max(5000), z.string().max(5000))).default({}),
   global: z.object({
-    announcement: z.object({ text: text(300), linkLabel: text(80), href }),
     navigation: z.array(z.object({ label: text(80), href })).max(12),
     footerDescription: text(1_000),
     newsletterTitle: text(200),

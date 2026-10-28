@@ -50,14 +50,14 @@ export default async function Page() {
             <p key={paragraph}>{paragraph}</p>
           ))}
           {founder.highlights.length > 0 && (
-            <ul className="founder-highlights">
+            <ol className="founder-highlights">
               {founder.highlights.map((highlight) => (
                 <li key={highlight.title}>
                   <b>{highlight.title}</b>
                   <span>{highlight.body}</span>
                 </li>
               ))}
-            </ul>
+            </ol>
           )}
         </div>
       </section>

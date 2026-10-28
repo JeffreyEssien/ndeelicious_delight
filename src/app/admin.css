@@ -1819,9 +1819,6 @@ html[data-theme] .admin-sidebar {
   .nav-row > .mobile-only {
     justify-self: start;
   }
-  .announcement {
-    font-size: 9px;
-  }
   .hero {
     min-height: 760px;
     align-items: flex-end;
