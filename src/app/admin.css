@@ -5963,3 +5963,193 @@ html[data-theme] .admin-sidebar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Homepage → Hero slides */
+.hero-slide-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 24px 24px 0;
+  list-style: none;
+}
+.hero-slide-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.hero-slide-card[open] {
+  border-color: color-mix(in srgb, var(--berry) 45%, var(--line));
+}
+.hero-slide-card > summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  cursor: pointer;
+  list-style: none;
+}
+.hero-slide-card > summary::-webkit-details-marker {
+  display: none;
+}
+.hero-slide-number {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--berry);
+  color: var(--color-on-primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+.hero-slide-summary {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.hero-slide-summary b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hero-slide-summary small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.hero-slide-card .carousel-fields {
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
+}
+.hero-slide-products {
+  display: grid;
+  gap: 10px;
+}
+.hero-slide-products-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+.hero-slide-products .field-hint {
+  margin: 0;
+}
+.hero-slide-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hero-slide-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--berry) 6%, var(--surface));
+  font-size: 13px;
+}
+.hero-slide-chips li.is-missing {
+  border-style: dashed;
+  color: var(--muted);
+}
+.hero-slide-chips button {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 16px;
+  cursor: pointer;
+}
+.hero-slide-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.hero-slide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 0 24px 20px;
+}
+.hero-slide-actions button,
+.hero-perk-add {
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--berry);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.hero-slide-actions button:disabled,
+.hero-perk-add:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+.hero-slide-actions .is-danger {
+  margin-left: auto;
+  color: var(--color-danger, #b42318);
+}
+.hero-slide-add {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 24px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.hero-slide-add small {
+  color: var(--muted);
+}
+.hero-perks-editor {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.hero-perks-editor legend {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.hero-perk-row {
+  display: flex;
+  gap: 8px;
+}
+.hero-perk-row input {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font: inherit;
+}
+.hero-perk-row button {
+  width: 42px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 18px;
+  cursor: pointer;
+}
+.hero-perk-add {
+  justify-self: start;
+}
+/* The preview shows the real hero, without its full-screen height. */
+.hero-preview .hero-showcase {
+  min-height: 0;
+}
+@media (max-width: 700px) {
+  .hero-slide-list {
+    padding: 16px 16px 0;
+  }
+  .hero-slide-actions {
+    padding: 0 16px 16px;
+  }
+}

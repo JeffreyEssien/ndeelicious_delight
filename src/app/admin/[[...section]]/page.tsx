@@ -29,6 +29,7 @@ export default async function Page({ params }: { params: Promise<{ section?: str
       initialCakeConfiguration={data.cakeConfiguration}
       initialAppearance={data.appearance}
       initialCarousel={data.carousel}
+      initialHero={data.hero}
       initialMarketing={data.marketing}
       initialAuditLogs={data.auditLogs}
       initialAnalytics={data.analytics}

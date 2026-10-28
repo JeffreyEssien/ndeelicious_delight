@@ -29,6 +29,7 @@ import { ProductEditor } from "@/components/admin/product-editor";
 import { ContentSettings } from "@/components/admin/content-settings";
 import { MediaLibrary } from "@/components/admin/media-library";
 import { CarouselEditor } from "@/components/admin/carousel-editor";
+import { HeroEditor } from "@/components/admin/hero-editor";
 import { SocialPostGenerator } from "@/components/admin/social-post-generator";
 import { useBusinessSettings, useMoney, useStoreTheme, useToast, type StoreTheme } from "@/components/providers";
 import type {
@@ -36,6 +37,7 @@ import type {
   CakeConfigurationData,
   StoreAppearance,
   StoreCarousel,
+  StoreHero,
   StorefrontContent,
   MarketingExport,
 } from "@/types/content";
@@ -58,6 +60,7 @@ type Props = {
   initialCakeConfiguration: CakeConfigurationData;
   initialAppearance: StoreAppearance;
   initialCarousel: StoreCarousel;
+  initialHero: StoreHero;
   initialMarketing: MarketingExport;
   initialAuditLogs: AdminAuditLog[];
   initialAnalytics: AnalyticsSnapshot | null;
@@ -125,6 +128,7 @@ export function AdminPortal({
   initialCakeConfiguration,
   initialAppearance,
   initialCarousel,
+  initialHero,
   initialMarketing,
   initialAuditLogs,
   initialAnalytics,
@@ -274,7 +278,12 @@ export function AdminPortal({
       {section === "coupons" && <Coupons initial={initialCoupons} products={products} categories={initialCategories} />}
       {section === "reviews" && <Reviews initial={initialReviews} />}
       {section === "content" && <ContentSettings initial={initialContent} />}
-      {section === "carousel" && <CarouselEditor products={products} initial={initialCarousel} />}
+      {section === "carousel" && (
+        <>
+          <HeroEditor products={products} initial={initialHero} />
+          <CarouselEditor products={products} initial={initialCarousel} />
+        </>
+      )}
       {section === "media" && <MediaLibrary />}
       {section === "marketing" && (
         <SocialPostGenerator products={products} initial={initialMarketing} siteUrl={siteUrl} />
