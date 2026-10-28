@@ -3,6 +3,10 @@ import { categoryLabel } from "@/features/catalog/pricing";
 import type { Product } from "@/types";
 import type { BusinessSettings } from "@/types/content";
 
+// The picture shown when a link to the site is shared (WhatsApp, Instagram, iMessage, Facebook…):
+// the brand logo, sized for link cards. Product links show the product's own photo instead.
+export const defaultShareImage = { url: "/og-default.jpg", width: 1200, height: 630 };
+
 function absoluteHttpUrl(value: string, siteUrl: string) {
   if (!value) return undefined;
   try {
