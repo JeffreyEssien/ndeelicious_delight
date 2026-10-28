@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ProductCarousel } from "@/components/product/product-carousel";
+import { PromoShowcase, type PromoSlide } from "@/components/product/promo-carousel";
 import { ContentLines } from "@/components/ui/content-lines";
 import { Icon } from "@/components/ui/icons";
 import { getProducts } from "@/lib/data/catalog";
@@ -33,6 +34,26 @@ export default async function Home() {
     ...products.filter((product) => !product.featured && isProductPurchasable(product)),
   ].slice(0, 4);
   const gallery = products.flatMap((product) => product.images ?? []).slice(0, 4);
+  const promoSlides: PromoSlide[] = [
+    {
+      src: "/landing/full-range.jpg",
+      alt: t("Ndeelicious Delight frozen meat pies, chicken pies and beef sausage rolls with pastry bursting overhead"),
+      label: t("The full ready-to-bake range"),
+      href: "/ready-to-bake",
+    },
+    {
+      src: "/landing/chicken-pies.jpg",
+      alt: t("A woman biting into a golden chicken pie beside a box of Nigerian-style frozen chicken pies"),
+      label: t("Nigerian-style chicken pies"),
+      href: "/ready-to-bake",
+    },
+    {
+      src: "/landing/sausage-rolls.jpg",
+      alt: t("A box of Nigerian-style beef sausage rolls under the words Charge your day"),
+      label: t("Nigerian-style beef sausage rolls"),
+      href: "/ready-to-bake",
+    },
+  ];
   return (
     <>
       <section className="hero">
@@ -135,28 +156,18 @@ export default async function Home() {
           </Link>
         </div>
       </section>
-      <section className="ready-feature">
-        <div className="site-container ready-grid">
-          <div>
-            <span className="overline">{home.readyFeature.eyebrow}</span>
-            <h2>
-              <ContentLines text={home.readyFeature.headline} />
-            </h2>
-            <p>{home.readyFeature.body}</p>
-            <Link href="/ready-to-bake" className="button button-secondary">
-              {home.readyFeature.buttonLabel} <Icon name="arrow" />
-            </Link>
-          </div>
-          <div className="ready-image">
-            <Image
-              src={home.readyFeature.image}
-              alt={home.readyFeature.imageAlt}
-              fill
-              sizes={"(max-width:800px) 100vw, 50vw"}
-            />
-          </div>
+      <PromoShowcase slides={promoSlides} label={t("Ready-to-bake range")}>
+        <div>
+          <span className="overline">{home.readyFeature.eyebrow}</span>
+          <h2>
+            <ContentLines text={home.readyFeature.headline} />
+          </h2>
+          <p>{home.readyFeature.body}</p>
+          <Link href="/ready-to-bake" className="button button-secondary">
+            {home.readyFeature.buttonLabel} <Icon name="arrow" />
+          </Link>
         </div>
-      </section>
+      </PromoShowcase>
       {!!gallery.length && (
         <section className="section gallery-section">
           <div className="site-container">
