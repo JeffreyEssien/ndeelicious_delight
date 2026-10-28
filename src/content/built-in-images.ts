@@ -9,6 +9,7 @@ export const builtInImages: BuiltInImage[] = [
   { path: "/landing/chicken-pies.jpg", title: "Chicken pies", usedIn: ["Homepage hero"] },
   { path: "/landing/sausage-rolls.jpg", title: "Beef sausage rolls", usedIn: ["Homepage hero"] },
   { path: "/about/ndidiamaka.jpg", title: "Ndidiamaka, founder and CEO", usedIn: [] },
+  { path: "/og-default.jpg", title: "Logo for link previews", usedIn: ["Link previews when the site is shared"] },
   { path: "/brand-logo.jpg", title: "Brand logo", usedIn: ["Site header", "Receipts and invoices"] },
   { path: "/hero-bakery.jpg", title: "Bakery table", usedIn: ["Contact page"] },
   { path: "/custom-cake.jpg", title: "Custom cake", usedIn: ["Admin sign-in page"] },

@@ -10,7 +10,7 @@ import {
   getStorefrontContent,
   getStoreTheme,
 } from "@/lib/data/settings";
-import { organizationJsonLd, serializeJsonLd } from "@/lib/seo";
+import { defaultShareImage, organizationJsonLd, serializeJsonLd } from "@/lib/seo";
 import { getSiteUrl } from "@/lib/site-url";
 import { resolveThemeTokens, themeTokenCss } from "@/lib/theme/tokens";
 import "./globals.css";
@@ -24,7 +24,6 @@ export async function generateMetadata(): Promise<Metadata> {
   const t = customerText(content.customerText, "page titles");
   const title = t("{business} — Custom Cakes & Nigerian-Style Pies", { business: business.businessName });
   const description = content.home.hero.supportingText;
-  const image = content.home.hero.image;
   return {
     metadataBase: new URL(getSiteUrl()),
     title: {
@@ -38,13 +37,13 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: business.businessName,
       locale: business.locale.replace("-", "_"),
       type: "website",
-      images: image ? [{ url: image, alt: content.home.hero.imageAlt || business.businessName }] : [],
+      images: [{ ...defaultShareImage, alt: `${business.businessName} logo` }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: image ? [{ url: image, alt: content.home.hero.imageAlt || business.businessName }] : [],
+      images: [{ ...defaultShareImage, alt: `${business.businessName} logo` }],
     },
   };
 }
