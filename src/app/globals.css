@@ -173,9 +173,6 @@ body {
 html[data-theme] .site-header {
   background: color-mix(in srgb, var(--color-background) 92%, transparent);
 }
-html[data-theme] .announcement {
-  background: linear-gradient(90deg, var(--berry-dark), var(--berry));
-}
 html[data-theme] .ready-feature {
   background: var(--accent-soft);
 }
@@ -549,24 +546,6 @@ h2 {
 .success-mark svg {
   width: 29px;
   height: 29px;
-}
-.announcement {
-  min-height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 7px 16px;
-  background: var(--berry);
-  color: var(--color-on-primary);
-  font-size: 11px;
-  line-height: 1.35;
-  letter-spacing: 0.04em;
-  text-align: center;
-}
-.announcement a {
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 .site-header {
   position: sticky;
