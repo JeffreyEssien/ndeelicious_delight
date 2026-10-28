@@ -890,6 +890,8 @@
 }
 .founder-photo img {
   object-fit: cover;
+  /* Portraits keep the head in frame; any trimming comes off the bottom. */
+  object-position: center top;
 }
 .founder-monogram {
   position: absolute;
