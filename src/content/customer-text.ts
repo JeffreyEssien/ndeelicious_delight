@@ -332,10 +332,6 @@ export const defaultCustomerText: CustomerText = {
     "Choose a slide": "Choose a slide",
     "Show {value1}": "Show {value1}",
     "Next slide": "Next slide",
-    "Play automatic slides": "Play automatic slides",
-    "Pause automatic slides": "Pause automatic slides",
-    Play: "Play",
-    Pause: "Pause",
   },
   catalogue: {
     "Show all": "Show all",
@@ -748,7 +744,6 @@ export const defaultCustomerText: CustomerText = {
       "Lean beef wrapped in golden puff pastry. The snack for school runs, game nights and everything in between. Bakes in 35 to 50 minutes.",
     "12 rolls": "12 rolls",
     "Order sausage rolls": "Order sausage rolls",
-    "Custom cakes": "Custom cakes",
     "No preservatives": "No preservatives",
     "Handmade in Halifax": "Handmade in Halifax",
     "Bake from frozen": "Bake from frozen",

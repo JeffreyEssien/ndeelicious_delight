@@ -22,7 +22,7 @@ export type HeroSlide = PromoSlide & {
 };
 
 // The first thing customers see: each slide pairs a product image with its own pitch,
-// price and order button, and the whole band takes on the colours of the image on show.
+// price and order button. The band stays in the brand colour; the image on show tints its glow.
 export function HeroShowcase({
   slides,
   label,
@@ -41,9 +41,7 @@ export function HeroShowcase({
     setActive(index);
     setTheme(next);
   }, []);
-  const style = theme
-    ? ({ "--promo-bg": theme.background, "--promo-glow": theme.glow, "--promo-accent": theme.accent } as CSSProperties)
-    : undefined;
+  const style = theme ? ({ "--promo-glow": theme.glow, "--promo-accent": theme.accent } as CSSProperties) : undefined;
 
   return (
     <section className="hero-showcase" style={style}>

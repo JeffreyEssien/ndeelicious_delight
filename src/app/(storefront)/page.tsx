@@ -93,22 +93,6 @@ export default async function Home() {
       primary: { label: t("Order sausage rolls"), href: productHref(sausageRolls) },
       secondary: { label: t("See the full range"), href: "/ready-to-bake" },
     },
-    ...(home.hero.image
-      ? [
-          {
-            src: home.hero.image,
-            alt: home.hero.imageAlt ?? "",
-            label: t("Custom cakes"),
-            position: "68% center",
-            href: home.hero.primaryHref,
-            eyebrow: home.hero.eyebrow,
-            headline: home.hero.headline,
-            body: home.hero.supportingText,
-            primary: { label: home.hero.primaryLabel, href: home.hero.primaryHref },
-            secondary: { label: home.hero.secondaryLabel, href: home.hero.secondaryHref },
-          },
-        ]
-      : []),
   ];
   return (
     <>
