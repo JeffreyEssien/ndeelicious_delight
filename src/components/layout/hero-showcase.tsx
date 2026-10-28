@@ -28,11 +28,13 @@ export function HeroShowcase({
   label,
   perks,
   fromLabel,
+  intervalMs = 6000,
 }: {
   slides: HeroSlide[];
   label: string;
   perks: string[];
   fromLabel: string;
+  intervalMs?: number;
 }) {
   const money = useMoney();
   const [active, setActive] = useState(0);
@@ -78,7 +80,7 @@ export function HeroShowcase({
             );
           })}
         </div>
-        <PromoCarousel slides={slides} label={label} intervalMs={6000} lead onSlideChange={onSlideChange} />
+        <PromoCarousel slides={slides} label={label} intervalMs={intervalMs} lead onSlideChange={onSlideChange} />
       </div>
       {perks.length > 0 && (
         <ul className="site-container hero-perks">

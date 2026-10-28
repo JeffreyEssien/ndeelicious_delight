@@ -1,5 +1,6 @@
 import { getDeliveryZones } from "./catalog";
 import { mergeCustomerText } from "@/content/customer-text";
+import { defaultStoreHero } from "@/content/default-hero";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import type { StoreTheme } from "@/lib/theme/tokens";
@@ -10,6 +11,7 @@ import type {
   CakeOption,
   StoreAppearance,
   StoreCarousel,
+  StoreHero,
   StorefrontContent,
   MarketingExport,
 } from "@/types/content";
@@ -17,6 +19,7 @@ import {
   businessSettingsSchema,
   storeAppearanceSchema,
   storeCarouselSchema,
+  storeHeroSchema,
   storefrontContentSchema,
   marketingExportSchema,
 } from "@/validations/settings";
@@ -132,6 +135,19 @@ export async function getStoreCarousel(client?: SupabaseClient): Promise<StoreCa
     return storeCarouselSchema.parse(value);
   } catch (error) {
     if (error instanceof Error && error.message === "Missing site setting: carousel") return defaultStoreCarousel;
+    throw error;
+  }
+}
+
+// The homepage hero slides. Before the owner first publishes them, or if a saved version no longer
+// passes validation, the built-in slides keep the homepage whole.
+export async function getStoreHero(client?: SupabaseClient): Promise<StoreHero> {
+  try {
+    const value = client ? await setting<StoreHero>("hero", client) : await cachedSetting("hero");
+    const parsed = storeHeroSchema.safeParse(value);
+    return parsed.success ? parsed.data : defaultStoreHero;
+  } catch (error) {
+    if (error instanceof Error && error.message === "Missing site setting: hero") return defaultStoreHero;
     throw error;
   }
 }
