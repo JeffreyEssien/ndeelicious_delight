@@ -326,6 +326,17 @@ export const defaultCustomerText: CustomerText = {
     Play: "Play",
     Pause: "Pause",
   },
+  "promo carousel": {
+    "Slide {value1} of {value2}: {value3}": "Slide {value1} of {value2}: {value3}",
+    "Previous slide": "Previous slide",
+    "Choose a slide": "Choose a slide",
+    "Show {value1}": "Show {value1}",
+    "Next slide": "Next slide",
+    "Play automatic slides": "Play automatic slides",
+    "Pause automatic slides": "Pause automatic slides",
+    Play: "Play",
+    Pause: "Pause",
+  },
   catalogue: {
     "Show all": "Show all",
     "Ready to order": "Ready to order",
@@ -715,6 +726,16 @@ export const defaultCustomerText: CustomerText = {
   "Page: (storefront)": {
     "No featured products are currently published.": "No featured products are currently published.",
     "Follow along ↗": "Follow along ↗",
+    "Ready-to-bake range": "Ready-to-bake range",
+    "The full ready-to-bake range": "The full ready-to-bake range",
+    "Nigerian-style chicken pies": "Nigerian-style chicken pies",
+    "Nigerian-style beef sausage rolls": "Nigerian-style beef sausage rolls",
+    "Ndeelicious Delight frozen meat pies, chicken pies and beef sausage rolls with pastry bursting overhead":
+      "Ndeelicious Delight frozen meat pies, chicken pies and beef sausage rolls with pastry bursting overhead",
+    "A woman biting into a golden chicken pie beside a box of Nigerian-style frozen chicken pies":
+      "A woman biting into a golden chicken pie beside a box of Nigerian-style frozen chicken pies",
+    "A box of Nigerian-style beef sausage rolls under the words Charge your day":
+      "A box of Nigerian-style beef sausage rolls under the words Charge your day",
   },
   layout: {
     "Skip to checkout": "Skip to checkout",
