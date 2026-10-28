@@ -98,7 +98,7 @@ export function ProductCard({ product, eager = false }: { product: Product; eage
       </div>
       <div className="product-meta">
         <div>
-          <span>{madeToOrder ? t("Made to Order") : t(categoryLabel(product.category))}</span>
+          <span>{t(categoryLabel(product.category))}</span>
           <Link href={`/product/${product.slug}`}>
             <h3>{product.name}</h3>
           </Link>
