@@ -4,27 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Textarea } from "@/components/ui/primitives";
 import { useToast } from "@/components/providers";
+import { ImageUrlField } from "@/components/admin/image-url-field";
+import { contentSectionNames, humanizeContentKey } from "@/content/content-sections";
 import type { StorefrontContent } from "@/types/content";
 
 type JsonObject = { [key: string]: JsonValue };
 type JsonValue = string | JsonObject | JsonValue[];
 type Path = Array<string | number>;
 
-const sectionNames: Record<string, string> = {
-  customerText: "Customer interface and email wording",
-  global: "Header, navigation and footer",
-  home: "Homepage",
-  about: "About page",
-  contact: "Contact page",
-  customCakes: "Custom cakes page",
-  readyToBake: "Ready-to-bake page",
-  delivery: "Delivery page",
-  faq: "Frequently asked questions",
-  headers: "Shop, cart and tracking headers",
-  orderSuccess: "Order confirmation",
-  product: "Product page messages",
-  policies: "Policies",
-};
+const sectionNames = contentSectionNames;
 
 const labels: Record<string, string> = {
   eyebrow: "Small heading",
@@ -51,11 +39,7 @@ const labels: Record<string, string> = {
 };
 
 function humanize(value: string) {
-  if (labels[value]) return labels[value];
-  return value
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replaceAll("_", " ")
-    .replace(/^./, (character) => character.toUpperCase());
+  return labels[value] ?? humanizeContentKey(value);
 }
 
 function isObject(value: JsonValue): value is JsonObject {
@@ -101,6 +85,8 @@ function ContentField({
   hideLegend?: boolean;
 }) {
   if (typeof value === "string") {
+    if (name === "image")
+      return <ImageUrlField label={humanize(name)} value={value} onChange={(url) => onChange(path, url)} />;
     const props = {
       label: humanize(name),
       value,

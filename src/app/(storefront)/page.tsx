@@ -8,6 +8,7 @@ import { ContentLines } from "@/components/ui/content-lines";
 import { Icon } from "@/components/ui/icons";
 import { getProducts } from "@/lib/data/catalog";
 import { isProductPurchasable } from "@/features/catalog/availability";
+import { HeroShowcase, type HeroSlide } from "@/components/layout/hero-showcase";
 import { Stockists } from "@/components/layout/stockists";
 import { NewsletterForm } from "@/components/layout/newsletter-form";
 import { getApprovedReviews } from "@/lib/data/reviews";
@@ -33,35 +34,74 @@ export default async function Home() {
     ...products.filter((product) => !product.featured && isProductPurchasable(product)),
   ].slice(0, 4);
   const gallery = products.flatMap((product) => product.images ?? []).slice(0, 4);
+  // The hero leads with the ready-to-bake range; each slide links to its live product
+  // and shows its current price, so prices stay right when they change in the admin.
+  const findProduct = (pattern: RegExp) =>
+    products.find((product) => product.status === "ACTIVE" && pattern.test(`${product.slug} ${product.name}`));
+  const priceOf = (product?: (typeof products)[number]) =>
+    product ? (product.discountPrice ?? product.price) : undefined;
+  const productHref = (product: (typeof products)[number] | undefined) =>
+    product ? `/product/${encodeURIComponent(product.slug)}` : "/ready-to-bake";
+  const chickenPies = findProduct(/chicken[ -]pie/i);
+  const sausageRolls = findProduct(/sausage[ -]roll/i);
+  const meatPies = findProduct(/meat[ -]?pie/i);
+  const rangePrices = [chickenPies, sausageRolls, meatPies].flatMap((product) => priceOf(product) ?? []);
+  const heroSlides: HeroSlide[] = [
+    {
+      src: "/landing/full-range.jpg",
+      alt: t("Ndeelicious Delight frozen meat pies, chicken pies and beef sausage rolls with pastry bursting overhead"),
+      label: t("The full ready-to-bake range"),
+      href: "/ready-to-bake",
+      eyebrow: t("Ready-to-bake · Handmade in Halifax"),
+      headline: t("Golden, flaky,\nstraight from your oven."),
+      body: t(
+        "Nigerian-style meat pies, chicken pies and beef sausage rolls. Keep a box in the freezer and bake fresh whenever the craving hits.",
+      ),
+      price: rangePrices.length ? Math.min(...rangePrices) : undefined,
+      priceFrom: true,
+      priceNote: t("per box"),
+      primary: { label: t("Shop ready-to-bake"), href: "/ready-to-bake" },
+      secondary: meatPies ? { label: t("Try the meat pies"), href: productHref(meatPies) } : undefined,
+    },
+    {
+      src: "/landing/chicken-pies.jpg",
+      alt: t("A woman biting into a golden chicken pie beside a box of Nigerian-style frozen chicken pies"),
+      label: t("Nigerian-style chicken pies"),
+      href: productHref(chickenPies),
+      eyebrow: t("Chicken pies · 6 per box"),
+      headline: t("Flaky pastry.\nJuicy chicken.\nZero effort."),
+      body: t(
+        "Seasoned chicken in handmade, buttery pastry. No preservatives, no artificial colours, ready in 50 minutes.",
+      ),
+      price: priceOf(chickenPies),
+      priceNote: t("6 pies"),
+      primary: { label: t("Order chicken pies"), href: productHref(chickenPies) },
+      secondary: { label: t("See the full range"), href: "/ready-to-bake" },
+    },
+    {
+      src: "/landing/sausage-rolls.jpg",
+      alt: t("A box of Nigerian-style beef sausage rolls under the words Charge your day"),
+      label: t("Nigerian-style beef sausage rolls"),
+      href: productHref(sausageRolls),
+      eyebrow: t("Beef sausage rolls · 12 per box"),
+      headline: t("Charge\nyour day."),
+      body: t(
+        "Lean beef wrapped in golden puff pastry. The snack for school runs, game nights and everything in between. Bakes in 35 to 50 minutes.",
+      ),
+      price: priceOf(sausageRolls),
+      priceNote: t("12 rolls"),
+      primary: { label: t("Order sausage rolls"), href: productHref(sausageRolls) },
+      secondary: { label: t("See the full range"), href: "/ready-to-bake" },
+    },
+  ];
   return (
     <>
-      <section className="hero">
-        <Image
-          src={home.hero.image ?? ""}
-          alt={home.hero.imageAlt ?? ""}
-          fill
-          loading={"eager"}
-          fetchPriority={"high"}
-          quality={60}
-          sizes={"100vw"}
-        />
-        <div className="hero-shade" />
-        <div className="site-container hero-content">
-          <span className="overline">{home.hero.eyebrow}</span>
-          <h1>
-            <ContentLines text={home.hero.headline} />
-          </h1>
-          <p>{home.hero.supportingText}</p>
-          <div className="hero-buttons">
-            <Link className="button button-primary" href={home.hero.primaryHref}>
-              {home.hero.primaryLabel} <Icon name="arrow" />
-            </Link>
-            <Link className="button button-link" href={home.hero.secondaryHref}>
-              {home.hero.secondaryLabel}
-            </Link>
-          </div>
-        </div>
-      </section>
+      <HeroShowcase
+        slides={heroSlides}
+        label={t("Featured products")}
+        fromLabel={t("From")}
+        perks={[t("No preservatives"), t("Handmade in Halifax"), t("Bake from frozen"), t("Pickup or delivery")]}
+      />
       <section className="section site-container">
         <div className="section-head">
           <div>

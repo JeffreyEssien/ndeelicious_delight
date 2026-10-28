@@ -127,14 +127,28 @@ export function ProductCarousel({
           aria-label={t("View {value1}", { value1: product.name })}
         >
           {product.image ? (
-            <Image
-              src={product.image}
-              alt={product.name}
-              fill
-              priority={preview}
-              sizes={"(max-width: 800px) 100vw, 55vw"}
-              style={{ objectPosition: product.imagePosition }}
-            />
+            // Every photo sits whole, at its own shape, in the same frame: a soft blurred copy fills the
+            // gaps, so wide, tall or small photos are never cropped, stretched or blown up.
+            <>
+              <Image
+                src={product.image}
+                alt=""
+                aria-hidden="true"
+                fill
+                quality={60}
+                className="carousel-image-backdrop"
+                sizes={"(max-width: 800px) 40vw, 25vw"}
+              />
+              <Image
+                src={product.image}
+                alt={product.name}
+                fill
+                priority={preview}
+                className="carousel-image-photo"
+                sizes={"(max-width: 800px) 100vw, 55vw"}
+                style={{ objectPosition: product.imagePosition }}
+              />
+            </>
           ) : (
             <span className="missing-image">{t("No product image uploaded")}</span>
           )}
