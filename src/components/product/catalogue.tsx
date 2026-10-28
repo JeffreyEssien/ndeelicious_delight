@@ -109,6 +109,12 @@ export function Catalogue({
       ),
     [category, mode, collection, available, query, products],
   );
+  // A sub-category only shows as a filter once something in this category is assigned to it.
+  const categoryCollections = collections.filter(
+    (item) =>
+      item.parent === category &&
+      products.some((product) => product.category === category && product.collectionId === item.id),
+  );
   const items = useMemo(
     () =>
       [...(budget === undefined ? filteredProducts : productsInBudget(filteredProducts, budget))].sort((a, b) =>
@@ -371,7 +377,7 @@ export function Catalogue({
               </label>
             ))}
           </fieldset>
-          {category !== "ALL" && collections.some((item) => item.parent === category) && (
+          {category !== "ALL" && categoryCollections.length > 0 && (
             <fieldset>
               <legend>{t("Sub-category")}</legend>
               <label>
@@ -386,22 +392,20 @@ export function Catalogue({
                 />
                 <span>{t("All")}</span>
               </label>
-              {collections
-                .filter((item) => item.parent === category)
-                .map((item) => (
-                  <label key={item.id}>
-                    <input
-                      type="radio"
-                      name="collection"
-                      checked={collection === item.id}
-                      onChange={() => {
-                        setCollection(item.id);
-                        reset();
-                      }}
-                    />
-                    <span>{item.name}</span>
-                  </label>
-                ))}
+              {categoryCollections.map((item) => (
+                <label key={item.id}>
+                  <input
+                    type="radio"
+                    name="collection"
+                    checked={collection === item.id}
+                    onChange={() => {
+                      setCollection(item.id);
+                      reset();
+                    }}
+                  />
+                  <span>{item.name}</span>
+                </label>
+              ))}
             </fieldset>
           )}
           <fieldset>

@@ -252,7 +252,7 @@ export function CakeTypesEditor({
                 <p className="cake-choice-note">
                   Every active choice is included by default. Untick anything this cake shouldn’t offer.
                 </p>
-                {["size", "flavour", "filling", "design", "occasion"].map((group) => (
+                {["size", "flavour", "filling", "design"].map((group) => (
                   <fieldset key={group}>
                     <legend>
                       {
@@ -261,7 +261,6 @@ export function CakeTypesEditor({
                           flavour: "Flavours",
                           filling: "Fillings",
                           design: "Designs",
-                          occasion: "Occasions",
                         }[group]
                       }
                     </legend>

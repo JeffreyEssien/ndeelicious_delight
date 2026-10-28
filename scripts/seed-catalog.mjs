@@ -1,6 +1,6 @@
 import nextEnv from "@next/env";
 import { createClient } from "@supabase/supabase-js";
-import { products, deliveryZones, cakeOptions } from "./catalog-seed-data.mjs";
+import { products, deliveryZones, cakeOptions, customCakeSubcategories } from "./catalog-seed-data.mjs";
 
 const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd());
@@ -123,6 +123,16 @@ for (const option of optionRows) {
     if (error) throw error;
   }
 }
+const { error: subcategoryError } = await db.from("collections").upsert(
+  customCakeSubcategories.map((name, index) => ({
+    parent: "CUSTOM_CAKES",
+    name,
+    slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    sort_order: index,
+  })),
+  { onConflict: "slug", ignoreDuplicates: true },
+);
+if (subcategoryError) throw subcategoryError;
 await db.from("coupons").upsert(
   {
     code: "SWEET10",

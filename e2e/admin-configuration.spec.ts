@@ -19,7 +19,7 @@ test("owner configuration immediately drives cake rules and pack visibility", as
   await page.getByText("Edit shared sizes, flavours and extras", { exact: true }).click();
   await page.getByRole("button", { name: "Add option", exact: true }).click();
   const options = page.locator(".cake-option-list article");
-  await options.last().getByLabel("Option name").fill("Fixture special occasion");
+  await options.last().getByLabel("Option name").fill("Fixture special size");
   const secondName = await options.nth(1).getByLabel("Option name").inputValue();
   await options.first().getByRole("button", { name: "Move down", exact: true }).click();
   await expect(options.first().getByLabel("Option name")).toHaveValue(secondName);
