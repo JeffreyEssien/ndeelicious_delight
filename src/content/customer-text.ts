@@ -365,6 +365,9 @@ export const defaultCustomerText: CustomerText = {
     "Ideas up to ": "Ideas up to ",
     combinations: "combinations",
     cake: "cake",
+    "Custom cakes": "Custom cakes",
+    "Treats from {value1}": "Treats from {value1}",
+    "Set a budget": "Set a budget",
   },
   "product reviews": {
     "Verified customers": "Verified customers",

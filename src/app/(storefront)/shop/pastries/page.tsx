@@ -12,7 +12,7 @@ export default async function Page() {
   const header = content.headers.pastries;
   return (
     <>
-      <header className="page-hero small">
+      <header className="page-hero small shop-hero">
         <span className="overline">{header.eyebrow}</span>
         <h1>
           <ContentLines text={header.headline} />

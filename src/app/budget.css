@@ -290,8 +290,9 @@
   color: color-mix(in srgb, var(--color-on-accent) 72%, transparent);
   font-size: 11px;
 }
+/* Products come first; filters and the budget finder sit beside them on the right. */
 .catalogue-layout:has(.shop-filter-sidebar) {
-  grid-template-columns: minmax(270px, 310px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 290px);
   gap: clamp(28px, 4vw, 52px);
 }
 .shop-filter-sidebar {
@@ -299,14 +300,14 @@
 }
 .sidebar-budget {
   margin-bottom: 30px;
-  padding: 22px;
+  padding: 18px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-primary-soft);
 }
 .sidebar-budget h3 {
-  margin: 6px 0 8px;
-  font-size: 24px;
+  margin: 4px 0 10px;
+  font-size: 20px;
   line-height: 1.05;
 }
 .sidebar-budget > p {
@@ -659,9 +660,6 @@
   }
 }
 @media (max-width: 700px) {
-  .catalogue-layout.budget-active .shop-filter-sidebar {
-    display: none;
-  }
   .catalogue-tools {
     margin-bottom: 20px;
     gap: 12px;
@@ -709,4 +707,136 @@ fieldset.shopping-modes {
 .budget-match-skeleton .budget-match-info {
   min-height: 128px;
   justify-content: space-around;
+}
+
+/* Category chips and the budget teaser only show where the filters live in a drawer. */
+.catalogue-chips,
+.budget-teaser {
+  display: none;
+}
+@media (max-width: 1000px) {
+  .catalogue-section .shop-filter-sidebar.filters {
+    position: fixed;
+    z-index: 65;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(90vw, 400px);
+    padding: 20px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--color-surface);
+    box-shadow: var(--shadow-overlay);
+    visibility: hidden;
+    transform: translateX(105%);
+    transition:
+      transform 250ms ease,
+      visibility 0s linear 250ms;
+  }
+  .catalogue-section .shop-filter-sidebar.filters.is-open {
+    visibility: visible;
+    transform: none;
+    transition: transform 250ms ease;
+  }
+  .catalogue-section .panel-head.mobile-only {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .catalogue-section .panel-head h3 {
+    margin: 0;
+    font-size: 20px;
+  }
+  .catalogue-section .button.mobile-only {
+    display: inline-flex !important;
+    white-space: nowrap;
+  }
+  .catalogue-section .catalogue-tools .sort-control span {
+    display: none;
+  }
+  .catalogue-section .shop-filter-sidebar .button.mobile-only {
+    width: 100%;
+  }
+  .catalogue-section .scrim.mobile-only {
+    display: block !important;
+  }
+  .catalogue-chips {
+    display: flex;
+    gap: 8px;
+    margin: 0 -16px 18px;
+    padding: 0 16px 4px;
+    overflow-x: auto;
+    border: 0;
+    scrollbar-width: none;
+  }
+  .catalogue-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .catalogue-chips button {
+    flex: none;
+    min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 99px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .catalogue-chips button.active {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+  .budget-teaser {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 16px;
+    margin-top: 28px;
+    padding: 16px 18px;
+    border: 1px dashed var(--color-primary);
+    border-radius: var(--radius-lg);
+    background: var(--color-primary-soft);
+  }
+  .budget-teaser div {
+    display: grid;
+    gap: 2px;
+  }
+  .budget-teaser b {
+    font-size: 16px;
+  }
+  .budget-teaser span {
+    color: var(--color-text-muted);
+    font-size: 13px;
+  }
+  .budget-teaser .button {
+    min-height: 44px;
+  }
+}
+
+/* The shop pages get straight to the products. */
+.page-hero.shop-hero {
+  padding-block: 44px 8px;
+}
+.page-hero.shop-hero + .catalogue-section {
+  padding-top: 28px;
+}
+@media (max-width: 700px) {
+  .page-hero.shop-hero {
+    padding: 24px 16px 0;
+  }
+  .page-hero.shop-hero h1 {
+    margin-bottom: 0;
+    font-size: clamp(30px, 9vw, 40px);
+  }
+  .page-hero.shop-hero p {
+    display: none;
+  }
+  .page-hero.shop-hero + .catalogue-section {
+    padding-top: 16px;
+  }
 }
