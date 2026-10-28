@@ -317,6 +317,33 @@ export const storeCarouselSchema = z.object({
   showAddToCart: z.boolean(),
 });
 
+// The homepage hero: product slides, each with its own picture and words, plus the perks row.
+// Slides name their products by slug, so prices and order links follow the live catalogue.
+const optionalHref = z.union([z.literal(""), href]);
+export const heroSlideSchema = z.object({
+  id: z.string().trim().min(1).max(64),
+  image: text(2_000).min(1, "Choose an image for every slide."),
+  imageAlt: text(300),
+  label: text(120),
+  eyebrow: text(120),
+  headline: text(300).min(1, "Give every slide a headline."),
+  body: text(1_000),
+  productSlugs: z.array(text(200)).max(12),
+  showPrice: z.boolean(),
+  priceNote: text(60),
+  primaryLabel: text(80).min(1, "Give every slide a button label."),
+  primaryHref: optionalHref,
+  secondaryLabel: text(80),
+  secondaryHref: optionalHref,
+});
+export const storeHeroSchema = z.object({
+  slides: z.array(heroSlideSchema).min(1, "Keep at least one slide.").max(8),
+  perks: z.array(text(60)).max(6),
+  fromLabel: text(30),
+  label: text(120),
+  intervalMs: z.number().int().min(4_000).max(12_000),
+});
+
 export const marketingExportSchema = z.object({
   headline: text(120),
   callToAction: text(80),

@@ -3,6 +3,7 @@ import type {
   businessSettingsSchema,
   storeAppearanceSchema,
   storeCarouselSchema,
+  storeHeroSchema,
   storefrontContentSchema,
   marketingExportSchema,
 } from "@/validations/settings";
@@ -11,6 +12,8 @@ export type BusinessSettings = Omit<z.infer<typeof businessSettingsSchema>, "del
   Partial<Pick<z.infer<typeof businessSettingsSchema>, "deliveryTaxMode" | "fulfilmentSchedule">>;
 export type StoreAppearance = z.infer<typeof storeAppearanceSchema>;
 export type StoreCarousel = z.infer<typeof storeCarouselSchema>;
+export type StoreHero = z.infer<typeof storeHeroSchema>;
+export type StoreHeroSlide = StoreHero["slides"][number];
 export type MarketingExport = z.infer<typeof marketingExportSchema>;
 
 export type StorefrontContent = z.infer<typeof storefrontContentSchema>;

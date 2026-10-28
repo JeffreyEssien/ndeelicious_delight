@@ -19,6 +19,7 @@ import {
   businessSettingsSchema,
   storeAppearanceSchema,
   storeCarouselSchema,
+  storeHeroSchema,
   storefrontContentSchema,
   marketingExportSchema,
 } from "@/validations/settings";
@@ -129,7 +130,7 @@ const schema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("settings"),
-    key: z.enum(["content", "business", "appearance", "carousel", "marketing"]),
+    key: z.enum(["content", "business", "appearance", "carousel", "hero", "marketing"]),
     value: z.record(z.string(), z.unknown()),
   }),
 ]);
@@ -439,12 +440,22 @@ export async function POST(request: Request) {
           ? storefrontContentSchema
           : input.key === "carousel"
             ? storeCarouselSchema
-            : input.key === "marketing"
-              ? marketingExportSchema
-              : storeAppearanceSchema;
+            : input.key === "hero"
+              ? storeHeroSchema
+              : input.key === "marketing"
+                ? marketingExportSchema
+                : storeAppearanceSchema;
       const settingValue = settingSchema.safeParse(input.value);
       if (!settingValue.success)
-        return Response.json({ error: "Check the storefront settings and try again." }, { status: 400 });
+        return Response.json(
+          {
+            // The hero editor's rules are written for the owner ("Choose an image for every slide.").
+            error:
+              (input.key === "hero" && settingValue.error.issues[0]?.message) ||
+              "Check the storefront settings and try again.",
+          },
+          { status: 400 },
+        );
       ({ error } = await supabase
         .from("site_settings")
         .upsert(
