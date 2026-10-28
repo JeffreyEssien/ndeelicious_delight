@@ -3,14 +3,20 @@ import { useCustomerText } from "@/components/customer-text-provider";
 
 import Image from "next/image";
 import Link from "next/link";
-import { type CSSProperties, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { canAutoplay, carouselIndex } from "@/features/catalog/carousel-state";
 import { type PromoTheme, themeFromPixels } from "@/features/catalog/promo-theme";
 
 // `theme` is optional: without it the colours are read from the image once it loads.
-export type PromoSlide = { src: string; alt: string; label: string; href: string; theme?: PromoTheme };
-
-const INTERVAL_MS = 4500;
+export type PromoSlide = {
+  src: string;
+  alt: string;
+  label: string;
+  href: string;
+  theme?: PromoTheme;
+  /** CSS object-position, for keeping the subject in view when a wide image is cropped. */
+  position?: string;
+};
 
 function readTheme(image: HTMLImageElement) {
   try {
@@ -32,11 +38,16 @@ function readTheme(image: HTMLImageElement) {
 export function PromoCarousel({
   slides,
   label,
-  onThemeChange,
+  intervalMs = 4500,
+  lead = false,
+  onSlideChange,
 }: {
   slides: PromoSlide[];
   label: string;
-  onThemeChange?: (theme: PromoTheme | undefined) => void;
+  intervalMs?: number;
+  /** The deck is the page's main image, so the first slide is fetched at high priority. */
+  lead?: boolean;
+  onSlideChange?: (index: number, theme: PromoTheme | undefined) => void;
 }) {
   const t = useCustomerText("promo carousel");
   const [index, setIndex] = useState(0);
@@ -76,14 +87,14 @@ export function PromoCarousel({
   }, []);
 
   const activeTheme = slides[index]?.theme ?? readThemes[slides[index]?.src];
-  useEffect(() => onThemeChange?.(activeTheme), [activeTheme, onThemeChange]);
+  useEffect(() => onSlideChange?.(index, activeTheme), [activeTheme, index, onSlideChange]);
 
   const running = canAutoplay({ enabled: true, userPaused, hovered, focusWithin, reducedMotion, count });
   useEffect(() => {
     if (!running) return;
-    const timer = window.setTimeout(() => go(index + 1, false), INTERVAL_MS);
+    const timer = window.setTimeout(() => go(index + 1, false), intervalMs);
     return () => window.clearTimeout(timer);
-  }, [go, index, running]);
+  }, [go, index, intervalMs, running]);
 
   if (!count) return null;
   return (
@@ -138,7 +149,9 @@ export function PromoCarousel({
                 fill
                 quality={75}
                 loading={slideIndex === 0 ? "eager" : undefined}
+                fetchPriority={lead && slideIndex === 0 ? "high" : undefined}
                 sizes={"(max-width: 800px) 86vw, 440px"}
+                style={slide.position ? { objectPosition: slide.position } : undefined}
                 onLoad={(event) => {
                   if (slide.theme || readThemes[slide.src]) return;
                   const theme = readTheme(event.currentTarget);
@@ -168,7 +181,7 @@ export function PromoCarousel({
                 <span
                   key={slideIndex === index && running ? `run-${index}` : "idle"}
                   className={slideIndex === index && running ? "running" : ""}
-                  style={{ animationDuration: `${INTERVAL_MS}ms` }}
+                  style={{ animationDuration: `${intervalMs}ms` }}
                 />
               </button>
             ))}
@@ -191,30 +204,6 @@ export function PromoCarousel({
       <p className="sr-only" aria-live={"polite"} aria-atomic={"true"}>
         {announcement}
       </p>
-    </section>
-  );
-}
-
-// The ready-to-bake band: its background, glow and accent colours follow the image on show.
-export function PromoShowcase({
-  slides,
-  label,
-  children,
-}: {
-  slides: PromoSlide[];
-  label: string;
-  children: ReactNode;
-}) {
-  const [theme, setTheme] = useState<PromoTheme>();
-  const style = theme
-    ? ({ "--promo-bg": theme.background, "--promo-glow": theme.glow, "--promo-accent": theme.accent } as CSSProperties)
-    : undefined;
-  return (
-    <section className="ready-feature promo-themed" style={style}>
-      <div className="site-container ready-grid">
-        {children}
-        <PromoCarousel slides={slides} label={label} onThemeChange={setTheme} />
-      </div>
     </section>
   );
 }
