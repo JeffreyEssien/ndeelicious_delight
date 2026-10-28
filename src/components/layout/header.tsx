@@ -50,9 +50,6 @@ export function Header({ content, business }: { content: StorefrontContent["glob
   }, [query, results.length, search]);
   return (
     <>
-      <div className="announcement">
-        {content.announcement.text} <Link href={content.announcement.href}>{content.announcement.linkLabel}</Link>
-      </div>
       <header className="site-header">
         <div className="site-container nav-row">
           <Link className="brand" href="/" aria-label={t("{value1} home", { value1: business.businessName })}>

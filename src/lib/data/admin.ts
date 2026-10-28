@@ -12,8 +12,10 @@ import {
   getMarketingExport,
   getStoreAppearance,
   getStoreCarousel,
+  getStoreHero,
   getStorefrontContent,
 } from "./settings";
+import { defaultStoreHero } from "@/content/default-hero";
 
 export type QuoteDeliveryStatus = "PENDING" | "SENDING" | "SENT" | "FAILED";
 
@@ -139,6 +141,7 @@ export async function getAdminData(
     cakeConfiguration,
     appearance,
     carousel,
+    hero,
     marketing,
     auditResult,
     dashboard,
@@ -179,6 +182,7 @@ export async function getAdminData(
       : Promise.resolve({ options: [], cakeTypes: [], relationships: [], timezone: "America/Halifax" }),
     getStoreAppearance(supabase),
     needs("carousel") ? getStoreCarousel(supabase) : Promise.resolve(defaultStoreCarousel),
+    needs("carousel") ? getStoreHero(supabase) : Promise.resolve(defaultStoreHero),
     needs("marketing") ? getMarketingExport(supabase) : Promise.resolve(defaultMarketingExport),
     needs("audit")
       ? supabase
@@ -250,6 +254,7 @@ export async function getAdminData(
     cakeConfiguration,
     appearance,
     carousel,
+    hero,
     marketing,
     auditLogs,
     analytics,

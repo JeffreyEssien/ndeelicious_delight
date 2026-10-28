@@ -15,7 +15,7 @@ import { Icon } from "@/components/ui/icons";
 import { getBusinessSettings, getStorefrontContent } from "@/lib/data/settings";
 import { getApprovedReviews } from "@/lib/data/reviews";
 import { getSiteUrl } from "@/lib/site-url";
-import { productBreadcrumbJsonLd, productJsonLd, serializeJsonLd } from "@/lib/seo";
+import { defaultShareImage, productBreadcrumbJsonLd, productJsonLd, serializeJsonLd } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const p = await getProduct((await params).slug);
   if (!p) return { title: t("Product not found"), robots: { index: false, follow: false } };
   const path = `/product/${encodeURIComponent(p.slug)}`;
-  const images = p.image ? [{ url: p.image, alt: p.images?.[0]?.altText || p.name }] : [];
+  const images = p.image
+    ? [{ url: p.image, alt: p.images?.[0]?.altText || p.name }]
+    : [{ ...defaultShareImage, alt: p.name }];
   return {
     title: p.name,
     description: p.shortDescription,

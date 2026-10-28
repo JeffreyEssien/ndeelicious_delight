@@ -365,6 +365,9 @@ export const defaultCustomerText: CustomerText = {
     "Ideas up to ": "Ideas up to ",
     combinations: "combinations",
     cake: "cake",
+    "Custom cakes": "Custom cakes",
+    "Treats from {value1}": "Treats from {value1}",
+    "Set a budget": "Set a budget",
   },
   "product reviews": {
     "Verified customers": "Verified customers",
@@ -722,41 +725,6 @@ export const defaultCustomerText: CustomerText = {
   "Page: (storefront)": {
     "No featured products are currently published.": "No featured products are currently published.",
     "Follow along ↗": "Follow along ↗",
-    "Featured products": "Featured products",
-    From: "From",
-    "per box": "per box",
-    "Ready-to-bake · Handmade in Halifax": "Ready-to-bake · Handmade in Halifax",
-    "Golden, flaky,\nstraight from your oven.": "Golden, flaky,\nstraight from your oven.",
-    "Nigerian-style meat pies, chicken pies and beef sausage rolls. Keep a box in the freezer and bake fresh whenever the craving hits.":
-      "Nigerian-style meat pies, chicken pies and beef sausage rolls. Keep a box in the freezer and bake fresh whenever the craving hits.",
-    "Shop ready-to-bake": "Shop ready-to-bake",
-    "Try the meat pies": "Try the meat pies",
-    "Chicken pies · 6 per box": "Chicken pies · 6 per box",
-    "Flaky pastry.\nJuicy chicken.\nZero effort.": "Flaky pastry.\nJuicy chicken.\nZero effort.",
-    "Seasoned chicken in handmade, buttery pastry. No preservatives, no artificial colours, ready in 50 minutes.":
-      "Seasoned chicken in handmade, buttery pastry. No preservatives, no artificial colours, ready in 50 minutes.",
-    "6 pies": "6 pies",
-    "Order chicken pies": "Order chicken pies",
-    "See the full range": "See the full range",
-    "Beef sausage rolls · 12 per box": "Beef sausage rolls · 12 per box",
-    "Charge\nyour day.": "Charge\nyour day.",
-    "Lean beef wrapped in golden puff pastry. The snack for school runs, game nights and everything in between. Bakes in 35 to 50 minutes.":
-      "Lean beef wrapped in golden puff pastry. The snack for school runs, game nights and everything in between. Bakes in 35 to 50 minutes.",
-    "12 rolls": "12 rolls",
-    "Order sausage rolls": "Order sausage rolls",
-    "No preservatives": "No preservatives",
-    "Handmade in Halifax": "Handmade in Halifax",
-    "Bake from frozen": "Bake from frozen",
-    "Pickup or delivery": "Pickup or delivery",
-    "The full ready-to-bake range": "The full ready-to-bake range",
-    "Nigerian-style chicken pies": "Nigerian-style chicken pies",
-    "Nigerian-style beef sausage rolls": "Nigerian-style beef sausage rolls",
-    "Ndeelicious Delight frozen meat pies, chicken pies and beef sausage rolls with pastry bursting overhead":
-      "Ndeelicious Delight frozen meat pies, chicken pies and beef sausage rolls with pastry bursting overhead",
-    "A woman biting into a golden chicken pie beside a box of Nigerian-style frozen chicken pies":
-      "A woman biting into a golden chicken pie beside a box of Nigerian-style frozen chicken pies",
-    "A box of Nigerian-style beef sausage rolls under the words Charge your day":
-      "A box of Nigerian-style beef sausage rolls under the words Charge your day",
   },
   layout: {
     "Skip to checkout": "Skip to checkout",
