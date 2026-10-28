@@ -391,12 +391,8 @@
   }
 }
 
-/* Landing hero: takes its colours from the image on show and fades between them. */
-@property --promo-bg {
-  syntax: "<color>";
-  inherits: true;
-  initial-value: #24120f;
-}
+/* Landing hero: a deep shade of the brand colour on every slide, so it reads as one piece
+   with the header and logo. The image on show only tints the glow and accents. */
 @property --promo-glow {
   syntax: "<color>";
   inherits: true;
@@ -408,7 +404,7 @@
   initial-value: #f0c48e;
 }
 .hero-showcase {
-  --promo-bg: #24120f;
+  --promo-bg: color-mix(in srgb, var(--color-primary) 36%, #07040b);
   --promo-glow: #c8905e;
   --promo-accent: #f0c48e;
   --promo-text: #fff8f2;
@@ -421,12 +417,11 @@
   padding-block: clamp(40px, 6vw, 80px) clamp(24px, 3vw, 36px);
   overflow: hidden;
   background:
-    radial-gradient(circle at 74% 45%, color-mix(in srgb, var(--promo-glow) 45%, transparent), transparent 55%),
-    radial-gradient(circle at 0% 100%, color-mix(in srgb, var(--promo-glow) 18%, transparent), transparent 45%),
+    radial-gradient(circle at 74% 48%, color-mix(in srgb, var(--promo-glow) 38%, transparent), transparent 46%),
+    radial-gradient(circle at 12% 10%, color-mix(in srgb, var(--color-primary) 55%, transparent), transparent 55%),
     var(--promo-bg);
   color: var(--promo-text);
   transition:
-    --promo-bg 1.1s ease,
     --promo-glow 1.1s ease,
     --promo-accent 1.1s ease;
 }
@@ -458,7 +453,7 @@
   transition-delay: 0.15s, 0.15s, 0s;
 }
 .hero-showcase .overline {
-  color: var(--promo-accent);
+  color: color-mix(in srgb, var(--color-primary) 25%, var(--promo-text));
 }
 .hero-copy h1,
 .hero-copy h2 {
