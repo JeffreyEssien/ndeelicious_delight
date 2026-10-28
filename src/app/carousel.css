@@ -29,16 +29,24 @@
   min-height: 560px;
   padding-bottom: 54px;
 }
+/* A standard frame for every product photo (it grows to match the text beside it); see the comment
+   in product-carousel.tsx. */
 .carousel-image {
   position: relative;
   display: block;
-  min-height: 500px;
+  min-height: clamp(380px, 38vw, 540px);
   overflow: hidden;
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
   background: var(--surface);
 }
-.carousel-image img {
+.carousel-image .carousel-image-backdrop {
   object-fit: cover;
+  transform: scale(1.15);
+  filter: blur(28px) saturate(1.1);
+  opacity: 0.85;
+}
+.carousel-image .carousel-image-photo {
+  object-fit: contain;
 }
 .carousel-badge,
 .carousel-count {
@@ -223,7 +231,8 @@
     padding-bottom: 68px;
   }
   .carousel-image {
-    min-height: 380px;
+    min-height: 0;
+    aspect-ratio: 4 / 3;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
   .carousel-copy {

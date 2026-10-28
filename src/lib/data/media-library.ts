@@ -303,8 +303,8 @@ export async function updateMedia(db: SupabaseClient, actor: AdminAuditActor, id
 }
 
 // Removes a library image. An image still shown somewhere on the website is kept, and the reply
-// says where it is used, so a page never ends up with a broken picture.
-export async function deleteMedia(db: SupabaseClient, actor: AdminAuditActor, id: string) {
+// says where it is used, unless the admin confirmed deleting it anyway (`force`).
+export async function deleteMedia(db: SupabaseClient, actor: AdminAuditActor, id: string, force = false) {
   const asset = await findAsset(db, id);
   if (!asset) return failure("That image is no longer in the library.", 404);
   let usedIn: MediaUsage[];
@@ -313,7 +313,7 @@ export async function deleteMedia(db: SupabaseClient, actor: AdminAuditActor, id
   } catch {
     return failure("Could not check where the image is used. Please try again.", 500);
   }
-  if (usedIn.length)
+  if (usedIn.length && !force)
     return Response.json(
       { error: "This image is still used on your website. Replace it there first.", usedIn },
       { status: 409 },
@@ -328,6 +328,7 @@ export async function deleteMedia(db: SupabaseClient, actor: AdminAuditActor, id
       entityType: "media_asset",
       entityId: id,
       previousValue: asset,
+      metadata: usedIn.length ? { deletedWhileUsedIn: usedIn.map((usage) => usage.label) } : {},
     });
   } catch {
     return failure("The image was removed, but its audit record could not be verified.", 500);

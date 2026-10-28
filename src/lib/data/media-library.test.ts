@@ -172,6 +172,24 @@ describe("image library", () => {
     expect(mocks.deleteImage).not.toHaveBeenCalled();
   });
 
+  it("deletes an image that is in use once the admin confirms", async () => {
+    const db = fakeDb({
+      media_assets: [asset],
+      site_settings: [{ key: "content", value: content(LIBRARY_URL) }],
+    });
+    const response = await deleteMedia(db as never, actor, ASSET_ID, true);
+    expect(response.status).toBe(200);
+    expect(db.deleted).toEqual([ASSET_ID]);
+    expect(mocks.recordAudit).toHaveBeenCalledWith(
+      db,
+      actor,
+      expect.objectContaining({
+        action: "MEDIA_ASSET_DELETED",
+        metadata: { deletedWhileUsedIn: expect.arrayContaining(["Website content › Homepage › Hero"]) },
+      }),
+    );
+  });
+
   it("deletes an unused image from the library and from Cloudinary", async () => {
     const db = fakeDb({ media_assets: [asset] });
     const response = await deleteMedia(db as never, actor, ASSET_ID);
