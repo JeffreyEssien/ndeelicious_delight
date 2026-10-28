@@ -189,16 +189,6 @@ export function PromoCarousel({
           <button type="button" onClick={() => go(index + 1)} aria-label={t("Next slide")}>
             →
           </button>
-          {!reducedMotion && (
-            <button
-              type="button"
-              className="promo-pause"
-              aria-label={userPaused ? t("Play automatic slides") : t("Pause automatic slides")}
-              onClick={() => setUserPaused((value) => !value)}
-            >
-              {userPaused ? t("Play") : t("Pause")}
-            </button>
-          )}
         </div>
       )}
       <p className="sr-only" aria-live={"polite"} aria-atomic={"true"}>

@@ -365,14 +365,6 @@
   animation: promo-progress linear both;
   animation-duration: inherit;
 }
-.promo-controls .promo-pause {
-  width: auto;
-  min-width: 64px;
-  padding: 0 13px;
-  border-radius: 99px;
-  font-size: 10px;
-  font-weight: 700;
-}
 .promo-controls button:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 3px;
