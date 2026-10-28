@@ -172,8 +172,18 @@ export const products = [
 // Delivery coverage is business-specific and must be entered through admin.
 export const deliveryZones = [];
 
+// Occasions are Custom cakes sub-categories (collections), not cake options.
+export const customCakeSubcategories = [
+  "Birthday",
+  "Wedding",
+  "Anniversary",
+  "Baby shower",
+  "Graduation",
+  "Corporate",
+  "Just because",
+];
+
 export const cakeOptions = {
-  occasions: ["Birthday", "Wedding", "Anniversary", "Baby shower", "Graduation", "Corporate", "Just because"],
   sizes: [
     { name: "6 inch", detail: "Serves 8–10", price: 3000000 },
     { name: "8 inch", detail: "Serves 18–22", price: 4200000 },

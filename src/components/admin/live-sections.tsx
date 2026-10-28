@@ -450,13 +450,14 @@ export function CakeRequests({
   );
 }
 
-const optionTypes: CakeOptionType[] = ["occasion", "size", "flavour", "filling", "design"];
+// Occasions are managed as Custom cakes sub-categories, not as cake options.
+const optionTypes: CakeOptionType[] = ["size", "flavour", "filling", "design"];
 
 export function CakeConfigurationEditor({ initial }: { initial: CakeConfigurationData }) {
   const router = useRouter();
   const { currency } = useBusinessSettings();
   const [options, setOptions] = useState(initial.options);
-  const [selectedType, setSelectedType] = useState<CakeOptionType>("occasion");
+  const [selectedType, setSelectedType] = useState<CakeOptionType>("size");
   const [busy, setBusy] = useState(false);
   const [saveState, setSaveState] = useState<"saved" | "unsaved" | "saving" | "failed">("saved");
   const notify = useToast();

@@ -27,18 +27,8 @@ const initial: CakeConfiguration = {
   phone: "",
   customerNote: "",
 };
-const steps = [
-  "Occasion",
-  "Size",
-  "Flavour",
-  "Filling",
-  "Design",
-  "Colours",
-  "Inscription",
-  "Inspiration",
-  "Date",
-  "Review",
-];
+// Occasions are chosen through the cake's sub-category, so there is no occasion step.
+const steps = ["Size", "Flavour", "Filling", "Design", "Colours", "Inscription", "Inspiration", "Date", "Review"];
 export function CakeBuilder({
   configuration,
   initialSelection,
@@ -76,10 +66,10 @@ export function CakeBuilder({
               ),
         ),
       );
-      const next = { ...initial, ...stored, ...validPreset };
+      const next = { ...initial, ...stored, ...validPreset, occasion: "" };
       const compatible = optionsForCakeType(configuration, next.cakeTypeId);
       next.optionIds = Object.fromEntries(
-        ["occasion", "size", "flavour", "filling", "design"].flatMap((family) => {
+        ["size", "flavour", "filling", "design"].flatMap((family) => {
           const selectedId = initialSelection?.optionIds?.[family as CakeOptionType] ?? stored.optionIds?.[family];
           const matches = compatible.filter(
             (option) =>
@@ -117,14 +107,9 @@ export function CakeBuilder({
     }
   }, [config, configuration]);
   const quote = allowedOptions.some((option) => option.quoteRequired && config.optionIds?.[option.type] === option.id);
-  const selectionCount = [
-    config.occasion,
-    config.size,
-    config.flavour,
-    config.filling,
-    config.design,
-    config.colours,
-  ].filter(Boolean).length;
+  const selectionCount = [config.size, config.flavour, config.filling, config.design, config.colours].filter(
+    Boolean,
+  ).length;
   const selectedType = configuration.cakeTypes.find((type) => type.id === config.cakeTypeId && type.active);
   let minDate = selectedType ? earliestCakeDate(selectedType, configuration.timezone) : "";
   let availabilityError = "";
@@ -142,7 +127,7 @@ export function CakeBuilder({
       if (key === "cakeTypeId") {
         const compatible = optionsForCakeType(configuration, value);
         const retained: NonNullable<CakeConfiguration["optionIds"]> = {};
-        for (const family of ["occasion", "size", "flavour", "filling", "design"] as const) {
+        for (const family of ["size", "flavour", "filling", "design"] as const) {
           const id = v.optionIds?.[family];
           const matches = compatible.filter(
             (option) => option.type === family && (id ? option.id === id : option.name === next[family]),
@@ -175,7 +160,6 @@ export function CakeBuilder({
       return false;
     }
     const keys: (keyof CakeConfiguration)[] = [
-      "occasion",
       "size",
       "flavour",
       "filling",
@@ -185,16 +169,16 @@ export function CakeBuilder({
       "referenceName",
       "deliveryDate",
     ];
-    if (step === 7) return true;
-    if (step === 8 && availabilityError) {
+    if (step === 6) return true;
+    if (step === 7 && availabilityError) {
       setError(availabilityError);
       return false;
     }
-    if (step === 8 && config.deliveryDate < minDate) {
+    if (step === 7 && config.deliveryDate < minDate) {
       setError(`Please choose ${minDate} or later.`);
       return false;
     }
-    if (step === 8 && selectedType && configuration.fulfilment) {
+    if (step === 7 && selectedType && configuration.fulfilment) {
       try {
         cakeAvailability({ ...configuration.fulfilment, cakeType: selectedType, requestedDate: config.deliveryDate });
       } catch (reason) {
@@ -202,16 +186,16 @@ export function CakeBuilder({
         return false;
       }
     }
-    // Only Size (step 1) and Flavour (step 2) are required; every other choice is optional.
+    // Only Size (step 0) and Flavour (step 1) are required; every other choice is optional.
     const key = keys[step];
-    if (key && !config[key] && [1, 2].includes(step)) {
+    if (key && !config[key] && [0, 1].includes(step)) {
       setError("Choose an option to continue.");
       return false;
     }
     return true;
   }
   function next() {
-    if (valid()) setStep((v) => Math.min(9, v + 1));
+    if (valid()) setStep((v) => Math.min(8, v + 1));
   }
   function upload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -360,25 +344,6 @@ export function CakeBuilder({
           )}
           {step === 0 && (
             <Choice
-              title={t("What are we celebrating?")}
-              subtitle={"Choose the occasion that feels closest."}
-              values={options("occasion").map((option) => option.id)}
-              labels={options("occasion").map((option) => option.name)}
-              selected={config.optionIds?.occasion ?? ""}
-              onChoose={(id) => {
-                const option = options("occasion").find((item) => item.id === id);
-                if (option)
-                  setConfig((current) => ({
-                    ...current,
-                    occasion: option.name,
-                    optionIds: { ...current.optionIds, occasion: id },
-                  }));
-                setError("");
-              }}
-            />
-          )}
-          {step === 1 && (
-            <Choice
               title={t("How many are we serving?")}
               subtitle={"Serving sizes are a guide—extra slices are never a bad idea."}
               values={options("size").map((option) => option.id)}
@@ -398,7 +363,7 @@ export function CakeBuilder({
               }}
             />
           )}
-          {step === 2 && (
+          {step === 1 && (
             <Choice
               title={t("Choose your cake flavour")}
               subtitle={"Every sponge is baked fresh for your date."}
@@ -418,7 +383,7 @@ export function CakeBuilder({
               }}
             />
           )}
-          {step === 3 && (
+          {step === 2 && (
             <Choice
               title={t("Choose a filling")}
               subtitle={"The lovely layer between every sponge."}
@@ -438,7 +403,7 @@ export function CakeBuilder({
               }}
             />
           )}
-          {step === 4 && (
+          {step === 3 && (
             <Choice
               title={t("Set the design direction")}
               subtitle={"We’ll interpret this in our signature considered style."}
@@ -458,7 +423,7 @@ export function CakeBuilder({
               }}
             />
           )}
-          {step === 5 && (
+          {step === 4 && (
             <div>
               <h2>{t("What colours are speaking to you?")}</h2>
               <p className="stage-intro">{t("Name two or three colours. We’ll balance them beautifully.")}</p>
@@ -470,7 +435,7 @@ export function CakeBuilder({
               />
             </div>
           )}
-          {step === 6 && (
+          {step === 5 && (
             <div>
               <h2>{t("Add a cake inscription")}</h2>
               <p className="stage-intro">{t("Optional. Short messages fit most beautifully.")}</p>
@@ -484,7 +449,7 @@ export function CakeBuilder({
               <small className="character-count">{config.inscription.length}/45</small>
             </div>
           )}
-          {step === 7 && (
+          {step === 6 && (
             <div>
               <h2>{t("Show us what inspired you")}</h2>
               <p className="stage-intro">
@@ -498,7 +463,7 @@ export function CakeBuilder({
               </label>
             </div>
           )}
-          {step === 8 && (
+          {step === 7 && (
             <div>
               <h2>{t("When do you need your cake?")}</h2>
               <p className="stage-intro">
@@ -517,7 +482,7 @@ export function CakeBuilder({
               </p>
             </div>
           )}
-          {step === 9 && (
+          {step === 8 && (
             <div>
               <h2>{t("Everything look delicious?")}</h2>
               <p className="stage-intro">{t("Review your choices before sending them to the bakery.")}</p>
@@ -593,11 +558,11 @@ export function CakeBuilder({
               type="button"
               className="button button-primary"
               disabled={submitting}
-              onClick={() => (step === 9 ? submit() : next())}
+              onClick={() => (step === 8 ? submit() : next())}
             >
               {submitting
                 ? t("Validating…")
-                : step === 9
+                : step === 8
                   ? quote
                     ? t("Request your quote")
                     : t("Send cake request")
