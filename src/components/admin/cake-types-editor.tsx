@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cakeTypesSchema, type CakeType } from "@/validations/cake-type";
 import { ConfirmDialog } from "./confirm-dialog";
+import { MediaPicker } from "./media-library";
 export function CakeTypesEditor({
   initial,
   options,
@@ -26,6 +27,8 @@ export function CakeTypesEditor({
       .catch(() => {});
   }, []);
   const [expandedCake, setExpandedCake] = useState("");
+  // The cake whose photo is being picked from the image library.
+  const [pickingPhotoFor, setPickingPhotoFor] = useState("");
   const [savedTypes, setSavedTypes] = useState(initial);
   const [savedAssignments, setSavedAssignments] = useState(relationships);
   const [state, setState] = useState("Saved");
@@ -377,6 +380,9 @@ export function CakeTypesEditor({
                     </small>
                   </label>
                 </div>
+                <button type="button" className="cake-photo-library" onClick={() => setPickingPhotoFor(type.id)}>
+                  Choose from image library
+                </button>
               </div>
               <details>
                 <summary>Advanced settings</summary>{" "}
@@ -469,6 +475,14 @@ export function CakeTypesEditor({
           {error}
         </p>
       )}
+      <MediaPicker
+        open={Boolean(pickingPhotoFor)}
+        onClose={() => setPickingPhotoFor("")}
+        onChoose={(item) => {
+          update(pickingPhotoFor, { image: item.url });
+          setPickingPhotoFor("");
+        }}
+      />
       <ConfirmDialog
         open={deleteTarget !== null}
         tone="danger"

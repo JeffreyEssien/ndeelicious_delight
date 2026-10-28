@@ -39,6 +39,7 @@ const navGroups: NavGroup[] = [
       { label: "Coupons & offers", href: "/admin/coupons", icon: "coupon" },
       { label: "Website content", href: "/admin/content", icon: "orders" },
       { label: "Homepage", href: "/admin/carousel", icon: "grid" },
+      { label: "Image library", href: "/admin/media", icon: "upload" },
       { label: "Marketing posts", href: "/admin/marketing", icon: "upload" },
       { label: "Business details", href: "/admin/settings", icon: "settings" },
     ],

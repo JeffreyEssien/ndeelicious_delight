@@ -27,6 +27,7 @@ import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { CategoriesManager } from "@/components/admin/categories-manager";
 import { ProductEditor } from "@/components/admin/product-editor";
 import { ContentSettings } from "@/components/admin/content-settings";
+import { MediaLibrary } from "@/components/admin/media-library";
 import { CarouselEditor } from "@/components/admin/carousel-editor";
 import { SocialPostGenerator } from "@/components/admin/social-post-generator";
 import { useBusinessSettings, useMoney, useStoreTheme, useToast, type StoreTheme } from "@/components/providers";
@@ -76,6 +77,7 @@ const titles: Record<string, string> = {
   reviews: "Reviews",
   content: "Website content",
   carousel: "Homepage",
+  media: "Image library",
   marketing: "Marketing posts",
   delivery: "Delivery & pricing",
   settings: "Business details",
@@ -273,6 +275,7 @@ export function AdminPortal({
       {section === "reviews" && <Reviews initial={initialReviews} />}
       {section === "content" && <ContentSettings initial={initialContent} />}
       {section === "carousel" && <CarouselEditor products={products} initial={initialCarousel} />}
+      {section === "media" && <MediaLibrary />}
       {section === "marketing" && (
         <SocialPostGenerator products={products} initial={initialMarketing} siteUrl={siteUrl} />
       )}
