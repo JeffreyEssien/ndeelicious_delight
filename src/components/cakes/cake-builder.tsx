@@ -301,24 +301,25 @@ export function CakeBuilder({
               <p className="stage-intro">Pick the cake you’d like, then make it your own.</p>
               {(() => {
                 const active = configuration.cakeTypes.filter((type) => type.active);
+                // Cakes without a sub-category are listed as they are; a sub-category only
+                // appears, with its heading, once the owner assigns a cake to it.
                 const groups = [
+                  {
+                    key: "unassigned",
+                    name: "",
+                    cakes: active.filter(
+                      (type) => !type.collectionId || !collections.some((group) => group.id === type.collectionId),
+                    ),
+                  },
                   ...collections.map((group) => ({
                     key: group.id,
                     name: group.name,
                     cakes: active.filter((type) => type.collectionId === group.id),
                   })),
-                  {
-                    key: "other",
-                    name: "More cakes",
-                    cakes: active.filter(
-                      (type) => !type.collectionId || !collections.some((group) => group.id === type.collectionId),
-                    ),
-                  },
                 ].filter((group) => group.cakes.length);
-                const showHeadings = groups.length > 1;
                 return groups.map((group) => (
                   <div className="cake-type-group" key={group.key}>
-                    {showHeadings && <h3 className="cake-type-group-title">{group.name}</h3>}
+                    {group.name && <h3 className="cake-type-group-title">{group.name}</h3>}
                     <div className="choice-grid">
                       {group.cakes.map((type) => (
                         <button
