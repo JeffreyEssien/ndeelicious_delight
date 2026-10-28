@@ -29,6 +29,13 @@ describe("Our Story content", () => {
   it("writes exactly the built-in text in the migration", () => {
     const sql = migration("0051_about_founder_and_vision.sql");
     const blocks = [...sql.matchAll(/\$about\$([\s\S]*?)\$about\$/g)].map((match) => JSON.parse(match[1]));
-    expect(blocks).toEqual([aboutStory.hero, aboutStory.founder, aboutStory.vision]);
+    // Migration 0052 adds the founder's photo afterwards.
+    expect(blocks).toEqual([aboutStory.hero, { ...aboutStory.founder, image: "" }, aboutStory.vision]);
+  });
+
+  it("adds the founder's photo and the cake steps in migration 0052", () => {
+    const sql = migration("0052_founder_photo_and_cake_steps.sql");
+    expect(sql).toContain(`'"${aboutStory.founder.image}"'`);
+    expect(fs.existsSync(`public${aboutStory.founder.image}`)).toBe(true);
   });
 });
