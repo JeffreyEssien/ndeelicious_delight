@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { zipSync } from "fflate";
 import { useMoney, useThemeTokens } from "@/components/providers";
+import { ImageUrlField } from "@/components/admin/image-url-field";
 import { Button, Checkbox, Input, Select, Textarea } from "@/components/ui/primitives";
 import type { Product } from "@/types";
 import type { MarketingExport } from "@/types/content";
@@ -398,11 +399,7 @@ export function SocialPostGenerator({
             Copy caption
           </Button>
           {social.showLogo && (
-            <Input
-              label="Business logo URL"
-              value={social.logoUrl}
-              onChange={(e) => update({ logoUrl: e.target.value })}
-            />
+            <ImageUrlField label="Business logo" value={social.logoUrl} onChange={(logoUrl) => update({ logoUrl })} />
           )}
           <div className="social-download-actions">
             <Button disabled={busy || !product} onClick={() => product && download([product])}>

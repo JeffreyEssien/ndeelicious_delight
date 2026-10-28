@@ -154,6 +154,7 @@ const tables = {
   ],
   product_variants: products.flatMap((p) => p.product_variants.map((v) => ({ ...v, product_id: p.id }))),
   product_images: products.flatMap((p) => p.product_images.map((image) => ({ ...image, product_id: p.id }))),
+  media_assets: [],
   admins: [{ id: adminId, name: "Fixture Owner", email: "owner@example.invalid", role: "OWNER", active: true }],
   admin_sessions: [
     {
@@ -459,6 +460,7 @@ const server = http.createServer(async (req, res) => {
       Object.assign(row, patch);
     });
   }
+  if (req.method === "DELETE") tables[table] = all.filter((row) => !rows.includes(row));
   if (req.method === "POST") {
     const values = JSON.parse(body);
     rows = (Array.isArray(values) ? values : [values]).map((value) => {
@@ -467,7 +469,11 @@ const server = http.createServer(async (req, res) => {
       );
       if (row) Object.assign(row, value);
       else {
-        row = { id: id(1000 + all.length), ...value };
+        row = {
+          id: id(1000 + all.length),
+          ...(table === "media_assets" ? { created_at: new Date().toISOString() } : {}),
+          ...value,
+        };
         all.push(row);
       }
       return row;

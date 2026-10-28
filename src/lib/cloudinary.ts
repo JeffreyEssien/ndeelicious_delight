@@ -15,7 +15,14 @@ export const fromStoragePath = (path: string | null | undefined) =>
   path?.startsWith(STORAGE_PREFIX) ? path.slice(STORAGE_PREFIX.length) : null;
 
 export type DeliveryType = "upload" | "authenticated";
-export type CloudinaryImage = { publicId: string; url: string; bytes: number; format: string };
+export type CloudinaryImage = {
+  publicId: string;
+  url: string;
+  bytes: number;
+  format: string;
+  width?: number;
+  height?: number;
+};
 
 export class CloudinaryNotConfiguredError extends Error {
   constructor() {
@@ -79,11 +86,19 @@ async function signedPost(action: "upload" | "destroy", params: Record<string, s
   return body;
 }
 
-const toImage = (body: { public_id: string; secure_url: string; bytes: number; format: string }): CloudinaryImage => ({
+const toImage = (body: {
+  public_id: string;
+  secure_url: string;
+  bytes: number;
+  format: string;
+  width?: number;
+  height?: number;
+}): CloudinaryImage => ({
   publicId: body.public_id,
   url: body.secure_url,
   bytes: body.bytes,
   format: body.format,
+  ...(body.width && body.height ? { width: body.width, height: body.height } : {}),
 });
 
 // Uploads an image the server already holds (form submissions), or copies one from a URL.
