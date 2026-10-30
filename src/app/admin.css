@@ -1845,12 +1845,6 @@ html[data-theme] .admin-sidebar {
   .page-hero {
     padding-block: 80px;
   }
-  .split-hero {
-    grid-template-columns: 1fr;
-  }
-  .split-hero > div:first-child {
-    padding: 64px 24px;
-  }
   .catalogue-layout {
     grid-template-columns: 1fr;
   }
@@ -2034,10 +2028,6 @@ html[data-theme] .admin-sidebar {
   }
   .sort-control select {
     width: 100%;
-  }
-  .instruction-grid {
-    grid-template-columns: 1fr;
-    margin-top: 64px;
   }
   .gallery {
     display: block;
