@@ -10,7 +10,7 @@ import { getCollections, getProducts } from "@/lib/data/catalog";
 import { productStartingPrice } from "@/features/catalog/pricing";
 import { formatMoney } from "@/lib/format";
 import { CakeCategories, type CakeCategoryTile } from "@/components/layout/cake-categories";
-import { KitchenGallery, type KitchenPhoto } from "@/components/layout/kitchen-gallery";
+import { KitchenGallery } from "@/components/layout/kitchen-gallery";
 import { isProductPurchasable } from "@/features/catalog/availability";
 import { HeroShowcase } from "@/components/layout/hero-showcase";
 import { resolveHeroSlides } from "@/features/catalog/hero-slides";
@@ -41,8 +41,8 @@ export default async function Home() {
     ...products.filter((product) => product.featured),
     ...products.filter((product) => !product.featured && isProductPurchasable(product)),
   ].slice(0, 4);
-  // One photo per product so the kitchen gallery never repeats the same bake, favouring
-  // what customers can order right now. Ready to order comes first so it leads the mix.
+  // The kitchen shelf: every product with a photo, what can be ordered now first.
+  // Ready to order is the first type so it leads the mix.
   const kitchenTypes = [
     {
       type: "PASTRIES",
@@ -53,29 +53,18 @@ export default async function Home() {
     { type: "CUSTOM_CAKES", label: t("Cakes"), href: "/custom-cakes", linkLabel: t("See all cakes") },
     { type: "READY_TO_BAKE", label: t("Ready to bake"), href: "/ready-to-bake", linkLabel: t("See all ready to bake") },
   ];
-  const gallery: KitchenPhoto[] = [
+  const gallery = [
     ...products.filter((product) => isProductPurchasable(product)),
     ...products.filter((product) => !isProductPurchasable(product)),
   ]
-    .map((product) => {
-      const photo = product.images?.[0];
-      const url = photo?.url ?? product.image;
-      const type = kitchenTypes.find((item) => item.type === product.category);
-      return url && type
-        ? {
-            id: product.id,
-            url,
-            alt: photo?.altText || product.name,
-            name: product.name,
-            slug: product.slug,
-            position: product.imagePosition,
-            type: type.type,
-            typeLabel: type.label,
-          }
-        : null;
-    })
-    .filter((item) => item !== null);
-  const kitchenFilters = kitchenTypes.filter((item) => gallery.some((photo) => photo.type === item.type));
+    .filter(
+      (product) =>
+        Boolean(product.images?.[0]?.url ?? product.image) &&
+        kitchenTypes.some((item) => item.type === product.category),
+    )
+    // The shelf shows at most 10 of a type, so only send those to the browser.
+    .filter((product, index, list) => list.slice(0, index).filter((p) => p.category === product.category).length < 10);
+  const kitchenFilters = kitchenTypes.filter((item) => gallery.some((product) => product.category === item.type));
   const heroSlides = resolveHeroSlides(hero, products);
   // One tile per cake sub-category that has cakes, its photo rotating through those cakes.
   const money = (value: number) => formatMoney(value, business.currency, business.locale);
@@ -233,7 +222,7 @@ export default async function Home() {
               )}
             </div>
             <KitchenGallery
-              photos={gallery}
+              products={gallery}
               filters={kitchenFilters}
               allLabel={t("All")}
               allHref="/shop"

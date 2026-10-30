@@ -419,6 +419,16 @@ export const defaultCustomerText: CustomerText = {
     "Customer review": "Customer review",
     "· Verified purchase": "· Verified purchase",
   },
+  "kitchen gallery": {
+    From: "From",
+    "Add {name} to basket": "Add {name} to basket",
+    Added: "Added",
+    Add: "Add",
+    "Choose options for {name}": "Choose options for {name}",
+    Choose: "Choose",
+    "Scroll back": "Scroll back",
+    "Scroll forward": "Scroll forward",
+  },
   "product card": {
     PASTRIES: "PASTRIES",
     "READY TO BAKE": "READY TO BAKE",
