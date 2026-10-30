@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Button, EmptyState, Input, Select } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
+import { paymentTone, stageTone } from "./order-tones";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
 import { useBusinessSettings, useToast } from "@/components/providers";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -12,31 +13,6 @@ import { historyCategories, type HistoryKind, type HistoryPage, type HistoryRow 
 
 const label = (value: string) => value.toLowerCase().replaceAll("_", " ");
 
-// Colour family for each stage, so the list can be scanned at a glance.
-const stageTone: Record<string, string> = {
-  PENDING_PAYMENT: "wait",
-  QUOTE_REQUIRED: "wait",
-  DRAFT: "quiet",
-  QUOTE_SENT: "info",
-  CUSTOMER_APPROVED: "new",
-  PAID: "new",
-  CONFIRMED: "info",
-  PREPARING: "work",
-  READY: "done",
-  OUT_FOR_DELIVERY: "done",
-  DELIVERED: "quiet",
-  CANCELLED: "stop",
-  FAILED: "stop",
-  REFUNDED: "stop",
-};
-const paymentTone: Record<string, string> = {
-  SUCCEEDED: "done",
-  PENDING: "wait",
-  UNPAID: "wait",
-  FAILED: "stop",
-  REFUNDED: "stop",
-  PARTIALLY_REFUNDED: "stop",
-};
 // The one next step for an order, matching admin_advance_order in the database.
 function nextStep(row: HistoryRow) {
   switch (row.status) {
