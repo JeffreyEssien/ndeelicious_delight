@@ -690,6 +690,17 @@ export const defaultCustomerText: CustomerText = {
     "Chat with {value1} on WhatsApp": "Chat with {value1} on WhatsApp",
     wa: "wa",
   },
+  "order notifications": {
+    "On iPhone? Add this site to your Home Screen to get order alerts.":
+      "On iPhone? Add this site to your Home Screen to get order alerts.",
+    "You’ll get a ping on this device when your order moves.":
+      "You’ll get a ping on this device when your order moves.",
+    "Notifications are blocked for this site in your browser settings.":
+      "Notifications are blocked for this site in your browser settings.",
+    "Turning on…": "Turning on…",
+    "Ping me with updates": "Ping me with updates",
+    "That didn’t work. Please try again.": "That didn’t work. Please try again.",
+  },
   footer: {
     Instagram: "Instagram",
     ig: "ig",

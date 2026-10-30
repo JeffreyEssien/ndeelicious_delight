@@ -4,8 +4,9 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { constructStripeEvent } from "@/lib/payments/stripe";
 import { processStripeCheckoutEvent } from "@/lib/data/payments";
 import { invalidateStorefrontCache } from "@/lib/cache/storefront";
-import { deliverPendingOrderNotifications, sendPaidOrderAdminNotification } from "@/lib/orders/notifications";
-import { logError, logInfo } from "@/lib/observability/log";
+import { deliverPendingOrderNotifications } from "@/lib/orders/notifications";
+import { afterOrderPaid } from "@/lib/payments/confirm";
+import { logError } from "@/lib/observability/log";
 
 const handledEvents = new Set([
   "checkout.session.completed",
@@ -73,14 +74,7 @@ export async function POST(request: Request) {
       currency: session.currency,
     });
     if (result.processed) invalidateStorefrontCache();
-    if (result.becamePaid && result.orderNumber) {
-      logInfo("stripe.payment_completed", { orderNumber: result.orderNumber, eventType: event.type });
-      after(async () => {
-        const service = createServiceClient();
-        await deliverPendingOrderNotifications(service, result.orderNumber as string);
-        await sendPaidOrderAdminNotification(service, result.orderNumber as string);
-      });
-    }
+    if (result.becamePaid && result.orderNumber) afterOrderPaid(result.orderNumber, event.type);
     return Response.json({ received: true });
   } catch (error) {
     logError("stripe.checkout_webhook_failed", error, { eventType: event.type });

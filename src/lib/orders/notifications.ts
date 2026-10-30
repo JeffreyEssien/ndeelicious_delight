@@ -6,6 +6,7 @@ import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mail
 import { sendEmailToActiveAdmins } from "@/lib/email/admin-recipients";
 import { createAccessToken, issueOrderDocument, latestDocument } from "@/lib/documents/service";
 import { getSiteUrl } from "@/lib/site-url";
+import { pushToAdmins, pushToOrder } from "@/lib/push/send";
 
 const messages: Record<string, { subject: string; title: string; body: string }> = {
   ORDER_RECEIVED: {
@@ -92,6 +93,14 @@ async function deliver(db: SupabaseClient, notificationId: string) {
     return false;
   }
   const { t, frame } = await getCustomerEmailText(db);
+  // Push goes out once per order event, alongside the first email attempt; email retries don't repeat it.
+  if (notification.attempts === 0)
+    await pushToOrder(db, notification.order_id, {
+      title: t(message.title),
+      body: `${t(message.body)} · ${order.order_number}`,
+      url: `/track-order?order=${encodeURIComponent(order.order_number)}`,
+      tag: `order-${order.order_number}`,
+    });
   const summary = (order.order_items ?? [])
     .map((item) => {
       const selections = (item.product_snapshot?.selections ?? []) as { group: string; value: string }[];
@@ -193,6 +202,12 @@ export async function sendPaidOrderAdminNotification(db: SupabaseClient, orderNu
         `<li>${escapeHtml(item.product_name)} · ${escapeHtml(item.variant_name ?? "Standard")} × ${item.quantity}</li>`,
     )
     .join("");
+  await pushToAdmins(db, {
+    title: `Paid order ${order.order_number}`,
+    body: `${order.customer_name} paid. Ready to confirm.`,
+    url: `/admin/orders?detail=${encodeURIComponent(order.order_number)}`,
+    tag: `admin-order-${order.order_number}`,
+  });
   await sendEmailToActiveAdmins(db, {
     subject: `Paid order ${order.order_number}`,
     html: emailFrame(
