@@ -9,8 +9,10 @@ import { paymentTone, stageTone } from "./order-tones";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
 import { useBusinessSettings, useToast } from "@/components/providers";
 import { formatDate, formatMoney } from "@/lib/format";
+import { earlyReadyMessage } from "@/lib/orders/notice";
 import { historyCategories, type HistoryKind, type HistoryPage, type HistoryRow } from "@/lib/data/admin-history";
 
+type BulkResult = { number: string; outcome: string; message: string };
 const label = (value: string) => value.toLowerCase().replaceAll("_", " ");
 
 // The one next step for an order, matching admin_advance_order in the database.
@@ -81,7 +83,7 @@ export function HistoryWorkspace<T>({
   const [detailRevision, setDetailRevision] = useState(0);
   const [selection, setSelection] = useState<Record<string, HistoryRow>>({});
   const [bulkBusy, setBulkBusy] = useState(false);
-  const [bulkResults, setBulkResults] = useState<Array<{ number: string; outcome: string; message: string }>>([]);
+  const [bulkResults, setBulkResults] = useState<BulkResult[]>([]);
   useEffect(() => {
     function restore() {
       const params = new URLSearchParams(window.location.search);
@@ -192,6 +194,26 @@ export function HistoryWorkspace<T>({
       });
     return () => controller.abort();
   }, [kind, selected, detailRevision]);
+  // Moves orders on. Orders still inside their notice period ask first; null means the admin held off.
+  async function advanceOrders(
+    orders: { number: string; expectedStatus: string }[],
+  ): Promise<{ results: BulkResult[] } | null> {
+    const send = (confirmEarly: boolean) =>
+      fetch("/api/admin/orders/bulk", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ orders, confirmEarly }),
+      });
+    let response = await send(false);
+    let payload = await response.json();
+    if (response.status === 409 && payload.early) {
+      if (!window.confirm(earlyReadyMessage(payload.early, business.locale, business.timezone))) return null;
+      response = await send(true);
+      payload = await response.json();
+    }
+    if (!response.ok) throw new Error(payload.error ?? "The order could not advance. Retry.");
+    return payload;
+  }
   async function advanceSelected() {
     if (bulkBusy || !Object.keys(selection).length) return;
     if (
@@ -203,15 +225,10 @@ export function HistoryWorkspace<T>({
     setBulkBusy(true);
     setBulkResults([]);
     try {
-      const response = await fetch("/api/admin/orders/bulk", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          orders: Object.values(selection).map((row) => ({ number: row.number, expectedStatus: row.status })),
-        }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error);
+      const payload = await advanceOrders(
+        Object.values(selection).map((row) => ({ number: row.number, expectedStatus: row.status })),
+      );
+      if (!payload) return;
       setBulkResults(payload.results);
       setSelection({});
       await refresh();
@@ -236,14 +253,10 @@ export function HistoryWorkspace<T>({
     setArmed(undefined);
     setAdvancing(row.id);
     try {
-      const response = await fetch("/api/admin/orders/bulk", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ orders: [{ number: row.number, expectedStatus: row.status }] }),
-      });
-      const payload = await response.json();
-      const result = payload.results?.[0];
-      if (!response.ok || !result) throw new Error(payload.error ?? "The order could not advance. Retry.");
+      const payload = await advanceOrders([{ number: row.number, expectedStatus: row.status }]);
+      if (!payload) return;
+      const result = payload.results[0];
+      if (!result) throw new Error("The order could not advance. Retry.");
       notify(result.outcome === "successful" ? `${row.number}: ${result.message}` : `${row.number}: ${result.message}`);
       await refresh();
     } catch (reason) {
