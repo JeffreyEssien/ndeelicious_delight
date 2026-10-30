@@ -1167,7 +1167,7 @@ function BusinessSettings({
           <input name="taxRate" type="hidden" value="14" />
           <p className="field-hint">
             Nova Scotia HST is 14% on eligible taxable lines. Product classification and pack quantity determine each
-            line’s treatment. Delivery treatment is configured in Delivery → Advanced tax settings.
+            line’s treatment. Delivery fees are never taxed.
           </p>
         </details>
         <span className="document-save-state" role="status">
