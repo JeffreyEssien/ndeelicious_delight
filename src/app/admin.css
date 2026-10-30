@@ -1603,112 +1603,6 @@ html[data-theme] .admin-sidebar {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.content-settings {
-  display: grid;
-  gap: 16px;
-}
-.content-picker {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 20px;
-}
-.content-picker .field span {
-  font-weight: 600;
-}
-.content-section-title {
-  margin: 0 0 20px;
-  font-size: 20px;
-}
-.content-section > summary {
-  cursor: pointer;
-  font-size: 18px;
-  font-weight: 750;
-}
-.content-section[open] > summary {
-  margin-bottom: 24px;
-}
-.content-block {
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-}
-.content-block + .content-block {
-  margin-top: 12px;
-}
-.content-block > summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 52px;
-  padding: 14px 18px;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 700;
-  list-style: none;
-}
-.content-block > summary::-webkit-details-marker {
-  display: none;
-}
-.content-block > summary::after {
-  content: "⌄";
-  margin-left: auto;
-  color: var(--muted);
-  font-size: 16px;
-  transition: transform 150ms ease;
-}
-.content-block[open] > summary {
-  border-bottom: 1px solid var(--line);
-}
-.content-block[open] > summary::after {
-  transform: rotate(180deg);
-}
-.content-block-body {
-  display: grid;
-  gap: 18px;
-  padding: 18px;
-}
-.content-block-body > .content-group,
-.content-block-body > .content-array {
-  padding-left: 0;
-  border-left: 0;
-}
-.content-group,
-.content-array {
-  display: grid;
-  gap: 16px;
-  margin: 0;
-  padding: 2px 0 2px 14px;
-  border: 0;
-  border-left: 2px solid var(--line);
-}
-.content-group legend,
-.content-array legend {
-  padding: 0;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
-}
-.content-array-item {
-  display: grid;
-  gap: 12px;
-  padding: 16px;
-  border-radius: var(--radius);
-  background: var(--surface-2);
-}
-.content-item-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.content-item-actions button {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--berry);
-  font-size: 12px;
-}
 @media (max-width: 1024px) {
   .desktop-nav {
     gap: 20px;
@@ -2791,8 +2685,7 @@ html[data-theme] .admin-sidebar {
   padding: 8px 4px;
 }
 .audit-intro h2,
-.settings-start h2,
-.content-section-heading h2 {
+.settings-start h2 {
   margin: 5px 0 0;
   font-size: 24px;
 }
@@ -2975,44 +2868,6 @@ html[data-theme] .admin-sidebar {
   background: var(--surface);
   font-size: 11px;
   font-weight: 700;
-}
-.content-editor-layout {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  align-items: start;
-  gap: 18px;
-}
-.content-page-nav {
-  position: sticky;
-  top: 88px;
-  display: grid;
-  gap: 4px;
-  padding: 10px;
-}
-.content-page-nav button {
-  min-height: 42px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--muted);
-  font-size: 11px;
-  text-align: left;
-}
-.content-page-nav button.active {
-  background: var(--berry-soft);
-  color: var(--berry);
-  font-weight: 750;
-}
-.content-section {
-  min-width: 0;
-  padding: 26px;
-}
-.content-section-heading {
-  margin-bottom: 24px;
-}
-.content-save-bar {
-  margin-left: 0;
 }
 .carousel-editor {
   display: grid;
@@ -3376,23 +3231,6 @@ html[data-theme] .admin-sidebar {
   .settings-start nav {
     grid-template-columns: 1fr;
   }
-  .content-editor-layout {
-    grid-template-columns: 1fr;
-  }
-  .content-page-nav {
-    position: static;
-    display: flex;
-    overflow-x: auto;
-  }
-  .content-page-nav button {
-    flex: 0 0 auto;
-  }
-  .content-section {
-    padding: 18px;
-  }
-  .content-save-bar {
-    margin-left: 0;
-  }
   .carousel-fields,
   .carousel-toggles,
   .carousel-product-picker {
@@ -3724,9 +3562,6 @@ html[data-theme] .admin-sidebar {
   .social-canvas-wrap {
     min-height: 360px;
     padding: 10px;
-  }
-  .content-page-nav {
-    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 30px), transparent);
   }
 }
 .marketing-product-picker {
