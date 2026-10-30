@@ -77,6 +77,31 @@ export async function sendTransactionalEmail(input: EmailInput) {
   }
 }
 
-export function emailFrame(title: string, body: string, wording: { businessName?: string; footer?: string } = {}) {
-  return `<div style="background:#faf8f5;padding:32px;font-family:Arial,sans-serif;color:#241b1e"><div style="max-width:600px;margin:auto;background:#fff;padding:32px;border-radius:16px"><p style="color:#792f49;font-weight:700">${escapeHtml(wording.businessName ?? "Ndeeelicious Delight")}</p><h1 style="font-size:26px">${escapeHtml(title)}</h1>${body}<p style="margin-top:32px;color:#6e6669;font-size:13px">${escapeHtml(wording.footer ?? "Made with care.")}</p></div></div>`;
+export type EmailWording = {
+  businessName?: string;
+  footer?: string;
+  /** Brand colour for the header and buttons; the store theme's primary colour where known. */
+  accent?: string;
+  /** Inbox preview line shown after the subject in most email apps. */
+  preheader?: string;
+};
+
+const ink = "#241b1e";
+const muted = "#6e6669";
+const safeColor = (value: string | undefined) => (value && /^#[0-9a-f]{6}$/i.test(value) ? value : "#792f49");
+
+/** A full-width button that survives email clients, including Outlook. */
+export function emailButton(href: string, label: string, accent?: string) {
+  const color = safeColor(accent);
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 8px"><tr><td style="border-radius:999px;background:${color}"><a href="${escapeHtml(href)}" style="display:inline-block;padding:14px 28px;border-radius:999px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none">${escapeHtml(label)}</a></td></tr></table>`;
+}
+
+// Table layout and inline styles: the only things every email app renders the same way.
+export function emailFrame(title: string, body: string, wording: EmailWording = {}) {
+  const color = safeColor(wording.accent);
+  const name = escapeHtml(wording.businessName ?? "Ndeeelicious Delight");
+  const preheader = wording.preheader
+    ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(wording.preheader)}</div>`
+    : "";
+  return `${preheader}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f1ec;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${ink}"><tr><td align="center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:20px;overflow:hidden"><tr><td style="background:${color};padding:22px 32px;color:#ffffff;font-size:18px;font-weight:800;letter-spacing:0.02em">${name}</td></tr><tr><td style="padding:32px 32px 8px;font-size:16px;line-height:1.6"><h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;color:${ink}">${escapeHtml(title)}</h1>${body}</td></tr><tr><td style="padding:24px 32px 32px;color:${muted};font-size:13px;line-height:1.6;border-top:1px solid #f0e9e4">${escapeHtml(wording.footer ?? "Made with care.")}<br>${name}</td></tr></table></td></tr></table>`;
 }
