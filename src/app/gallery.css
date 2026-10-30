@@ -1,33 +1,173 @@
 .gallery-section {
   background: var(--surface);
 }
-.social-gallery {
+.gallery-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+.gallery-head h2 {
+  margin: 12px 0 0;
+}
+.gallery-follow {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+  transition:
+    border-color var(--ease),
+    color var(--ease);
+}
+.gallery-follow svg {
+  width: 17px;
+  height: 17px;
+}
+.gallery-follow:hover {
+  border-color: var(--berry);
+  color: var(--berry);
+}
+/* Bento layout: the first photo leads at double size, the rest fill around it. */
+.kitchen-gallery {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr 0.8fr 1.2fr;
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: clamp(180px, 18vw, 260px);
+  gap: 14px;
 }
-.social-gallery > div {
+.kitchen-tile {
   position: relative;
-  aspect-ratio: 4 / 5;
   overflow: hidden;
-  border-radius: var(--radius);
+  border-radius: var(--radius-xl);
+  background: var(--accent-soft);
+  isolation: isolate;
 }
-.social-gallery > div:nth-child(2),
-.social-gallery > div:nth-child(3) {
-  margin-top: 48px;
+.kitchen-tile:first-child {
+  grid-column: span 2;
+  grid-row: span 2;
 }
-.social-gallery img {
-  transition: transform var(--ease);
+.kitchen-gallery[data-count="1"] .kitchen-tile {
+  grid-column: 1 / -1;
 }
-.social-gallery > div:hover img {
-  transform: scale(1.03);
+.kitchen-gallery[data-count="2"] .kitchen-tile:nth-child(2),
+.kitchen-gallery[data-count="3"] .kitchen-tile:not(:first-child),
+.kitchen-gallery[data-count="4"] .kitchen-tile:nth-child(2) {
+  grid-column: span 2;
+}
+.kitchen-gallery[data-count="2"] .kitchen-tile:nth-child(2) {
+  grid-row: span 2;
+}
+.kitchen-tile img {
+  object-fit: cover;
+  transition: transform 700ms var(--ease-standard);
+}
+.kitchen-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(to top, rgba(26, 18, 14, 0.55), transparent 45%);
+  opacity: 0.85;
+  transition: opacity var(--ease);
+}
+.kitchen-caption {
+  position: absolute;
+  z-index: 2;
+  left: 18px;
+  right: 18px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.25);
+}
+.kitchen-tile:first-child .kitchen-caption {
+  left: 26px;
+  bottom: 24px;
+  font-size: 20px;
+}
+.kitchen-caption svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition:
+    opacity var(--ease),
+    transform var(--ease);
+}
+.kitchen-tile:hover img {
+  transform: scale(1.05);
+}
+.kitchen-tile:hover::after {
+  opacity: 1;
+}
+.kitchen-tile:hover .kitchen-caption svg,
+.kitchen-tile:focus-visible .kitchen-caption svg {
+  opacity: 1;
+  transform: none;
 }
 @media (max-width: 800px) {
-  .social-gallery {
-    grid-template-columns: 1fr 1fr;
+  .gallery-head {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 28px;
   }
-  .social-gallery > div:nth-child(2),
-  .social-gallery > div:nth-child(3) {
-    margin-top: 0;
+  .kitchen-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 44vw;
+    gap: 10px;
+  }
+  /* The lead photo runs full width; the rest pair up, and an unpaired last one runs full width. */
+  .kitchen-gallery[data-count] .kitchen-tile {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+  .kitchen-gallery[data-count] .kitchen-tile:first-child {
+    grid-column: 1 / -1;
+    grid-row: span 2;
+  }
+  .kitchen-gallery[data-count="2"] .kitchen-tile:last-child,
+  .kitchen-gallery[data-count="4"] .kitchen-tile:last-child {
+    grid-column: 1 / -1;
+  }
+  .kitchen-tile {
+    border-radius: var(--radius-lg);
+  }
+  .kitchen-tile:first-child .kitchen-caption {
+    left: 18px;
+    bottom: 16px;
+    font-size: 17px;
+  }
+  .kitchen-caption {
+    left: 14px;
+    right: 14px;
+    bottom: 12px;
+    font-size: 14px;
+    line-height: 1.3;
+  }
+  .kitchen-caption svg {
+    flex-shrink: 0;
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kitchen-tile img,
+  .kitchen-caption svg {
+    transition: none;
+  }
+  .kitchen-tile:hover img {
+    transform: none;
   }
 }

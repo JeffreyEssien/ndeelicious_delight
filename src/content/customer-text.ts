@@ -731,6 +731,7 @@ export const defaultCustomerText: CustomerText = {
   "Page: (storefront)": {
     "No featured products are currently published.": "No featured products are currently published.",
     "Follow along ↗": "Follow along ↗",
+    "Follow along on Instagram": "Follow along on Instagram",
     "Also in stores": "Also in stores",
     "Pick up a box near you": "Pick up a box near you",
     "Our frozen pies and sausage rolls are stocked across Halifax and Dartmouth.":
