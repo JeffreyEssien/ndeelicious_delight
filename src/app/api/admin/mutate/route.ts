@@ -13,6 +13,7 @@ import {
   transitionAdminOrderStatus,
 } from "@/lib/data/inventory";
 import { deliverPendingOrderNotifications } from "@/lib/orders/notifications";
+import { offerEarlierPickups } from "@/lib/orders/earlier-pickup";
 import { deliverCakeQuoteEmail, queueCakeQuoteEmail } from "@/lib/cakes/notifications";
 import { issueCakeQuote } from "@/lib/documents/service";
 import {
@@ -434,6 +435,8 @@ export async function POST(request: Request) {
       ({ error } = await supabase
         .from("site_settings")
         .upsert({ key: input.key, value: business.data, updated_at: new Date().toISOString() }, { onConflict: "key" }));
+      // A pickup schedule change can bring open pickup orders forward; tell those customers.
+      if (!error) after(() => offerEarlierPickups(supabase));
     } else {
       const settingSchema =
         input.key === "content"

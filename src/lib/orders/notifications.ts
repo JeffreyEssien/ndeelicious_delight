@@ -40,7 +40,7 @@ async function deliver(db: SupabaseClient, notificationId: string) {
   const { data: order, error: orderError } = await db
     .from("orders")
     .select(
-      "order_number,customer_name,fulfilment,delivery_address_snapshot,subtotal,discount_total,delivery_fee,tax_total,grand_total,currency,order_items(product_name,variant_name,quantity,final_price,product_snapshot)",
+      "order_number,customer_name,fulfilment,preparation_ready_at,delivery_address_snapshot,subtotal,discount_total,delivery_fee,tax_total,grand_total,currency,order_items(product_name,variant_name,quantity,final_price,product_snapshot)",
     )
     .eq("id", notification.order_id)
     .single();
@@ -131,6 +131,17 @@ async function deliver(db: SupabaseClient, notificationId: string) {
               [business.address, business.city, business.province].filter(Boolean).join(", "),
             hours: business.openingHours || "",
             instructions: schedule?.pickupInstructions ?? "",
+            readyFrom:
+              notification.event_type === "EARLIER_PICKUP" && order.preparation_ready_at
+                ? new Intl.DateTimeFormat(business.locale, {
+                    timeZone: business.timezone,
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  }).format(new Date(order.preparation_ready_at))
+                : undefined,
           }
         : undefined,
     trackUrl: `${getSiteUrl()}/track-order?order=${encodeURIComponent(order.order_number)}`,

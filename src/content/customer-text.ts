@@ -72,6 +72,11 @@ export const defaultCustomerText: CustomerText = {
     "Delivered. Enjoy!": "Delivered. Enjoy!",
     "Your order has arrived. We hope it brings a smile to your table.":
       "Your order has arrived. We hope it brings a smile to your table.",
+    "Your order can be ready sooner": "Your order can be ready sooner",
+    "Good news, it’s sooner": "Good news, it’s sooner",
+    "We can have your order ready earlier than planned. Pop by any time from the new time below, or keep your original time if that suits you better.":
+      "We can have your order ready earlier than planned. Pop by any time from the new time below, or keep your original time if that suits you better.",
+    "Ready from {time}": "Ready from {time}",
     "Your refund is on its way": "Your refund is on its way",
     "We’ve refunded your payment in full. It can take a few business days to show in your account.":
       "We’ve refunded your payment in full. It can take a few business days to show in your account.",
