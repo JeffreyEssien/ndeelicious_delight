@@ -70,4 +70,17 @@ describe("order update email", () => {
     expect(email?.pushTitle).toBe("On its way to you");
     expect(email?.pushBody).toContain("ND-1001");
   });
+
+  it("tells the customer how much came back on a partial refund", () => {
+    const email = orderStatusEmail(t, {
+      ...base,
+      event: "PARTIALLY_REFUNDED",
+      refund: { amount: 1000, refundedTotal: 1500, paid: 4998 },
+    });
+    expect(email?.subject).toBe("We’ve sent you a refund · ND-1001");
+    expect(email?.html).toContain("$10.00");
+    expect(email?.html).toContain("Refunded so far");
+    expect(email?.html).toContain("$49.98");
+    expect(email?.html).not.toContain("Baking");
+  });
 });

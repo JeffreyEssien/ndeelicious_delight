@@ -60,6 +60,11 @@ export const orderEmailCopy: Record<string, Copy | { pickup: Copy; delivery: Cop
     title: "Your refund is on its way",
     body: "We’ve refunded your payment in full. It can take a few business days to show in your account.",
   },
+  PARTIALLY_REFUNDED: {
+    subject: "We’ve sent you a refund",
+    title: "A refund is on its way",
+    body: "We’ve refunded part of your payment. It can take a few business days to show in your account.",
+  },
 };
 
 export function orderCopy(event: string, fulfilment: "pickup" | "delivery") {
@@ -97,6 +102,8 @@ export type OrderEmailData = {
   trackUrl: string;
   receiptUrl?: string;
   whatsappUrl?: string;
+  /** For refund emails: this refund, everything refunded so far, and what was paid. */
+  refund?: { amount: number; refundedTotal: number; paid: number };
   businessName: string;
   accent?: string;
   footer?: string;
@@ -137,6 +144,20 @@ function summary(t: Translate, data: OrderEmailData) {
   return `<h2 style="margin:28px 0 4px;font-size:17px">${escapeHtml(t("Order {number}", { number: data.orderNumber }))}</h2><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:15px">${rows}${totals}</table>`;
 }
 
+function refundBlock(t: Translate, data: OrderEmailData) {
+  const refund = data.refund;
+  if (!refund) return "";
+  const money = (value: number) => escapeHtml(formatMoney(value, data.currency, data.locale));
+  const line = (label: string, value: string) =>
+    `<tr><td style="padding:3px 0;font-size:14px;color:#4b4245">${escapeHtml(label)}</td><td align="right" style="padding:3px 0;font-size:14px;color:#4b4245">${value}</td></tr>`;
+  const rows = [
+    line(t("Refunded"), `<b style="color:#241b1e">${money(refund.amount)}</b>`),
+    refund.refundedTotal !== refund.amount ? line(t("Refunded so far"), money(refund.refundedTotal)) : "",
+    refund.refundedTotal < refund.paid ? line(t("You paid"), money(refund.paid)) : "",
+  ].join("");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0 0;padding:12px 18px;border-radius:14px;background:#faf6f2">${rows}</table>`;
+}
+
 function whereBlock(t: Translate, data: OrderEmailData) {
   const box = (heading: string, lines: string[]) =>
     `<div style="margin:24px 0 0;padding:16px 18px;border-radius:14px;background:#faf6f2"><b style="font-size:14px">${escapeHtml(heading)}</b><br>${lines
@@ -158,6 +179,7 @@ export function orderStatusEmail(t: Translate, data: OrderEmailData) {
   const body = [
     `<p style="margin:0 0 12px">${escapeHtml(t("Hi {name},", { name: firstName }))}</p>`,
     `<p style="margin:0">${escapeHtml(t(copy.body))}</p>`,
+    refundBlock(t, data),
     tracker(t, data, accent),
     emailButton(data.trackUrl, t("Track your order"), accent),
     data.receiptUrl
