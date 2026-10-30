@@ -90,10 +90,15 @@ export type StripeCheckoutEvent = Stripe.Checkout.Session;
 export async function retrieveStripeCheckout(sessionId: string) {
   const session = await stripeClient().checkout.sessions.retrieve(sessionId);
   return {
+    id: session.id,
     status: session.status,
     paymentStatus: session.payment_status,
     url: session.url,
     expiresAt: session.expires_at,
+    amountTotal: session.amount_total,
+    currency: session.currency,
+    paymentIntentId:
+      typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? ""),
   };
 }
 export function paymentEntryUrl(sessionId: string) {
