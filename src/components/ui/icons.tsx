@@ -79,6 +79,21 @@ export const Icon = ({ name, ...props }: Props & { name: string }) => {
         <path d="M8 11V8a4 4 0 0 1 8 0v3" />
       </>
     ),
+    refresh: (
+      <>
+        <path d="M20 11a8 8 0 0 0-14.6-4.5L4 8" />
+        <path d="M4 4v4h4" />
+        <path d="M4 13a8 8 0 0 0 14.6 4.5L20 16" />
+        <path d="M20 20v-4h-4" />
+      </>
+    ),
+    download: (
+      <>
+        <path d="M12 4v11M7 10l5 5 5-5" />
+        <path d="M5 20h14" />
+      </>
+    ),
+    filter: <path d="M4 6h16M7 12h10M10 18h4" />,
     clock: (
       <>
         <circle cx="12" cy="12" r="9" />

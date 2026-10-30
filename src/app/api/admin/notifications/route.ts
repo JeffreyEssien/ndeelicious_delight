@@ -42,7 +42,7 @@ export async function GET(request: Request) {
       .limit(10),
     auth.db
       .from("contact_messages")
-      .select("id,name,subject,created_at,resolved_at")
+      .select("id,name,email,subject,created_at,resolved_at")
       .is("resolved_at", null)
       .order("created_at", { ascending: false })
       .limit(10),
@@ -84,6 +84,8 @@ export async function GET(request: Request) {
       type: "message",
       title: `Message from ${message.name}`,
       detail: message.subject,
+      // There is no inbox in the admin yet, so a message opens a reply in the owner's email app.
+      href: `mailto:${encodeURIComponent(message.email)}?subject=${encodeURIComponent(`Re: ${message.subject}`)}`,
       createdAt: message.created_at,
     });
 
