@@ -28,8 +28,8 @@ The full history and plans live in `PROGRESS.md` and `implementation.md`.
 | #70 | Saving a pickup schedule that allows earlier pickups moves open pickup orders forward and emails those customers the new time | 0061 |
 | #71 | Homepage cake section is now a grid of cake sub-category tiles; each photo rotates through that category's cakes | 0062 |
 | #72 | "From the kitchen" is a shop counter: feature panel with a type menu (All, Ready to order, Cakes, Ready to bake) beside a row of photo-first products with quick add; Ready to order leads | |
-| #75 | Home Screen and push notification icons pointed at `/icon` and `/apple-icon`, which 404; they now use `/icon.png` and `/apple-icon.png` | |
 | #74 | Website content editor rebuilt: page list, search across all text, plain field names showing where each appears, edit markers with undo, list editing, publish bar with Cmd/Ctrl+S; only fields the site uses | |
+| #75 | Home Screen and push notification icons pointed at `/icon` and `/apple-icon`, which 404; they now use `/icon.png` and `/apple-icon.png` | |
 
 ## Good to know
 
