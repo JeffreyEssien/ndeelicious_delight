@@ -10,6 +10,7 @@ import { getCollections, getProducts } from "@/lib/data/catalog";
 import { productStartingPrice } from "@/features/catalog/pricing";
 import { formatMoney } from "@/lib/format";
 import { CakeCategories, type CakeCategoryTile } from "@/components/layout/cake-categories";
+import { KitchenGallery } from "@/components/layout/kitchen-gallery";
 import { isProductPurchasable } from "@/features/catalog/availability";
 import { HeroShowcase } from "@/components/layout/hero-showcase";
 import { resolveHeroSlides } from "@/features/catalog/hero-slides";
@@ -40,28 +41,30 @@ export default async function Home() {
     ...products.filter((product) => product.featured),
     ...products.filter((product) => !product.featured && isProductPurchasable(product)),
   ].slice(0, 4);
-  // One photo per product so the kitchen gallery never repeats the same bake, favouring
-  // what customers can order right now.
+  // The kitchen shelf: every product with a photo, what can be ordered now first.
+  // Ready to order is the first type so it leads the mix.
+  const kitchenTypes = [
+    {
+      type: "PASTRIES",
+      label: t("Ready to order"),
+      href: "/shop?category=PASTRIES",
+      linkLabel: t("See all ready to order"),
+    },
+    { type: "CUSTOM_CAKES", label: t("Cakes"), href: "/custom-cakes", linkLabel: t("See all cakes") },
+    { type: "READY_TO_BAKE", label: t("Ready to bake"), href: "/ready-to-bake", linkLabel: t("See all ready to bake") },
+  ];
   const gallery = [
     ...products.filter((product) => isProductPurchasable(product)),
     ...products.filter((product) => !isProductPurchasable(product)),
   ]
-    .map((product) => {
-      const photo = product.images?.[0];
-      const url = photo?.url ?? product.image;
-      return url
-        ? {
-            id: product.id,
-            url,
-            alt: photo?.altText || product.name,
-            name: product.name,
-            slug: product.slug,
-            position: product.imagePosition,
-          }
-        : null;
-    })
-    .filter((item) => item !== null)
-    .slice(0, 5);
+    .filter(
+      (product) =>
+        Boolean(product.images?.[0]?.url ?? product.image) &&
+        kitchenTypes.some((item) => item.type === product.category),
+    )
+    // The shelf shows at most 10 of a type, so only send those to the browser.
+    .filter((product, index, list) => list.slice(0, index).filter((p) => p.category === product.category).length < 10);
+  const kitchenFilters = kitchenTypes.filter((item) => gallery.some((product) => product.category === item.type));
   const heroSlides = resolveHeroSlides(hero, products);
   // One tile per cake sub-category that has cakes, its photo rotating through those cakes.
   const money = (value: number) => formatMoney(value, business.currency, business.locale);
@@ -206,34 +209,20 @@ export default async function Home() {
       {!!gallery.length && (
         <section className="section gallery-section">
           <div className="site-container">
-            <div className="gallery-head">
-              <div>
-                <span className="overline">{home.gallery.eyebrow}</span>
-                <h2>{home.gallery.headline}</h2>
-              </div>
-              {business.instagramUrl && (
-                <a className="gallery-follow" href={business.instagramUrl} target={"_blank"} rel={"noreferrer"}>
-                  <Icon name="instagram" />
-                  {t("Follow along on Instagram")}
-                </a>
-              )}
-            </div>
-            <div className="kitchen-gallery" data-count={gallery.length}>
-              {gallery.map((item, index) => (
-                <Link className="kitchen-tile" href={`/product/${item.slug}`} key={item.id}>
-                  <Image
-                    src={item.url}
-                    alt={item.alt}
-                    fill
-                    sizes={index === 0 ? "(max-width:800px) 100vw, 50vw" : "(max-width:800px) 50vw, 25vw"}
-                    style={item.position ? { objectPosition: item.position } : undefined}
-                  />
-                  <span className="kitchen-caption">
-                    {item.name} <Icon name="arrow" />
-                  </span>
-                </Link>
-              ))}
-            </div>
+            <KitchenGallery
+              eyebrow={home.gallery.eyebrow}
+              headline={home.gallery.headline}
+              products={gallery}
+              filters={kitchenFilters}
+              allLabel={t("All")}
+              allHref="/shop"
+              allLinkLabel={t("Shop everything")}
+              instagram={
+                business.instagramUrl
+                  ? { href: business.instagramUrl, label: t("Follow along on Instagram") }
+                  : undefined
+              }
+            />
           </div>
         </section>
       )}

@@ -419,6 +419,13 @@ export const defaultCustomerText: CustomerText = {
     "Customer review": "Customer review",
     "· Verified purchase": "· Verified purchase",
   },
+  "kitchen gallery": {
+    "From {price}": "From {price}",
+    Show: "Show",
+    "Add {name} to basket": "Add {name} to basket",
+    "Scroll back": "Scroll back",
+    "Scroll forward": "Scroll forward",
+  },
   "product card": {
     PASTRIES: "PASTRIES",
     "READY TO BAKE": "READY TO BAKE",
@@ -785,6 +792,14 @@ export const defaultCustomerText: CustomerText = {
     "No featured products are currently published.": "No featured products are currently published.",
     "Follow along ↗": "Follow along ↗",
     "Follow along on Instagram": "Follow along on Instagram",
+    All: "All",
+    "Ready to order": "Ready to order",
+    Cakes: "Cakes",
+    "Ready to bake": "Ready to bake",
+    "See all ready to order": "See all ready to order",
+    "See all cakes": "See all cakes",
+    "See all ready to bake": "See all ready to bake",
+    "Shop everything": "Shop everything",
     "Also in stores": "Also in stores",
     "Pick up a box near you": "Pick up a box near you",
     "Our frozen pies and sausage rolls are stocked across Halifax and Dartmouth.":
