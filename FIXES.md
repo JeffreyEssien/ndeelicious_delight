@@ -6,7 +6,7 @@ The full history and plans live in `PROGRESS.md` and `implementation.md`.
 ## Production checklist (prod runs `main`)
 
 - [ ] Release `dev` → `main`.
-- [ ] Apply migrations to the production database, in order: 0055, 0056, 0057, 0058, 0059, 0060.
+- [ ] Apply migrations to the production database, in order: 0055, 0056, 0057, 0058, 0059, 0060, 0061.
 - [ ] Upgrade Next.js (critical RCE advisory on the current version).
 - [ ] Stripe: work through `STRIPE_INTEGRATION_TODO.md`. The webhook is `https://www.ndeelicious.com/api/stripe/webhook`, on sandbox keys until launch.
 
@@ -24,9 +24,12 @@ The full history and plans live in `PROGRESS.md` and `implementation.md`.
 | #66 | Stripe embedded payment form (`ui_mode: "form"`) on `/pay` | |
 | #67 | Orders can be marked ready before the 24-hour notice ends; the admin gets an "are you sure" reminder instead of a block | 0059 |
 | #68 | Customers get an email for partial refunds; refund emails show the amounts | 0060 |
+| #69 | Tax on products only. Delivery fees are never taxed, and the admin's delivery tax setting is gone | |
+| #70 | Saving a pickup schedule that allows earlier pickups moves open pickup orders forward and emails those customers the new time | 0061 |
 
 ## Good to know
 
 - Lead time: checkout uses the longer of the shop-wide 24-hour minimum (`MIN_LEAD_TIME_HOURS`) and the product's or cake's own lead time. Each cake's lead time is set on the admin Cakes page.
-- The next free migration number is 0061. Check other open branches before using it.
+- The next free migration number is 0062. Check other open branches before using it.
+- The pickup time customers are told lives in `orders.preparation_ready_at`. `fulfilment_snapshot` can't be changed after the order is placed.
 - Pre-existing biome format errors in `src/lib/auth/validation.test.ts` and `src/lib/supabase/config.ts` are not ours, so don't commit formatter changes to them. The `RouteContext`/`LayoutProps` tsc errors come from Next's generated types.

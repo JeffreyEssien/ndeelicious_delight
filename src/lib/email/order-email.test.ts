@@ -83,4 +83,14 @@ describe("order update email", () => {
     expect(email?.html).toContain("$49.98");
     expect(email?.html).not.toContain("Baking");
   });
+
+  it("gives the new pickup time when an order can be ready sooner", () => {
+    const email = orderStatusEmail(t, {
+      ...base,
+      event: "EARLIER_PICKUP",
+      pickup: { address: "56 Supreme Ct", hours: "", instructions: "", readyFrom: "Tuesday, November 3, 9:00 a.m." },
+    });
+    expect(email?.subject).toBe("Your order can be ready sooner · ND-1001");
+    expect(email?.html).toContain("Ready from Tuesday, November 3, 9:00 a.m.");
+  });
 });
