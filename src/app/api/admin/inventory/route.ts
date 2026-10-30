@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { requireAdminRequest } from "@/lib/auth/admin-request";
 import { getProducts } from "@/lib/data/catalog";
+import { getInventoryInsights } from "@/lib/data/inventory-insights";
 const schema = z.object({
   q: z.string().trim().max(200).default(""),
   category: z.enum(["ATTENTION", "LOW", "OUT", "ALL", "UNTRACKED", "INACTIVE"]).default("ATTENTION"),
@@ -22,8 +23,17 @@ export async function GET(request: Request) {
   try {
     const products = await getProducts({ client: auth.db, includeInactive: true, ids: data.ids });
     const byId = new Map(products.map((p) => [p.id, p]));
+    // Extras are best-effort: the counts still load if they can't be worked out.
+    const insights = await getInventoryInsights(
+      auth.db,
+      products.flatMap((product) => product.variants.map((variant) => variant.id)),
+    ).catch(() => ({}));
     return Response.json(
-      { ...data, products: (data.ids as string[]).flatMap((id) => (byId.has(id) ? [byId.get(id)] : [])) },
+      {
+        ...data,
+        products: (data.ids as string[]).flatMap((id) => (byId.has(id) ? [byId.get(id)] : [])),
+        insights,
+      },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch {

@@ -105,7 +105,8 @@ test("customers search all history and inventory CSV requires review before writ
     });
   });
   await page.goto("/admin/inventory");
-  await page.getByText("Update many at once (spreadsheet)", { exact: true }).click();
+  await page.getByRole("button", { name: "Spreadsheet" }).click();
+  await expect(page.getByText("Update many at once (spreadsheet)", { exact: true })).toBeVisible();
   await page.getByLabel("Import stock CSV").setInputFiles({
     name: "stock.csv",
     mimeType: "text/csv",
