@@ -703,6 +703,11 @@ export const defaultCustomerText: CustomerText = {
     Privacy: "Privacy",
     Terms: "Terms",
     "Returns & cancellations": "Returns & cancellations",
+    "Order today": "Order today",
+    "Delivery from": "Delivery from",
+    "Pickup from": "Pickup from",
+    "Some items take longer. Checkout shows your exact date.":
+      "Some items take longer. Checkout shows your exact date.",
   },
   header: {
     "Open navigation": "Open navigation",
