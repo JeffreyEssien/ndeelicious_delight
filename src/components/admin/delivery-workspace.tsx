@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { ConfirmDialog } from "./confirm-dialog";
 import { useUnsavedChanges } from "./use-unsaved-changes";
 import { useBusinessSettings, useMoney, useToast } from "@/components/providers";
 import { Button, EmptyState } from "@/components/ui/primitives";
@@ -882,6 +883,7 @@ function AreaRow({
   const money = useMoney();
   const prefixes = zone.postalCodePrefixes ?? [];
   const bodyId = `area-${zone.id}`;
+  const [confirming, setConfirming] = useState(false);
   return (
     <li className={`dw-area${open ? " is-open" : ""}${zone.active ? "" : " is-inactive"}${error ? " has-error" : ""}`}>
       <div className="dw-area-summary">
@@ -1007,18 +1009,31 @@ function AreaRow({
               <button type="button" className="dw-link" onClick={duplicate}>
                 Duplicate
               </button>
-              {isNew && (
-                <button type="button" className="dw-link is-danger" onClick={discard}>
-                  Remove area
-                </button>
-              )}
+              <button
+                type="button"
+                className="dw-link is-danger"
+                onClick={() => (isNew ? discard() : setConfirming(true))}
+              >
+                Delete area
+              </button>
             </div>
           </div>
-          {!isNew && (
-            <p className="dw-hint">Saved areas can’t be deleted. Turn an area off to hide it from checkout.</p>
-          )}
         </div>
       )}
+      <ConfirmDialog
+        open={confirming}
+        tone="danger"
+        title="Delete this delivery area?"
+        body={`“${zone.name || "This area"}” will be deleted for good when you save, and customers in ${
+          prefixes.length ? prefixes.join(", ") : "its postal codes"
+        } won’t be offered delivery. Past orders keep their address and delivery fee.`}
+        confirmLabel="Delete area"
+        onConfirm={() => {
+          setConfirming(false);
+          discard();
+        }}
+        onCancel={() => setConfirming(false)}
+      />
     </li>
   );
 }

@@ -22,7 +22,7 @@ vi.mock("@/lib/auth/admin-request", () => ({
     sessionId: "session-id",
   }),
 }));
-import { PATCH, POST } from "./route";
+import { DELETE, PATCH, POST } from "./route";
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -71,4 +71,31 @@ it("does not return a successful duplicate if any part of the transaction fails"
     ).status,
   ).toBe(500);
   expect(mocks.rpc).toHaveBeenCalledTimes(1);
+});
+it("deletes a product for good through the audited database function", async () => {
+  mocks.rpc.mockResolvedValue({ error: null });
+  const response = await DELETE(new Request("http://localhost/api/admin/products/product-id", { method: "DELETE" }), {
+    params: Promise.resolve({ id: "product-id" }),
+  });
+  expect(response.status).toBe(200);
+  expect(mocks.rpc).toHaveBeenCalledWith("admin_delete_product", {
+    p_id: "product-id",
+    p_admin_id: "admin-id",
+    p_session_id: "session-id",
+  });
+});
+it("refuses to delete a product someone is paying for", async () => {
+  mocks.rpc.mockResolvedValue({ error: { message: "PRODUCT_IN_CHECKOUT" } });
+  const response = await DELETE(new Request("http://localhost/api/admin/products/product-id", { method: "DELETE" }), {
+    params: Promise.resolve({ id: "product-id" }),
+  });
+  expect(response.status).toBe(409);
+  expect((await response.json()).error).toContain("paying for this product");
+});
+it("reports a product that is already gone", async () => {
+  mocks.rpc.mockResolvedValue({ error: { message: "PRODUCT_NOT_FOUND" } });
+  const response = await DELETE(new Request("http://localhost/api/admin/products/product-id", { method: "DELETE" }), {
+    params: Promise.resolve({ id: "product-id" }),
+  });
+  expect(response.status).toBe(404);
 });

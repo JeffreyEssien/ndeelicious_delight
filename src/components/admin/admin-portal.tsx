@@ -175,6 +175,18 @@ export function AdminPortal({
       notify("Product update could not be saved.");
     }
   }
+  async function deleteProduct(product: Product) {
+    const response = await fetch(`/api/admin/products/${product.id}`, { method: "DELETE" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      notify(payload.error ?? "Product could not be deleted.");
+      return false;
+    }
+    setProducts((current) => current.filter((item) => item.id !== product.id));
+    notify(`${product.name} deleted.`);
+    router.refresh();
+    return true;
+  }
   async function duplicateProduct(product: Product) {
     const response = await fetch(`/api/admin/products/${product.id}`, { method: "POST" });
     const payload = await response.json();
@@ -243,6 +255,7 @@ export function AdminPortal({
           onStatus={productStatus}
           onEdit={setEditor}
           onDuplicate={duplicateProduct}
+          onDelete={deleteProduct}
         />
       )}
       {section === "inventory" && <InventoryWorkspace onEdit={setEditor} />}
@@ -319,6 +332,7 @@ const auditMessages: Record<string, string> = {
   PRODUCT_CREATED: "created a product",
   PRODUCT_UPDATED: "updated a product",
   PRODUCT_DUPLICATED: "duplicated a product",
+  PRODUCT_DELETED: "deleted a product",
   PRODUCT_IMAGE_ADDED: "added a product photo",
   PRODUCT_STATUS_CHANGED: "changed a product’s visibility",
   STOCK_CHANGED: "adjusted inventory",
@@ -355,6 +369,10 @@ function auditEntity(entry: AdminAuditLog) {
 
 function changedFields(entry: AdminAuditLog) {
   if (!entry.previousValue) return "A new record was added.";
+  if (!entry.newValue) {
+    const name = (entry.previousValue as { name?: unknown }).name;
+    return typeof name === "string" ? `“${name}” was deleted.` : "The record was deleted.";
+  }
   const before = entry.previousValue;
   const after = entry.newValue;
   if (
@@ -1006,6 +1024,7 @@ function Products({
   onStatus,
   onEdit,
   onDuplicate,
+  onDelete,
 }: {
   products: Product[];
   query: string;
@@ -1015,6 +1034,7 @@ function Products({
   onStatus: (id: string, status: ProductStatus) => void;
   onEdit: (product: Product) => void;
   onDuplicate: (product: Product) => void;
+  onDelete: (product: Product) => Promise<boolean>;
 }) {
   const money = useMoney();
   const priceRange = (product: Product) => {
@@ -1022,6 +1042,8 @@ function Products({
     return min === max ? money(min) : `${money(min)} – ${money(max)}`;
   };
   const [removeTarget, setRemoveTarget] = useState<Product | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const visible = products.filter(
     (p) =>
       (status === "ALL" || p.status === status) &&
@@ -1134,14 +1156,17 @@ function Products({
                           Restore
                         </button>
                       ) : (
-                        <button
-                          type="button"
-                          className="text-button danger-text"
-                          onClick={() => setRemoveTarget(product)}
-                        >
-                          Remove
+                        <button type="button" className="text-button" onClick={() => setRemoveTarget(product)}>
+                          Archive
                         </button>
                       )}
+                      <button
+                        type="button"
+                        className="text-button danger-text"
+                        onClick={() => setDeleteTarget(product)}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1153,18 +1178,38 @@ function Products({
       <ConfirmDialog
         open={removeTarget !== null}
         tone="danger"
-        title="Remove this product?"
+        title="Archive this product?"
         body={
           removeTarget
             ? `“${removeTarget.name}” will be hidden from customers. You can restore it anytime from the Archived filter.`
             : ""
         }
-        confirmLabel="Remove from shop"
+        confirmLabel="Archive"
         onConfirm={() => {
           if (removeTarget) onStatus(removeTarget.id, "ARCHIVED");
           setRemoveTarget(null);
         }}
         onCancel={() => setRemoveTarget(null)}
+      />
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        tone="danger"
+        busy={deleting}
+        title="Delete this product for good?"
+        body={
+          deleteTarget
+            ? `“${deleteTarget.name}” will be removed from the shop and from admin, with its photos, options and reviews. This can’t be undone. Past orders and receipts keep its name and price.`
+            : ""
+        }
+        confirmLabel="Delete permanently"
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          setDeleting(true);
+          const deleted = await onDelete(deleteTarget);
+          setDeleting(false);
+          if (deleted) setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
       />
     </>
   );
