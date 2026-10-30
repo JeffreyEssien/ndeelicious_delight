@@ -1073,46 +1073,182 @@ h2 {
 .round-add svg {
   width: 18px;
 }
-.editorial {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-height: 760px;
-  background: var(--surface);
-}
-.editorial-image {
-  position: relative;
-  min-height: 680px;
-}
-.editorial-image img {
-  object-position: center 54%;
-}
-.editorial-copy {
-  align-self: center;
-  max-width: 640px;
-  padding: 80px;
-}
-.editorial-copy h2 {
-  margin-bottom: 24px;
-}
-.editorial-copy > p {
+/* Cake sub-categories: one larger lead tile, photos rotating through each category's cakes. */
+.cake-cats-intro {
+  max-width: 560px;
+  margin-top: 12px;
   color: var(--muted);
-  font-size: 17px;
-  line-height: 1.65;
 }
-.editorial-copy ol {
-  margin: 32px 0;
-  padding: 0;
-  list-style: none;
+.cake-cats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
 }
-.editorial-copy li {
+.cake-cats.is-1 {
+  grid-template-columns: 1fr;
+}
+.cake-cats.is-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.cake-cats.is-3 {
+  grid-template-columns: 3fr 2fr;
+}
+.cake-cats:not(.is-1, .is-2) > .cake-cat:first-child {
+  grid-row: span 2;
+}
+.cake-cats.is-4 > .cake-cat:first-child,
+.cake-cats.is-5 > .cake-cat:first-child {
+  grid-column: span 2;
+}
+.cake-cats.is-4 > .cake-cat:last-child {
+  grid-column: span 2;
+}
+.cake-cat {
   display: flex;
-  gap: 20px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--line);
+  overflow: hidden;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-raised);
+  color: var(--ink);
+  transition:
+    box-shadow var(--ease),
+    border-color var(--ease);
 }
-.editorial-copy li b {
-  color: var(--berry);
-  font-size: 11px;
+.cake-cat:hover {
+  border-color: transparent;
+  box-shadow: var(--shadow-card);
+}
+.cake-cat-photo {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: 1;
+  background: var(--color-primary-soft);
+}
+.cake-cats.is-1 .cake-cat-photo,
+.cake-cats.is-2 .cake-cat-photo {
+  aspect-ratio: 16 / 10;
+}
+.cake-cats:not(.is-1, .is-2) > .cake-cat:first-child .cake-cat-photo {
+  aspect-ratio: auto;
+}
+.cake-cats.is-3 > .cake-cat:not(:first-child) .cake-cat-photo {
+  aspect-ratio: 4 / 3;
+}
+.cake-cats.is-4 > .cake-cat:last-child .cake-cat-photo {
+  aspect-ratio: 2 / 1;
+}
+.cake-cat-photo img {
+  object-fit: cover;
+  opacity: 0;
+  transition:
+    opacity 900ms var(--ease-standard),
+    transform 350ms var(--ease-standard);
+}
+.cake-cat-photo img.is-shown {
+  opacity: 1;
+}
+.cake-cat:hover .cake-cat-photo img {
+  transform: scale(1.03);
+}
+.cake-cat-dots {
+  position: absolute;
+  z-index: 1;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  gap: 5px;
+  padding: 6px 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-text) 35%, transparent);
+}
+.cake-cat-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+  transition:
+    width var(--ease),
+    background var(--ease);
+}
+.cake-cat-dots i.is-on {
+  width: 16px;
+  background: var(--color-surface);
+}
+.cake-cat-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+}
+.cake-cat-label span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.cake-cat-label b {
+  font-size: 17px;
+  line-height: 1.25;
+}
+.cake-cats:not(.is-1, .is-2) > .cake-cat:first-child .cake-cat-label b {
+  font-size: 22px;
+}
+.cake-cat-label small {
+  color: var(--muted);
+  font-size: 13px;
+}
+.cake-cat-label svg {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 9px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  transition: transform var(--ease);
+}
+.cake-cat:hover .cake-cat-label svg {
+  transform: translateX(3px);
+}
+@media (max-width: 700px) {
+  .cake-cats,
+  .cake-cats.is-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .cake-cats.is-2 {
+    grid-template-columns: 1fr;
+  }
+  .cake-cats > .cake-cat:first-child {
+    grid-row: auto;
+    grid-column: 1 / -1;
+  }
+  .cake-cats:not(.is-1, .is-2) > .cake-cat:first-child .cake-cat-photo {
+    aspect-ratio: 16 / 10;
+  }
+  .cake-cats.is-3 > .cake-cat:first-child {
+    grid-column: 1 / -1;
+  }
+  .cake-cat-label {
+    padding: 12px 14px;
+  }
+  .cake-cat-label b {
+    font-size: 15px;
+  }
+  .cake-cat-label svg {
+    width: 30px;
+    height: 30px;
+    padding: 8px;
+  }
+  .cake-cats > .cake-cat:not(:first-child) .cake-cat-label svg {
+    display: none;
+  }
+  .cake-cats.is-4 > .cake-cat:last-child .cake-cat-photo {
+    aspect-ratio: 16 / 10;
+  }
 }
 .ready-feature {
   padding-block: 96px;

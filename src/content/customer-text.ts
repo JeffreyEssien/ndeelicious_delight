@@ -774,6 +774,9 @@ export const defaultCustomerText: CustomerText = {
     "Browse all products": "Browse all products",
   },
   "Page: (storefront)": {
+    "1 cake": "1 cake",
+    "{count} cakes": "{count} cakes",
+    "From {price}": "From {price}",
     "No featured products are currently published.": "No featured products are currently published.",
     "Follow along ↗": "Follow along ↗",
     "Follow along on Instagram": "Follow along on Instagram",

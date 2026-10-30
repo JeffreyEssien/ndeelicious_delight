@@ -1719,9 +1719,6 @@ html[data-theme] .admin-sidebar {
   .category-showcase > a {
     min-height: 480px;
   }
-  .editorial-copy {
-    padding: 48px;
-  }
   .catalogue-layout {
     grid-template-columns: 180px 1fr;
     gap: 28px;
@@ -1819,15 +1816,6 @@ html[data-theme] .admin-sidebar {
   .product-grid,
   .catalogue-results .product-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-  .editorial {
-    grid-template-columns: 1fr;
-  }
-  .editorial-image {
-    min-height: 560px;
-  }
-  .editorial-copy {
-    padding: 64px 24px;
   }
   .ready-grid {
     grid-template-columns: 1fr;
@@ -2004,9 +1992,6 @@ html[data-theme] .admin-sidebar {
   .section-title-row {
     align-items: flex-start;
     flex-direction: column;
-  }
-  .editorial-image {
-    min-height: 460px;
   }
   .ready-feature {
     padding-block: 64px;
