@@ -33,6 +33,8 @@ export function earliestFulfilment(input: {
   preparationHours: number;
   cakeLeadTimeHours?: number;
   now?: Date;
+  /** Never offer a time before this, e.g. when re-checking an order placed earlier. */
+  notBefore?: Date;
 }) {
   const parsed = fulfilmentScheduleSchema.safeParse(input.schedule);
   if (!parsed.success)
@@ -48,7 +50,10 @@ export function earliestFulfilment(input: {
   if (input.mode === "delivery" && (!input.area?.active || !schedule.deliveryDays.length))
     throw new FulfilmentError("DELIVERY_SETUP_REQUIRED", "Delivery schedule setup is required.");
   const ready = new Date(
-    now.getTime() + (hours + (input.mode === "pickup" ? schedule.pickupPreparationBufferHours : 0)) * 3600000,
+    Math.max(
+      now.getTime() + (hours + (input.mode === "pickup" ? schedule.pickupPreparationBufferHours : 0)) * 3600000,
+      input.notBefore?.getTime() ?? 0,
+    ),
   );
   const today = localParts(now, schedule.timezone);
   const readyLocal = localParts(ready, schedule.timezone);

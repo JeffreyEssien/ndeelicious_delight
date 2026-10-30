@@ -55,6 +55,11 @@ export const orderEmailCopy: Record<string, Copy | { pickup: Copy; delivery: Cop
       body: "Your order has arrived. We hope it brings a smile to your table.",
     },
   },
+  EARLIER_PICKUP: {
+    subject: "Your order can be ready sooner",
+    title: "Good news, it’s sooner",
+    body: "We can have your order ready earlier than planned. Pop by any time from the new time below, or keep your original time if that suits you better.",
+  },
   REFUNDED: {
     subject: "Your refund is on its way",
     title: "Your refund is on its way",
@@ -98,7 +103,7 @@ export type OrderEmailData = {
   currency: string;
   locale: string;
   deliveryAddress?: string;
-  pickup?: { address: string; hours: string; instructions: string };
+  pickup?: { address: string; hours: string; instructions: string; readyFrom?: string };
   trackUrl: string;
   receiptUrl?: string;
   whatsappUrl?: string;
@@ -165,7 +170,11 @@ function whereBlock(t: Translate, data: OrderEmailData) {
       .map((value) => `<span style="font-size:14px;color:#4b4245">${escapeHtml(value)}</span>`)
       .join("<br>")}</div>`;
   if (data.fulfilment === "pickup" && data.pickup)
-    return box(t("Pick up from"), [data.pickup.address, data.pickup.hours, data.pickup.instructions]);
+    return box(data.pickup.readyFrom ? t("Ready from {time}", { time: data.pickup.readyFrom }) : t("Pick up from"), [
+      data.pickup.address,
+      data.pickup.hours,
+      data.pickup.instructions,
+    ]);
   if (data.fulfilment === "delivery" && data.deliveryAddress) return box(t("Delivering to"), [data.deliveryAddress]);
   return "";
 }
@@ -180,13 +189,15 @@ export function orderStatusEmail(t: Translate, data: OrderEmailData) {
     `<p style="margin:0 0 12px">${escapeHtml(t("Hi {name},", { name: firstName }))}</p>`,
     `<p style="margin:0">${escapeHtml(t(copy.body))}</p>`,
     refundBlock(t, data),
+    // A new pickup time is the point of the email, so it sits right under the message.
+    data.pickup?.readyFrom ? whereBlock(t, data) : "",
     tracker(t, data, accent),
     emailButton(data.trackUrl, t("Track your order"), accent),
     data.receiptUrl
       ? `<p style="margin:0;font-size:14px"><a href="${escapeHtml(data.receiptUrl)}" style="color:${accent}">${escapeHtml(t("View or download your receipt"))}</a></p>`
       : "",
     summary(t, data),
-    whereBlock(t, data),
+    data.pickup?.readyFrom ? "" : whereBlock(t, data),
     `<p style="margin:28px 0 0">${escapeHtml(t("Thank you for letting us bake for you."))}<br><b>${escapeHtml(t("The {business} kitchen", { business: data.businessName }))}</b></p>`,
     data.whatsappUrl
       ? `<p style="margin:16px 0 0;font-size:14px;color:#6e6669">${escapeHtml(t("Questions?"))} <a href="${escapeHtml(data.whatsappUrl)}" style="color:${accent}">${escapeHtml(t("Message us on WhatsApp"))}</a></p>`
