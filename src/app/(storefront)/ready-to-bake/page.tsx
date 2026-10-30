@@ -36,7 +36,7 @@ export default async function Page() {
             <p>{page.hero.supportingText}</p>
             <div className="rtb-hero-actions">
               <a className="button rtb-cta" href="#range">
-                {t("Fill your freezer")} <Icon name="arrow" />
+                {t("Grab a box")} <Icon name="arrow" />
               </a>
               {!!stockists.length && (
                 <a className="button rtb-cta-ghost" href="#stores">
