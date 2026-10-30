@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       results.push({
         number: order.number,
         outcome: "failed",
-        message: "The order could not advance. Review its preparation time and inventory.",
+        message: "The order could not move on. Check its stock and try again.",
       });
       continue;
     }
