@@ -5,6 +5,7 @@ import { Icon } from "@/components/ui/icons";
 import type { AdminNotification } from "@/app/api/admin/notifications/route";
 
 const SEEN_KEY = "ndee_admin_notifications_seen";
+const OPENED_KEY = "ndee_admin_notifications_opened";
 const PUSHED_KEY = "ndee_admin_notifications_pushed";
 const typeIcon: Record<AdminNotification["type"], string> = {
   order: "orders",
@@ -61,11 +62,17 @@ export function NotificationBell() {
   const [items, setItems] = useState<AdminNotification[]>([]);
   const [open, setOpen] = useState(false);
   const [seen, setSeen] = useState("");
+  const [opened, setOpened] = useState<string[]>([]);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
   const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSeen(localStorage.getItem(SEEN_KEY) ?? "");
+    try {
+      setOpened(JSON.parse(localStorage.getItem(OPENED_KEY) ?? "[]"));
+    } catch {
+      setOpened([]);
+    }
     if (!pushSupported()) {
       setPermission("unsupported");
       return;
@@ -110,7 +117,8 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const unread = items.filter((item) => item.createdAt > seen).length;
+  const isUnread = (item: AdminNotification) => item.createdAt > seen && !opened.includes(item.id);
+  const unread = items.filter(isUnread).length;
 
   function markAllRead() {
     const now = new Date().toISOString();
@@ -120,7 +128,14 @@ export function NotificationBell() {
 
   function openItem(item: AdminNotification) {
     setOpen(false);
-    if (item.href) router.push(item.href);
+    if (!item.href) return;
+    setOpened((current) => {
+      const next = [...new Set([...current, item.id])].slice(-100);
+      localStorage.setItem(OPENED_KEY, JSON.stringify(next));
+      return next;
+    });
+    if (item.href.startsWith("mailto:")) window.location.href = item.href;
+    else router.push(item.href);
   }
 
   return (
@@ -164,12 +179,11 @@ export function NotificationBell() {
           ) : (
             <ul>
               {items.map((item) => {
-                const isUnread = item.createdAt > seen;
                 return (
                   <li key={item.id}>
                     <button
                       type="button"
-                      className={isUnread ? "unread" : ""}
+                      className={isUnread(item) ? "unread" : ""}
                       onClick={() => openItem(item)}
                       disabled={!item.href}
                     >
@@ -181,6 +195,7 @@ export function NotificationBell() {
                         <small>{item.detail}</small>
                       </span>
                       <span className="admin-bell-time">{timeAgo(item.createdAt)}</span>
+                      {item.href && <Icon name="chevron" className="admin-bell-go" />}
                     </button>
                   </li>
                 );

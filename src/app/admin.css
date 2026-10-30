@@ -422,6 +422,15 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.admin-bell-go {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+}
+.admin-bell-panel li button:not(:disabled):hover .admin-bell-go {
+  color: var(--berry);
+}
 .admin-bell-time {
   margin-left: auto;
   flex: none;

@@ -219,13 +219,16 @@ test("history pagination, full-history query, detail fetch, URL restoration and 
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByText("Page 2 of 5")).toBeVisible();
   expect(queries.at(-1)?.searchParams.get("asOf")).toBe("2026-10-10T12:00:00Z");
-  await page.getByLabel("Search history").fill("buyer1@example.invalid");
-  await page.getByRole("button", { name: "Apply filters" }).click();
+  await page.getByLabel("Search orders").fill("buyer1@example.invalid");
+  await page.getByLabel("Search orders").press("Enter");
   await expect(page.getByText(/^1 matching orders\./)).toBeVisible();
   expect(queries.at(-1)?.searchParams.get("q")).toBe("buyer1@example.invalid");
   await page.reload();
-  await expect(page.getByLabel("Search history")).toHaveValue("buyer1@example.invalid");
-  await page.getByRole("button", { name: "Manage order" }).click();
+  await expect(page.getByLabel("Search orders")).toHaveValue("buyer1@example.invalid");
+  await page
+    .getByRole("button", { name: /^Open ORD-/ })
+    .first()
+    .click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Order items" })).toBeVisible();
   await overflow(page);
@@ -239,17 +242,20 @@ test("history pagination, full-history query, detail fetch, URL restoration and 
   await expect(page.getByRole("button", { name: "Back to orders", exact: true })).toBeInViewport();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  await expect(page.getByLabel("Search history")).toHaveValue("buyer1@example.invalid");
+  await expect(page.getByLabel("Search orders")).toHaveValue("buyer1@example.invalid");
   failNext = true;
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(page.getByText("Fixture load failure")).toBeVisible();
   await page.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(page.getByText(/^1 matching orders\./)).toBeVisible();
   await page.goto("/admin/custom-cakes");
-  await expect(page.getByRole("button", { name: "Review request" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Open / }).first()).toBeVisible();
   await overflow(page);
   await page.screenshot({ path: testInfo.outputPath("cake-requests.png"), fullPage: true });
-  await page.getByRole("button", { name: "Review request" }).click();
+  await page
+    .getByRole("button", { name: /^Open / })
+    .first()
+    .click();
   await expect(page.getByText("Cake flavour", { exact: true })).toBeVisible();
   await page.getByLabel("Quote amount (CAD)").fill("200");
   await expect(page.getByRole("button", { name: "Send quote", exact: true })).toBeDisabled();
