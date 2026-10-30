@@ -140,6 +140,18 @@ export default async function Home() {
             />
           </div>
         </div>
+        {Boolean(content.readyToBake.stockists?.length) && (
+          <div className="site-container ready-stockists">
+            <div className="ready-stockists-head">
+              <div>
+                <span className="overline">{t("Also in stores")}</span>
+                <h3>{t("Pick up a box near you")}</h3>
+              </div>
+              <p>{t("Our frozen pies and sausage rolls are stocked across Halifax and Dartmouth.")}</p>
+            </div>
+            <Stockists stockists={content.readyToBake.stockists ?? []} variant="strip" />
+          </div>
+        )}
       </section>
       {!!gallery.length && (
         <section className="section gallery-section">
@@ -189,18 +201,6 @@ export default async function Home() {
               {t("Get directions")} <Icon name="arrow" />
             </a>
           </div>
-        </section>
-      )}
-      {Boolean(content.readyToBake.stockists?.length) && (
-        <section className="section site-container find-stores">
-          <div className="section-head">
-            <div>
-              <span className="overline">{t("Also in stores")}</span>
-              <h2>{t("Find our ready-to-bake in stores")}</h2>
-            </div>
-            <p>{t("Our frozen pies and sausage rolls are stocked across Halifax and Dartmouth.")}</p>
-          </div>
-          <Stockists stockists={content.readyToBake.stockists ?? []} />
         </section>
       )}
       {reviews.length > 0 && (

@@ -4,6 +4,7 @@ import { whatsappUrl } from "@/lib/contact";
 import Link from "next/link";
 import { NewsletterForm } from "./newsletter-form";
 import { NextDelivery } from "./next-delivery";
+import { PaymentMarks } from "./payment-marks";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { Icon } from "@/components/ui/icons";
 import type { BusinessSettings, StorefrontContent } from "@/types/content";
@@ -54,6 +55,13 @@ export function Footer({ content, business }: { content: StorefrontContent["glob
           <p>{content.newsletterText}</p>
           <NewsletterForm />
         </div>
+      </div>
+      <div className="site-container footer-payments">
+        <p>
+          <Icon name="lock" />
+          {t("Secure checkout powered by Stripe")}
+        </p>
+        <PaymentMarks />
       </div>
       <div className="site-container footer-base">
         <span>
