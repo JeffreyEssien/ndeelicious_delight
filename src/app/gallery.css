@@ -1,339 +1,355 @@
 .gallery-section {
   background: var(--surface);
 }
-.gallery-head {
+/* The kitchen counter: a feature panel with the type menu, beside a row of photo-first products. */
+.counter {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 28px;
+  align-items: stretch;
+}
+.counter-panel {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 40px;
+  flex-direction: column;
+  padding: 36px 32px 32px;
+  border-radius: var(--radius-panel);
+  background: var(--color-feature-surface);
+  color: var(--color-feature-text);
 }
-.gallery-head h2 {
-  margin: 12px 0 0;
+.counter-panel .overline {
+  color: color-mix(in srgb, var(--color-feature-text) 72%, transparent);
 }
-.gallery-follow {
-  display: inline-flex;
-  flex-shrink: 0;
+.counter-panel h2 {
+  margin: 14px 0 28px;
+  color: var(--color-feature-text);
+  font-size: clamp(30px, 3vw, 40px);
+  line-height: 1.05;
+}
+.counter-menu {
+  display: grid;
+  margin-bottom: 28px;
+  border-top: 1px solid color-mix(in srgb, var(--color-feature-text) 18%, transparent);
+}
+.counter-menu button {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 0 18px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--color-text);
-  font-size: 14px;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-feature-text) 18%, transparent);
+  background: none;
+  color: var(--color-feature-muted);
+  font: inherit;
+  font-size: 16px;
   font-weight: 600;
+  text-align: left;
+  cursor: pointer;
   transition:
-    border-color var(--ease),
-    color var(--ease);
+    color var(--ease),
+    padding var(--ease);
 }
-.gallery-follow svg {
-  width: 17px;
-  height: 17px;
+.counter-menu button::before {
+  content: "";
+  width: 0;
+  height: 2px;
+  margin-right: -12px;
+  background: var(--color-feature-highlight);
+  transition:
+    width var(--ease),
+    margin var(--ease);
 }
-.gallery-follow:hover {
-  border-color: var(--berry);
-  color: var(--berry);
+.counter-menu button span {
+  flex: 1;
 }
-/* The kitchen shelf: a sideways row of product cards, each ending in a price ticket. */
-.shelf-bar {
-  display: flex;
+.counter-menu button small {
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-feature-text) 12%, transparent);
+  font-size: 12px;
+  text-align: center;
+}
+.counter-menu button:hover,
+.counter-menu button[aria-pressed="true"] {
+  color: var(--color-feature-text);
+}
+.counter-menu button[aria-pressed="true"]::before {
+  width: 18px;
+  margin-right: 0;
+}
+.counter-cta {
+  display: inline-flex;
+  align-self: flex-start;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: -16px 0 20px;
-}
-.shelf-filters {
-  display: flex;
-  overflow-x: auto;
   gap: 8px;
+  min-height: 46px;
+  margin-top: auto;
+  padding: 0 20px;
+  border-radius: var(--radius-pill);
+  background: var(--color-feature-highlight);
+  color: var(--color-on-feature-highlight);
+  font-size: 14px;
+  font-weight: 700;
+  transition: transform var(--ease);
+}
+.counter-cta:hover {
+  transform: translateX(2px);
+}
+.counter-cta svg,
+.counter-instagram svg {
+  width: 16px;
+  height: 16px;
+}
+.counter-instagram {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  color: var(--color-feature-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.counter-instagram:hover {
+  color: var(--color-feature-text);
+}
+.counter-shelf {
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+  gap: 20px;
+}
+.counter-track {
+  display: grid;
+  grid-auto-columns: calc((100% - 2 * 20px) / 3.15);
+  grid-auto-flow: column;
+  gap: 20px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
   scrollbar-width: none;
 }
-.shelf-filters::-webkit-scrollbar {
+.counter-track::-webkit-scrollbar {
   display: none;
 }
-.shelf-filters button {
-  flex: none;
-  min-height: 40px;
-  padding: 0 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-  background: transparent;
+.counter-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: start;
+  animation: counter-in 480ms var(--ease-standard) both;
+}
+.counter-card:nth-child(2) {
+  animation-delay: 50ms;
+}
+.counter-card:nth-child(3) {
+  animation-delay: 100ms;
+}
+.counter-card:nth-child(4) {
+  animation-delay: 150ms;
+}
+.counter-photo {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 5;
+  margin-bottom: 14px;
+  border-radius: var(--radius-card);
+  background: var(--accent-soft);
+}
+.counter-photo img {
+  object-fit: cover;
+  transition: transform 600ms var(--ease-standard);
+}
+.counter-card:hover .counter-photo img {
+  transform: scale(1.04);
+}
+.counter-add {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
   color: var(--color-text);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
   cursor: pointer;
   transition:
     background var(--ease),
-    border-color var(--ease),
-    color var(--ease);
+    color var(--ease),
+    transform var(--ease);
 }
-.shelf-filters button:hover {
-  border-color: var(--berry);
-  color: var(--berry);
+.counter-add svg {
+  width: 18px;
+  height: 18px;
 }
-.shelf-filters button[aria-pressed="true"] {
-  border-color: var(--berry);
+.counter-add:hover,
+.counter-card:hover .counter-add.is-link {
   background: var(--berry);
   color: var(--color-on-primary);
 }
-.shelf-arrows {
-  display: flex;
-  flex: none;
-  gap: 8px;
+.counter-add.is-link {
+  pointer-events: none;
 }
-.shelf-arrows button {
+.counter-add.is-added {
+  background: var(--success);
+  color: var(--color-on-primary);
+  transform: scale(1.06);
+}
+.counter-type {
+  margin-bottom: 4px;
+  color: var(--berry);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.counter-name {
+  color: var(--color-text);
+  font-family: var(--font-serif);
+  font-size: 19px;
+  line-height: 1.25;
+}
+/* The whole card opens the product; the quick add sits above this layer. */
+.counter-name::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.counter-price {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+.counter-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.counter-progress {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  margin-right: 12px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--line);
+}
+.counter-progress i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+  background: var(--color-text);
+  transition:
+    left 120ms linear,
+    width var(--ease);
+}
+.counter-controls button {
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
   border: 1px solid var(--line);
   border-radius: 50%;
-  background: var(--color-surface-raised);
+  background: transparent;
   color: var(--color-text);
   cursor: pointer;
   transition:
     border-color var(--ease),
     color var(--ease);
 }
-.shelf-arrows button:first-child svg {
+.counter-controls button:first-of-type svg {
   transform: rotate(180deg);
 }
-.shelf-arrows button:hover {
+.counter-controls button:hover {
   border-color: var(--berry);
   color: var(--berry);
 }
-.shelf-arrows svg {
+.counter-controls svg {
   width: 18px;
   height: 18px;
 }
-.shelf-track {
-  display: grid;
-  grid-auto-columns: minmax(250px, calc((100% - 3 * 16px) / 4.3));
-  grid-auto-flow: column;
-  gap: 16px;
-  overflow-x: auto;
-  margin-inline: calc(var(--page-gutter) * -1);
-  padding: 4px var(--page-gutter) 12px;
-  scroll-padding-inline: var(--page-gutter);
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-}
-.shelf-track::-webkit-scrollbar {
-  display: none;
-}
-.shelf-card,
-.shelf-more {
-  scroll-snap-align: start;
-  animation: shelf-in 420ms var(--ease-standard) both;
-}
-.shelf-card {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  background: var(--color-surface-raised);
-  transition: box-shadow var(--ease);
-}
-.shelf-card:hover {
-  box-shadow: var(--shadow-soft);
-}
-.shelf-photo {
-  position: relative;
-  display: block;
-  overflow: hidden;
-  aspect-ratio: 4 / 5;
-  background: var(--accent-soft);
-}
-.shelf-photo img {
-  object-fit: cover;
-  transition: transform 350ms var(--ease-standard);
-}
-.shelf-card:hover .shelf-photo img {
-  transform: scale(1.03);
-}
-.shelf-type {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  padding: 6px 10px;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
-  color: var(--color-text);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-.shelf-body {
-  flex: 1;
-  padding: 14px 16px 12px;
-}
-.shelf-name {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--color-text);
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.3;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-.shelf-name::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-}
-.shelf-card {
-  position: relative;
-}
-.shelf-body p {
-  display: -webkit-box;
-  overflow: hidden;
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-/* The ticket: a dashed tear line with half-moon notches, then price and one action. */
-.shelf-ticket {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 16px 14px;
-  border-top: 1.5px dashed var(--line);
-}
-.shelf-ticket::before,
-.shelf-ticket::after {
-  content: "";
-  position: absolute;
-  top: -9px;
-  width: 16px;
-  height: 16px;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: var(--surface);
-}
-.shelf-ticket::before {
-  left: -9px;
-}
-.shelf-ticket::after {
-  right: -9px;
-}
-.shelf-ticket > span {
-  display: grid;
-  line-height: 1.15;
-}
-.shelf-ticket small {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
-}
-.shelf-ticket b {
-  color: var(--color-text);
-  font-size: 17px;
-}
-.shelf-ticket button,
-.shelf-ticket a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 38px;
-  padding: 0 14px;
-  border: 1px solid var(--berry);
-  border-radius: var(--radius-pill);
-  background: var(--berry);
-  color: var(--color-on-primary);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    background var(--ease),
-    color var(--ease);
-}
-.shelf-ticket a {
-  background: transparent;
-  color: var(--berry);
-}
-.shelf-ticket a:hover {
-  background: var(--berry);
-  color: var(--color-on-primary);
-}
-.shelf-ticket button.is-added {
-  border-color: var(--success);
-  background: var(--success);
-}
-.shelf-ticket svg {
-  width: 15px;
-  height: 15px;
-}
-.shelf-more {
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 14px;
-  padding: 24px;
-  border: 1.5px dashed var(--line);
-  border-radius: var(--radius-card);
-  color: var(--berry);
-  font-size: 16px;
-  font-weight: 700;
-  text-align: center;
-  transition:
-    background var(--ease),
-    border-color var(--ease);
-}
-.shelf-more svg {
-  width: 44px;
-  height: 44px;
-  padding: 12px;
-  border-radius: 50%;
-  background: var(--color-primary-soft);
-}
-.shelf-more:hover {
-  border-color: var(--berry);
-  background: var(--color-primary-soft);
-}
-@keyframes shelf-in {
+@keyframes counter-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
 }
-@media (max-width: 800px) {
-  .gallery-head {
-    flex-direction: column;
-    align-items: flex-start;
-    margin-bottom: 28px;
+@media (max-width: 1000px) {
+  .counter {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .shelf-bar {
-    margin-top: -8px;
+  .counter-panel {
+    padding: 28px 24px 24px;
   }
-  .shelf-arrows {
+  .counter-panel h2 {
+    margin-bottom: 20px;
+  }
+  /* The menu becomes a row of tabs so the products stay close. */
+  .counter-menu {
+    display: flex;
+    overflow-x: auto;
+    gap: 22px;
+    margin-bottom: 22px;
+    border-top: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-feature-text) 18%, transparent);
+    scrollbar-width: none;
+  }
+  .counter-menu::-webkit-scrollbar {
     display: none;
   }
-  .shelf-track {
-    grid-auto-columns: 72vw;
-    gap: 12px;
+  .counter-menu button {
+    flex: none;
+    min-height: 44px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .counter-menu button::before {
+    display: none;
+  }
+  .counter-menu button[aria-pressed="true"] {
+    border-bottom-color: var(--color-feature-highlight);
+  }
+  .counter-cta {
+    margin-top: 0;
+  }
+  .counter-track {
+    grid-auto-columns: calc((100% - 2 * 16px) / 2.4);
+    gap: 16px;
+  }
+}
+@media (max-width: 700px) {
+  .counter-track {
+    grid-auto-columns: 64vw;
+    margin-inline: calc(var(--page-gutter) * -1);
+    padding-inline: var(--page-gutter);
+    scroll-padding-inline: var(--page-gutter);
+  }
+  .counter-controls button {
+    display: none;
+  }
+  .counter-progress {
+    margin-right: 0;
+  }
+  .counter-name {
+    font-size: 17px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .shelf-card,
-  .shelf-more {
+  .counter-card {
     animation: none;
   }
-  .shelf-photo img {
+  .counter-photo img,
+  .counter-progress i {
     transition: none;
   }
-  .shelf-card:hover .shelf-photo img {
+  .counter-card:hover .counter-photo img {
     transform: none;
   }
 }

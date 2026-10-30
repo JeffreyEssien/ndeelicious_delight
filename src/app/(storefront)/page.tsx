@@ -209,24 +209,19 @@ export default async function Home() {
       {!!gallery.length && (
         <section className="section gallery-section">
           <div className="site-container">
-            <div className="gallery-head">
-              <div>
-                <span className="overline">{home.gallery.eyebrow}</span>
-                <h2>{home.gallery.headline}</h2>
-              </div>
-              {business.instagramUrl && (
-                <a className="gallery-follow" href={business.instagramUrl} target={"_blank"} rel={"noreferrer"}>
-                  <Icon name="instagram" />
-                  {t("Follow along on Instagram")}
-                </a>
-              )}
-            </div>
             <KitchenGallery
+              eyebrow={home.gallery.eyebrow}
+              headline={home.gallery.headline}
               products={gallery}
               filters={kitchenFilters}
               allLabel={t("All")}
               allHref="/shop"
               allLinkLabel={t("Shop everything")}
+              instagram={
+                business.instagramUrl
+                  ? { href: business.instagramUrl, label: t("Follow along on Instagram") }
+                  : undefined
+              }
             />
           </div>
         </section>
