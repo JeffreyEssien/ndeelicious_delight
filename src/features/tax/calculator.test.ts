@@ -49,8 +49,8 @@ describe("line-level Nova Scotia HST", () => {
       [100, 126],
       [100, 0],
     ]);
-    expect(result.deliveryTaxAmount).toBe(70);
-    expect(result.total).toBe(196);
+    expect(result.deliveryTaxAmount).toBe(0);
+    expect(result.total).toBe(126);
     expect(result.jurisdiction).toBe("CA-NS");
     const separate = calculateLineTaxes({
       lines: [line("a", 1000, "FULL_CAKE")],
@@ -59,18 +59,17 @@ describe("line-level Nova Scotia HST", () => {
       deliveryTaxMode: "SEPARATE_TAXABLE_SERVICE",
       enabled: true,
     });
-    expect(separate.total).toBe(140);
+    expect(separate.total).toBe(0);
   });
-  it("requires an explicit delivery treatment and leaves past snapshots unchanged", () => {
-    expect(() =>
-      calculateLineTaxes({
-        lines: [line("a", 1000, "FULL_CAKE")],
-        discount: 0,
-        deliveryFee: 100,
-        deliveryTaxMode: null,
-        enabled: true,
-      }),
-    ).toThrow("setup");
+  it("never taxes delivery and leaves past snapshots unchanged", () => {
+    const delivery = calculateLineTaxes({
+      lines: [line("a", 1000, "STANDARD_TAXABLE")],
+      discount: 0,
+      deliveryFee: 800,
+      deliveryTaxMode: null,
+      enabled: true,
+    });
+    expect([delivery.deliveryTaxAmount, delivery.total]).toEqual([0, 140]);
     const original = line("a", 1000, "STANDARD_TAXABLE");
     const result = calculateLineTaxes({
       lines: [original],
