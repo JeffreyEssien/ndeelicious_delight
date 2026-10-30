@@ -37,7 +37,7 @@ export function InventoryBulk({ onSaved }: { onSaved: () => void }) {
     }
   }
   return (
-    <details className="admin-card inventory-bulk">
+    <details className="admin-card inventory-bulk" open>
       <summary>Update many at once (spreadsheet)</summary>
       <p>
         Optional. Export your stock to a spreadsheet, edit the numbers, and import it to update lots of items together.

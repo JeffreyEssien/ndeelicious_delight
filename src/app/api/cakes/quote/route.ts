@@ -10,6 +10,7 @@ import { isSameOrigin } from "@/lib/auth/validation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
 import { sendEmailToActiveAdmins } from "@/lib/email/admin-recipients";
+import { pushToAdmins } from "@/lib/push/send";
 import { getCakeConfiguration } from "@/lib/data/settings";
 import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 import { deleteImage, imageFolder, toStoragePath, uploadImage } from "@/lib/cloudinary";
@@ -109,6 +110,12 @@ export async function POST(request: Request) {
           `<p>${escapeHtml(t("Thank you, {name}. We’ll review request {number} and reply with the next step.", { name: parsed.data.customerName, number: requestNumber }))}</p>`,
           frame,
         ),
+      }),
+      pushToAdmins(service, {
+        title: `New cake request ${requestNumber}`,
+        body: `${parsed.data.customerName} · ${parsed.data.occasion} for ${parsed.data.deliveryDate}`,
+        url: "/admin/custom-cakes",
+        tag: `admin-cake-${requestNumber}`,
       }),
       sendEmailToActiveAdmins(service, {
         replyTo: customerEmail,

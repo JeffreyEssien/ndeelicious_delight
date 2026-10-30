@@ -1,5 +1,6 @@
 "use client";
 import { useCustomerText } from "@/components/customer-text-provider";
+import { OrderPushButton } from "@/components/order/order-push-button";
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -13,6 +14,7 @@ type PaymentState = {
   orderNumber?: string;
   checkoutUrl?: string;
   expired?: boolean;
+  processing?: boolean;
 };
 
 export function PaymentResult({
@@ -170,6 +172,7 @@ export function PaymentResult({
           {t(error)}
         </p>
       )}
+      {succeeded && payment?.orderNumber && <OrderPushButton orderNumber={payment.orderNumber} sessionId={sessionId} />}
       <div className="success-actions">
         {succeeded && payment?.orderNumber && (
           <Link
@@ -184,9 +187,24 @@ export function PaymentResult({
             {retrying ? t("Preparing payment…") : failed ? t("Try payment again") : t("Resume secure payment")}
           </button>
         )}
-        <Link href={succeeded ? "/shop" : "/checkout"} className="button button-secondary">
-          {succeeded ? t("Continue shopping") : t("Return to checkout")}
-        </Link>
+        {pending && !cancelled && payment?.orderNumber && (
+          <Link
+            href={`/track-order?order=${encodeURIComponent(payment.orderNumber)}`}
+            className="button button-primary"
+          >
+            {t("Track this order")}
+          </Link>
+        )}
+        {/* Only offer checkout again when nothing was paid; while confirming it would invite a second payment. */}
+        {succeeded || (pending && !cancelled) ? (
+          <Link href="/shop" className="button button-secondary">
+            {t("Continue shopping")}
+          </Link>
+        ) : (
+          <Link href="/checkout" className="button button-secondary">
+            {t("Return to checkout")}
+          </Link>
+        )}
       </div>
     </section>
   );

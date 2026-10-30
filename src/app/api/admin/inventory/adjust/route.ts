@@ -7,6 +7,7 @@ const schema = z.object({
   expected: z.number().int().min(0).max(2147483647),
   mode: z.enum(["add", "remove", "set"]),
   quantity: z.number().int().min(0).max(2147483647),
+  reason: z.string().trim().max(200).optional(),
 });
 export async function POST(request: Request) {
   const auth = await requireAdminRequest(request);
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
     p_quantity: input.quantity,
     p_admin_id: auth.admin.id,
     p_session_id: auth.sessionId,
+    p_reason: input.reason || null,
   });
   if (error) {
     const changed = error.message.includes("INVENTORY_CHANGED");

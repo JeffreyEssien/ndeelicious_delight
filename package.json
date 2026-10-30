@@ -23,7 +23,7 @@
     "db:seed": "node scripts/seed-catalog.mjs",
     "images:migrate": "node scripts/migrate-images-to-cloudinary.mjs",
     "start": "next start",
-    "test:db:local": "node scripts/test-cake-type-migrations.mjs && node scripts/test-commerce-migrations.mjs && node scripts/test-product-packs.mjs && node scripts/test-real-deletion.mjs",
+    "test:db:local": "node scripts/test-cake-type-migrations.mjs && node scripts/test-commerce-migrations.mjs && node scripts/test-product-packs.mjs && node scripts/test-real-deletion.mjs && node scripts/test-push-subscriptions.mjs && node scripts/test-push-delivery.mjs && node scripts/test-payment-confirmation.mjs && node scripts/test-stock-adjustments.mjs",
     "test:admin:db": "node scripts/test-admin-history.mjs && node scripts/test-admin-safe-operations.mjs && node scripts/test-admin-inventory-pagination.mjs && node scripts/test-admin-cake-publication.mjs && node scripts/test-admin-dashboard.mjs"
   },
   "dependencies": {
@@ -39,6 +39,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "stripe": "^22.6.2",
+    "web-push": "^3.6.7",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -53,6 +54,7 @@
     "@types/pdfkit": "^0.17.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "babel-plugin-react-compiler": "1.0.0",
     "pdfjs-dist": "^6.4.299",
     "pg": "^8.23.1",

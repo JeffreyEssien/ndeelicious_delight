@@ -1,54 +1,15 @@
 import { getCustomerEmailText } from "@/lib/customer-text";
 import { whatsappUrl } from "@/lib/contact";
-import { getBusinessSettings } from "@/lib/data/settings";
+import { getBusinessSettings, getStoreAppearance, getStoreTheme } from "@/lib/data/settings";
+import { orderCopy, orderStatusEmail } from "@/lib/email/order-email";
+import { resolveThemeTokens } from "@/lib/theme/tokens";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
+import { emailButton, emailFrame, escapeHtml, sendTransactionalEmail } from "@/lib/email/mailer";
+import { formatMoney } from "@/lib/format";
 import { sendEmailToActiveAdmins } from "@/lib/email/admin-recipients";
 import { createAccessToken, issueOrderDocument, latestDocument } from "@/lib/documents/service";
 import { getSiteUrl } from "@/lib/site-url";
-
-const messages: Record<string, { subject: string; title: string; body: string }> = {
-  ORDER_RECEIVED: {
-    subject: "We received your order",
-    title: "Your order has been received",
-    body: "Complete payment to reserve your order. We’ll confirm it as soon as payment succeeds.",
-  },
-  PAID: {
-    subject: "Payment confirmed",
-    title: "Your payment is confirmed",
-    body: "Your order is paid and is waiting for confirmation from the bakery.",
-  },
-  CONFIRMED: {
-    subject: "Order confirmed",
-    title: "Your order is confirmed",
-    body: "The bakery has confirmed your order and will begin preparing it on schedule.",
-  },
-  PREPARING: {
-    subject: "Your order is being prepared",
-    title: "We’re preparing your order",
-    body: "Your order is now in the kitchen and being made with care.",
-  },
-  READY: {
-    subject: "Your order is ready",
-    title: "Your order is ready",
-    body: "Your order is ready for its next step. Please check the fulfilment details below.",
-  },
-  OUT_FOR_DELIVERY: {
-    subject: "Your order is out for delivery",
-    title: "Your order is on the way",
-    body: "Your order has left the bakery and is out for delivery.",
-  },
-  DELIVERED: {
-    subject: "Your order has been delivered",
-    title: "Order delivered",
-    body: "Your order has been marked as delivered. We hope you enjoy every bite.",
-  },
-  REFUNDED: {
-    subject: "Your order was refunded",
-    title: "Refund processed",
-    body: "A full refund has been processed. Your bank may take several business days to display it.",
-  },
-};
+import { pushToAdmins, pushToOrder } from "@/lib/push/send";
 
 export async function queueOrderNotification(db: SupabaseClient, orderId: string, eventType: "ORDER_RECEIVED") {
   const { data: order, error: orderError } = await db.from("orders").select("email").eq("id", orderId).single();
@@ -79,12 +40,12 @@ async function deliver(db: SupabaseClient, notificationId: string) {
   const { data: order, error: orderError } = await db
     .from("orders")
     .select(
-      "order_number,customer_name,fulfilment,delivery_address_snapshot,order_items(product_name,variant_name,quantity,product_snapshot)",
+      "order_number,customer_name,fulfilment,delivery_address_snapshot,subtotal,discount_total,delivery_fee,tax_total,grand_total,currency,order_items(product_name,variant_name,quantity,final_price,product_snapshot)",
     )
     .eq("id", notification.order_id)
     .single();
-  const message = messages[notification.event_type];
-  if (orderError || !order || !message) {
+  const fulfilment: "pickup" | "delivery" = order?.fulfilment === "pickup" ? "pickup" : "delivery";
+  if (orderError || !order || !orderCopy(notification.event_type, fulfilment)) {
     await db
       .from("order_notifications")
       .update({ status: "FAILED", attempts: notification.attempts + 1, last_error: "invalid-notification-data" })
@@ -92,28 +53,11 @@ async function deliver(db: SupabaseClient, notificationId: string) {
     return false;
   }
   const { t, frame } = await getCustomerEmailText(db);
-  const summary = (order.order_items ?? [])
-    .map((item) => {
-      const selections = (item.product_snapshot?.selections ?? []) as { group: string; value: string }[];
-      const detail = selections.length
-        ? `<br><small>${selections.map((s) => `${escapeHtml(s.group)}: ${escapeHtml(s.value)}`).join(" · ")}</small>`
-        : "";
-      return `<li>${escapeHtml(item.product_name)} · ${escapeHtml(item.variant_name ?? t("Standard"))} × ${item.quantity}${detail}</li>`;
-    })
-    .join("");
-  const fulfilment =
-    order.fulfilment === "pickup"
-      ? escapeHtml(t("Bakery pickup"))
-      : escapeHtml(
-          [
-            order.delivery_address_snapshot?.street,
-            order.delivery_address_snapshot?.city,
-            order.delivery_address_snapshot?.province,
-            order.delivery_address_snapshot?.postalCode,
-          ]
-            .filter(Boolean)
-            .join(", "),
-        );
+  const [business, theme, appearance] = await Promise.all([
+    getBusinessSettings(db),
+    getStoreTheme(db),
+    getStoreAppearance(db),
+  ]);
   let receiptUrl = "";
   let receiptDocumentId = "";
   if (notification.event_type === "PAID") {
@@ -127,17 +71,63 @@ async function deliver(db: SupabaseClient, notificationId: string) {
     receiptUrl = `${getSiteUrl()}/documents/orders/${encodeURIComponent(order.order_number)}/receipt?token=${receipt.token}`;
     receiptDocumentId = receipt.document.id;
   }
-  const business = await getBusinessSettings(db);
-  const whatsapp = whatsappUrl(business.whatsapp);
-  const result = await sendTransactionalEmail({
-    to: notification.recipient,
-    subject: `${t(message.subject)} · ${order.order_number}`,
-    html: emailFrame(
-      t(message.title),
-      `<p>${escapeHtml(t("Hello {name},", { name: order.customer_name }))}</p><p>${escapeHtml(t(message.body))}</p><p><b>${escapeHtml(t("Order {number}", { number: order.order_number }))}</b></p><ul>${summary}</ul><p>${fulfilment}</p>${receiptUrl ? `<p><a href="${receiptUrl}">${escapeHtml(t("View or download your receipt"))}</a></p>` : ""}${whatsapp ? `<p><a href="${escapeHtml(whatsapp)}">${escapeHtml(t("Chat with us on WhatsApp"))}</a></p>` : ""}`,
-      frame,
-    ),
+  const schedule = business.fulfilmentSchedule;
+  const address = order.delivery_address_snapshot;
+  const email = orderStatusEmail(t, {
+    event: notification.event_type,
+    customerName: order.customer_name,
+    orderNumber: order.order_number,
+    fulfilment,
+    items: (order.order_items ?? []).map((item) => {
+      const selections = (item.product_snapshot?.selections ?? []) as { group: string; value: string }[];
+      return {
+        name: item.product_name,
+        detail: [item.variant_name ?? t("Standard"), ...selections.map((s) => `${s.group}: ${s.value}`)].join(" · "),
+        quantity: item.quantity,
+        total: item.final_price,
+      };
+    }),
+    totals: {
+      subtotal: order.subtotal,
+      discount: order.discount_total,
+      delivery: order.delivery_fee,
+      tax: order.tax_total ?? 0,
+      total: order.grand_total,
+    },
+    currency: order.currency,
+    locale: business.locale,
+    deliveryAddress: address
+      ? [address.street, address.addressLine2, address.city, address.province, address.postalCode]
+          .filter(Boolean)
+          .join(", ")
+      : undefined,
+    pickup:
+      fulfilment === "pickup"
+        ? {
+            address:
+              schedule?.pickupAddress ||
+              [business.address, business.city, business.province].filter(Boolean).join(", "),
+            hours: business.openingHours || "",
+            instructions: schedule?.pickupInstructions ?? "",
+          }
+        : undefined,
+    trackUrl: `${getSiteUrl()}/track-order?order=${encodeURIComponent(order.order_number)}`,
+    receiptUrl: receiptUrl || undefined,
+    whatsappUrl: whatsappUrl(business.whatsapp) || undefined,
+    businessName: frame.businessName,
+    footer: frame.footer,
+    accent: resolveThemeTokens(theme, appearance).primary,
   });
+  if (!email) return false;
+  // Push goes out once per order event, alongside the first email attempt; email retries don't repeat it.
+  if (notification.attempts === 0)
+    await pushToOrder(db, notification.order_id, {
+      title: email.pushTitle,
+      body: email.pushBody,
+      url: `/track-order?order=${encodeURIComponent(order.order_number)}`,
+      tag: `order-${order.order_number}`,
+    });
+  const result = await sendTransactionalEmail({ to: notification.recipient, subject: email.subject, html: email.html });
   const now = new Date().toISOString();
   await db
     .from("order_notifications")
@@ -183,21 +173,35 @@ export async function deliverPendingOrderNotifications(db: SupabaseClient, order
 export async function sendPaidOrderAdminNotification(db: SupabaseClient, orderNumber: string) {
   const { data: order } = await db
     .from("orders")
-    .select("customer_name,order_number,order_items(product_name,variant_name,quantity)")
+    .select(
+      "customer_name,order_number,fulfilment,grand_total,currency,order_items(product_name,variant_name,quantity)",
+    )
     .eq("order_number", orderNumber)
     .maybeSingle();
   if (!order) return;
+  const business = await getBusinessSettings(db).catch(() => null);
+  const total =
+    typeof order.grand_total === "number"
+      ? ` · ${formatMoney(order.grand_total, order.currency, business?.locale)}`
+      : "";
   const summary = (order.order_items ?? [])
     .map(
       (item) =>
         `<li>${escapeHtml(item.product_name)} · ${escapeHtml(item.variant_name ?? "Standard")} × ${item.quantity}</li>`,
     )
     .join("");
+  await pushToAdmins(db, {
+    title: `Paid order ${order.order_number}`,
+    body: `${order.customer_name} paid. Ready to confirm.`,
+    url: `/admin/orders?detail=${encodeURIComponent(order.order_number)}`,
+    tag: `admin-order-${order.order_number}`,
+  });
   await sendEmailToActiveAdmins(db, {
     subject: `Paid order ${order.order_number}`,
     html: emailFrame(
-      "A paid order is ready to confirm",
-      `<p>${escapeHtml(order.customer_name)} paid for order <b>${escapeHtml(order.order_number)}</b>.</p><ul>${summary}</ul>`,
+      "New paid order",
+      `<p style="margin:0">${escapeHtml(order.customer_name)} paid for <b>${escapeHtml(order.order_number)}</b>${escapeHtml(total)}${order.fulfilment ? ` · ${order.fulfilment === "pickup" ? "Pickup" : "Delivery"}` : ""}.</p><ul style="padding-left:20px">${summary}</ul>${emailButton(`${getSiteUrl()}/admin/orders?detail=${encodeURIComponent(order.order_number)}`, "Open order")}`,
+      { businessName: business?.businessName, footer: "Confirm it from the Orders page when you’re ready." },
     ),
   });
 }

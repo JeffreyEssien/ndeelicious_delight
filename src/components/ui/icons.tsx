@@ -79,6 +79,30 @@ export const Icon = ({ name, ...props }: Props & { name: string }) => {
         <path d="M8 11V8a4 4 0 0 1 8 0v3" />
       </>
     ),
+    refresh: (
+      <>
+        <path d="M20 11a8 8 0 0 0-14.6-4.5L4 8" />
+        <path d="M4 4v4h4" />
+        <path d="M4 13a8 8 0 0 0 14.6 4.5L20 16" />
+        <path d="M20 20v-4h-4" />
+      </>
+    ),
+    download: (
+      <>
+        <path d="M12 4v11M7 10l5 5 5-5" />
+        <path d="M5 20h14" />
+      </>
+    ),
+    filter: <path d="M4 6h16M7 12h10M10 18h4" />,
+    phone: (
+      <path d="M6.6 3.5h2.8l1.4 4-2 1.3a12 12 0 0 0 6.4 6.4l1.3-2 4 1.4v2.8a2 2 0 0 1-2.2 2A16.6 16.6 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2Z" />
+    ),
+    mail: (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="m4 7 8 6 8-6" />
+      </>
+    ),
     clock: (
       <>
         <circle cx="12" cy="12" r="9" />

@@ -34,40 +34,67 @@ export const defaultCustomerText: CustomerText = {
     "Your {kind} is ready": "Your {kind} is ready",
     "Hi {name},": "Hi {name},",
     "View or download {number}": "View or download {number}",
-    "We received your order": "We received your order",
-    "Your order has been received": "Your order has been received",
-    "Complete payment to reserve your order. We’ll confirm it as soon as payment succeeds.":
-      "Complete payment to reserve your order. We’ll confirm it as soon as payment succeeds.",
-    "Payment confirmed": "Payment confirmed",
-    "Your payment is confirmed": "Your payment is confirmed",
-    "Your order is paid and is waiting for confirmation from the bakery.":
-      "Your order is paid and is waiting for confirmation from the bakery.",
-    "Order confirmed": "Order confirmed",
-    "Your order is confirmed": "Your order is confirmed",
-    "The bakery has confirmed your order and will begin preparing it on schedule.":
-      "The bakery has confirmed your order and will begin preparing it on schedule.",
-    "Your order is being prepared": "Your order is being prepared",
-    "We’re preparing your order": "We’re preparing your order",
-    "Your order is now in the kitchen and being made with care.":
-      "Your order is now in the kitchen and being made with care.",
-    "Your order is ready": "Your order is ready",
-    "Your order is ready for its next step. Please check the fulfilment details below.":
-      "Your order is ready for its next step. Please check the fulfilment details below.",
-    "Your order is out for delivery": "Your order is out for delivery",
-    "Your order is on the way": "Your order is on the way",
-    "Your order has left the bakery and is out for delivery.":
-      "Your order has left the bakery and is out for delivery.",
-    "Your order has been delivered": "Your order has been delivered",
-    "Order delivered": "Order delivered",
-    "Your order has been marked as delivered. We hope you enjoy every bite.":
-      "Your order has been marked as delivered. We hope you enjoy every bite.",
-    "Your order was refunded": "Your order was refunded",
-    "Refund processed": "Refund processed",
-    "A full refund has been processed. Your bank may take several business days to display it.":
-      "A full refund has been processed. Your bank may take several business days to display it.",
     Receipt: "Receipt",
     Invoice: "Invoice",
     Quote: "Quote",
+    "We’ve got your order": "We’ve got your order",
+    "Your order is in!": "Your order is in!",
+    "Thank you for choosing us. As soon as your payment goes through, we’ll put your order on the schedule.":
+      "Thank you for choosing us. As soon as your payment goes through, we’ll put your order on the schedule.",
+    "Payment received, thank you!": "Payment received, thank you!",
+    "You’re all set": "You’re all set",
+    "Your payment came through. We’ll confirm your order shortly and let you know when it’s in the oven.":
+      "Your payment came through. We’ll confirm your order shortly and let you know when it’s in the oven.",
+    "Your order is confirmed": "Your order is confirmed",
+    "It’s on our schedule": "It’s on our schedule",
+    "We’ve confirmed your order and set aside time in the kitchen for it.":
+      "We’ve confirmed your order and set aside time in the kitchen for it.",
+    "Your order is in the kitchen": "Your order is in the kitchen",
+    "We’re baking for you": "We’re baking for you",
+    "Your order is being made right now, by hand and with care.":
+      "Your order is being made right now, by hand and with care.",
+    "Your order is ready to collect": "Your order is ready to collect",
+    "Ready when you are": "Ready when you are",
+    "Your order is boxed up and waiting for you. Pop by during pickup hours.":
+      "Your order is boxed up and waiting for you. Pop by during pickup hours.",
+    "Your order is packed": "Your order is packed",
+    "All packed up": "All packed up",
+    "Your order is packed and will be heading your way soon.":
+      "Your order is packed and will be heading your way soon.",
+    "Your order is on its way": "Your order is on its way",
+    "On its way to you": "On its way to you",
+    "Your order has left our kitchen. Keep an eye out, it won’t be long!":
+      "Your order has left our kitchen. Keep an eye out, it won’t be long!",
+    "Enjoy every bite": "Enjoy every bite",
+    "Thank you for picking up your order. We hope it brings a smile to your table.":
+      "Thank you for picking up your order. We hope it brings a smile to your table.",
+    "Your order has arrived": "Your order has arrived",
+    "Delivered. Enjoy!": "Delivered. Enjoy!",
+    "Your order has arrived. We hope it brings a smile to your table.":
+      "Your order has arrived. We hope it brings a smile to your table.",
+    "Your refund is on its way": "Your refund is on its way",
+    "We’ve refunded your payment in full. It can take a few business days to show in your account.":
+      "We’ve refunded your payment in full. It can take a few business days to show in your account.",
+    Ordered: "Ordered",
+    Paid: "Paid",
+    Baking: "Baking",
+    Ready: "Ready",
+    Collected: "Collected",
+    "On its way": "On its way",
+    Delivered: "Delivered",
+    Subtotal: "Subtotal",
+    Discount: "Discount",
+    Delivery: "Delivery",
+    Free: "Free",
+    Tax: "Tax",
+    Total: "Total",
+    "Pick up from": "Pick up from",
+    "Delivering to": "Delivering to",
+    "Track your order": "Track your order",
+    "Thank you for letting us bake for you.": "Thank you for letting us bake for you.",
+    "The {business} kitchen": "The {business} kitchen",
+    "Questions?": "Questions?",
+    "Message us on WhatsApp": "Message us on WhatsApp",
   },
   "verified review form": {
     "Thank you for your review.": "Thank you for your review.",
@@ -689,6 +716,17 @@ export const defaultCustomerText: CustomerText = {
     "Skip to main content": "Skip to main content",
     "Chat with {value1} on WhatsApp": "Chat with {value1} on WhatsApp",
     wa: "wa",
+  },
+  "order notifications": {
+    "On iPhone? Add this site to your Home Screen to get order alerts.":
+      "On iPhone? Add this site to your Home Screen to get order alerts.",
+    "You’ll get a ping on this device when your order moves.":
+      "You’ll get a ping on this device when your order moves.",
+    "Notifications are blocked for this site in your browser settings.":
+      "Notifications are blocked for this site in your browser settings.",
+    "Turning on…": "Turning on…",
+    "Ping me with updates": "Ping me with updates",
+    "That didn’t work. Please try again.": "That didn’t work. Please try again.",
   },
   footer: {
     Instagram: "Instagram",
