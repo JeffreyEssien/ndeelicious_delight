@@ -71,6 +71,28 @@ async function deliver(db: SupabaseClient, notificationId: string) {
     receiptUrl = `${getSiteUrl()}/documents/orders/${encodeURIComponent(order.order_number)}/receipt?token=${receipt.token}`;
     receiptDocumentId = receipt.document.id;
   }
+  let refund: { amount: number; refundedTotal: number; paid: number } | undefined;
+  if (notification.event_type === "REFUNDED" || notification.event_type === "PARTIALLY_REFUNDED") {
+    const [{ data: payment }, { data: latest }] = await Promise.all([
+      db
+        .from("payments")
+        .select("amount,refunded_amount")
+        .eq("order_id", notification.order_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      db
+        .from("order_refunds")
+        .select("amount")
+        .eq("order_id", notification.order_id)
+        .eq("status", "SUCCEEDED")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    if (payment && latest)
+      refund = { amount: latest.amount, refundedTotal: payment.refunded_amount, paid: payment.amount };
+  }
   const schedule = business.fulfilmentSchedule;
   const address = order.delivery_address_snapshot;
   const email = orderStatusEmail(t, {
@@ -114,6 +136,7 @@ async function deliver(db: SupabaseClient, notificationId: string) {
     trackUrl: `${getSiteUrl()}/track-order?order=${encodeURIComponent(order.order_number)}`,
     receiptUrl: receiptUrl || undefined,
     whatsappUrl: whatsappUrl(business.whatsapp) || undefined,
+    refund,
     businessName: frame.businessName,
     footer: frame.footer,
     accent: resolveThemeTokens(theme, appearance).primary,

@@ -75,6 +75,13 @@ export const defaultCustomerText: CustomerText = {
     "Your refund is on its way": "Your refund is on its way",
     "We’ve refunded your payment in full. It can take a few business days to show in your account.":
       "We’ve refunded your payment in full. It can take a few business days to show in your account.",
+    "We’ve sent you a refund": "We’ve sent you a refund",
+    "A refund is on its way": "A refund is on its way",
+    "We’ve refunded part of your payment. It can take a few business days to show in your account.":
+      "We’ve refunded part of your payment. It can take a few business days to show in your account.",
+    Refunded: "Refunded",
+    "Refunded so far": "Refunded so far",
+    "You paid": "You paid",
     Ordered: "Ordered",
     Paid: "Paid",
     Baking: "Baking",
