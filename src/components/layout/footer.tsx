@@ -3,6 +3,7 @@ import { useCustomerText } from "@/components/customer-text-provider";
 import { whatsappUrl } from "@/lib/contact";
 import Link from "next/link";
 import { NewsletterForm } from "./newsletter-form";
+import { NextDelivery } from "./next-delivery";
 import { PaymentMarks } from "./payment-marks";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { Icon } from "@/components/ui/icons";
@@ -47,6 +48,7 @@ export function Footer({ content, business }: { content: StorefrontContent["glob
           <Link href="/delivery-information">{t("Delivery information")}</Link>
           <Link href="/faq">{t("Frequently asked")}</Link>
           <Link href="/contact">{t("Contact us")}</Link>
+          <NextDelivery business={business} />
         </div>
         <div className="footer-news">
           <h3>{content.newsletterTitle}</h3>
