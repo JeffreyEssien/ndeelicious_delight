@@ -835,40 +835,6 @@
   font-size: 17px;
   line-height: 1.6;
 }
-.find-us-steps {
-  display: grid;
-  gap: 14px;
-  margin: 4px 0;
-  padding: 0;
-  list-style: none;
-}
-.find-us-steps li {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-}
-.find-us-steps li > b {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--berry);
-  font-size: 12px;
-}
-.find-us-steps h3 {
-  margin: 2px 0 2px;
-  font-size: 16px;
-}
-.find-us-steps p {
-  margin: 0;
-  color: var(--color-on-accent);
-  font-size: 14px;
-  line-height: 1.5;
-  opacity: 0.85;
-}
 .find-us-actions {
   display: flex;
   flex-wrap: wrap;
@@ -890,7 +856,7 @@
   position: relative;
   display: flex;
   align-items: flex-end;
-  min-height: 460px;
+  min-height: 380px;
   padding: 24px;
   overflow: hidden;
   background: var(--berry-dark);

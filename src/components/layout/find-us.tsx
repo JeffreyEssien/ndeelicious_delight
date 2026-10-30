@@ -58,7 +58,7 @@ export function FindUs({ business }: { business: BusinessSettings }) {
       setNextPickup(
         new Intl.DateTimeFormat("en-CA", {
           timeZone: "America/Halifax",
-          weekday: "long",
+          weekday: "short",
           month: "short",
           day: "numeric",
           hour: "numeric",
@@ -70,37 +70,13 @@ export function FindUs({ business }: { business: BusinessSettings }) {
     }
   }, [pickup, schedule]);
   if (!address) return null;
-  const steps = pickup
-    ? [
-        [t("Order online"), t("Pick your pies, rolls or cake and choose pickup at checkout.")],
-        [t("We bake it fresh"), t("Your order is made for you. We’ll email when it’s ready.")],
-        [t("Collect and enjoy"), t("Pop by during pickup hours. No delivery fee.")],
-      ]
-    : [];
   return (
     <section className="section site-container find-us">
       <div className="find-us-panel">
         <div className="find-us-copy">
-          <span className="overline">{pickup ? t("Free pickup in Halifax") : t("Visit us")}</span>
-          <h2>{pickup ? t("Order online. Collect it fresh.") : t("Find us in Halifax")}</h2>
-          <p>
-            {pickup
-              ? t("Skip the delivery fee and pick up straight from our kitchen. It takes three easy steps.")
-              : t("Come say hello and see what’s fresh today.")}
-          </p>
-          {!!steps.length && (
-            <ol className="find-us-steps">
-              {steps.map(([title, body], index) => (
-                <li key={title}>
-                  <b>{String(index + 1).padStart(2, "0")}</b>
-                  <div>
-                    <h3>{title}</h3>
-                    <p>{body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
+          <span className="overline">{pickup ? t("Pickup in Halifax") : t("Visit us")}</span>
+          <h2>{pickup ? t("Order ahead. Swing by. Dig in.") : t("Come say hi.")}</h2>
+          <p>{pickup ? t("We’ll have it boxed up and waiting.") : t("Pop in and see what’s fresh.")}</p>
           <div className="find-us-actions">
             <Link className="button button-primary" href="/shop">
               {pickup ? t("Order for pickup") : t("Shop now")} <Icon name="arrow" />
@@ -111,10 +87,10 @@ export function FindUs({ business }: { business: BusinessSettings }) {
           </div>
           {(whatsapp || business.phone) && (
             <p className="find-us-help">
-              {t("Questions before you come?")}{" "}
+              {t("Got questions?")}{" "}
               {whatsapp ? (
                 <a href={whatsapp} target="_blank" rel="noreferrer">
-                  {t("Message us on WhatsApp")}
+                  {t("WhatsApp us")}
                 </a>
               ) : (
                 <a href={`tel:${business.phone.replace(/[^0-9+]/g, "")}`}>
