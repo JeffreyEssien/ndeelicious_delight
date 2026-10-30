@@ -858,6 +858,94 @@
   font-size: 13px;
   font-weight: 600;
 }
+/* Homepage: stockists folded into the ready-to-bake band. */
+.ready-stockists {
+  margin-top: 88px;
+}
+.ready-stockists-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px 48px;
+  margin-bottom: 28px;
+}
+.ready-stockists-head h3 {
+  margin: 12px 0 0;
+  font-size: clamp(26px, 3vw, 36px);
+  letter-spacing: -0.03em;
+}
+.ready-stockists-head p {
+  max-width: 400px;
+  margin: 0;
+  color: var(--color-on-accent);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.stockist-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  box-shadow: 0 18px 48px rgba(54, 12, 82, 0.06);
+  backdrop-filter: blur(10px);
+}
+.stockist-strip .stockist-card {
+  display: flex;
+  flex-direction: column;
+  padding: 28px 26px 26px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  /* Hairlines on the leading edges; the panel's overflow clips the ones on the
+     outer edge, so dividers stay correct however the columns wrap. */
+  box-shadow:
+    -1px 0 0 var(--line),
+    0 -1px 0 var(--line);
+  transition: background-color 220ms ease;
+}
+.stockist-strip .stockist-card:hover {
+  background: color-mix(in srgb, var(--berry) 4%, transparent);
+}
+.stockist-index {
+  margin-bottom: 18px;
+  color: var(--berry);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.stockist-strip .stockist-card h3 {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+.stockist-strip .stockist-address {
+  flex: 1;
+  margin-bottom: 20px;
+}
+@media (max-width: 900px) {
+  .ready-stockists {
+    margin-top: 56px;
+  }
+  .ready-stockists-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .stockist-strip {
+    grid-template-columns: 1fr;
+  }
+  .stockist-strip .stockist-card {
+    padding: 22px;
+  }
+  .stockist-index {
+    margin-bottom: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stockist-strip .stockist-card {
+    transition: none;
+  }
+}
 .cake-type-group-title {
   margin: 22px 0 10px;
   font-size: 15px;

@@ -725,6 +725,10 @@ export const defaultCustomerText: CustomerText = {
   "Page: (storefront)": {
     "No featured products are currently published.": "No featured products are currently published.",
     "Follow along ↗": "Follow along ↗",
+    "Also in stores": "Also in stores",
+    "Pick up a box near you": "Pick up a box near you",
+    "Our frozen pies and sausage rolls are stocked across Halifax and Dartmouth.":
+      "Our frozen pies and sausage rolls are stocked across Halifax and Dartmouth.",
   },
   layout: {
     "Skip to checkout": "Skip to checkout",
