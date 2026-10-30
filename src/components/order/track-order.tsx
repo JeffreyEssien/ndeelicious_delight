@@ -1,5 +1,6 @@
 "use client";
 import { useCustomerText } from "@/components/customer-text-provider";
+import { OrderPushButton } from "@/components/order/order-push-button";
 import { type FormEvent, useState } from "react";
 import { Input } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
@@ -123,6 +124,7 @@ export function TrackOrder({ initial = "" }: { initial?: string }) {
           ))}
         </div>
       )}
+      {!closed && <OrderPushButton orderNumber={order.order_number} email={email} />}
       <button type="button" className="text-button" onClick={() => setOrder(null)}>
         {t("Track a different order")}
       </button>
