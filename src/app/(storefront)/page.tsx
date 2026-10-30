@@ -10,6 +10,7 @@ import { getProducts } from "@/lib/data/catalog";
 import { isProductPurchasable } from "@/features/catalog/availability";
 import { HeroShowcase } from "@/components/layout/hero-showcase";
 import { resolveHeroSlides } from "@/features/catalog/hero-slides";
+import { FindUs } from "@/components/layout/find-us";
 import { Stockists } from "@/components/layout/stockists";
 import { NewsletterForm } from "@/components/layout/newsletter-form";
 import { getApprovedReviews } from "@/lib/data/reviews";
@@ -208,32 +209,7 @@ export default async function Home() {
           </div>
         </section>
       )}
-      {(business.address || business.city) && (
-        <section className="section site-container find-us">
-          <div className="section-head">
-            <div>
-              <span className="overline">{t("Visit us")}</span>
-              <h2>{t("Find us in Halifax")}</h2>
-            </div>
-            <p>{t("Collect your order from the bakery, or come say hello.")}</p>
-          </div>
-          <div className="find-us-card">
-            <div>
-              <h3>{business.businessName}</h3>
-              <p>{[business.address, business.city, business.province].filter(Boolean).join(", ")}</p>
-              {business.openingHours && <p className="find-us-hours">{business.openingHours}</p>}
-            </div>
-            <a
-              className="button button-secondary"
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([business.address, business.city, business.province].filter(Boolean).join(", "))}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t("Get directions")} <Icon name="arrow" />
-            </a>
-          </div>
-        </section>
-      )}
+      <FindUs business={business} />
       {reviews.length > 0 && (
         <section className="section section-tint testimonials-section">
           <div className="site-container">
