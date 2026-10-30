@@ -89,7 +89,11 @@ export async function deliverCakeQuoteEmail(db: SupabaseClient, deliveryId: stri
     ),
   });
   if (!result.sent) {
-    await markFailed(db, delivery, result.reason ?? "provider-error");
+    await markFailed(
+      db,
+      delivery,
+      "detail" in result && result.detail ? `${result.reason}: ${result.detail}` : (result.reason ?? "provider-error"),
+    );
     return false;
   }
   const sentAt = new Date().toISOString();

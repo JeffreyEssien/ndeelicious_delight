@@ -661,12 +661,18 @@
   right: 0;
   display: grid;
   gap: 8px;
+  width: max-content;
   min-width: 230px;
+  max-width: min(320px, calc(100vw - 32px));
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: 0 12px 32px rgba(40, 34, 32, 0.14);
+}
+.op-more[data-align="start"] > div {
+  right: auto;
+  left: 0;
 }
 .op-card {
   padding: 18px 20px;
@@ -890,10 +896,6 @@
   }
   .op-card {
     padding: 16px;
-  }
-  .op-more > div {
-    right: auto;
-    left: 0;
   }
 }
 

@@ -171,7 +171,7 @@ async function deliver(db: SupabaseClient, notificationId: string) {
         : {
             status: "FAILED",
             attempts: notification.attempts + 1,
-            last_error: result.reason,
+            last_error: "detail" in result && result.detail ? `${result.reason}: ${result.detail}` : result.reason,
             next_attempt_at: new Date(Date.now() + 15 * 60_000).toISOString(),
             updated_at: now,
           },

@@ -4,8 +4,35 @@ export type EmailInput = {
   to: string | string[];
   subject: string;
   html: string;
+  /** Plain-text version; made from the HTML when not given. */
+  text?: string;
   replyTo?: string;
 };
+
+const entities: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", nbsp: " " };
+
+/**
+ * A readable plain-text copy of an email. Sending HTML without one is a common spam signal,
+ * and some providers quietly drop such mail.
+ */
+export function htmlToText(html: string) {
+  return html
+    .replace(/<(head|style|script)[^>]*>[\s\S]*?<\/\1>/gi, "")
+    .replace(/<div[^>]*display:none[^>]*>[\s\S]*?<\/div>/gi, "")
+    .replace(/<a\s[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (_, href: string, label: string) => {
+      const text = label.replace(/<[^>]+>/g, "").trim();
+      return text && text !== href ? `${text} (${href})` : href;
+    })
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h[1-6]|tr|table|li)>/gi, "\n")
+    .replace(/<\/td>/gi, "  ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (_, name: string) => entities[name])
+    .replace(/[ \t]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 
 export function escapeHtml(value: string) {
   return value.replace(
@@ -65,15 +92,24 @@ export async function sendTransactionalEmail(input: EmailInput) {
       replyTo: input.replyTo,
       subject: input.subject,
       html: input.html,
+      text: input.text ?? htmlToText(input.html),
     });
     if (!result.accepted?.length || result.rejected?.length) {
-      return { sent: false, reason: "provider-error" as const };
+      const detail = `rejected by the mail server${result.response ? `: ${result.response}` : ""}`.slice(0, 300);
+      console.warn("SMTP delivery failed", detail);
+      return { sent: false, reason: "provider-error" as const, detail };
     }
     return { sent: true, id: result.messageId };
   } catch (error) {
-    const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "unknown";
-    console.warn("SMTP delivery failed", code);
-    return { sent: false, reason: "provider-error" as const };
+    // Keep the server's own words (for example a daily limit or a refused password) so the
+    // failure can be read in the order's email history, not just the logs.
+    const field = (name: string) =>
+      typeof error === "object" && error !== null && name in error
+        ? String((error as Record<string, unknown>)[name])
+        : "";
+    const detail = [field("code"), field("response") || field("message")].filter(Boolean).join(" ").slice(0, 300);
+    console.warn("SMTP delivery failed", detail || "unknown");
+    return { sent: false, reason: "provider-error" as const, detail: detail || undefined };
   }
 }
 
@@ -103,5 +139,5 @@ export function emailFrame(title: string, body: string, wording: EmailWording = 
   const preheader = wording.preheader
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(wording.preheader)}</div>`
     : "";
-  return `${preheader}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f1ec;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${ink}"><tr><td align="center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:20px;overflow:hidden"><tr><td style="background:${color};padding:22px 32px;color:#ffffff;font-size:18px;font-weight:800;letter-spacing:0.02em">${name}</td></tr><tr><td style="padding:32px 32px 8px;font-size:16px;line-height:1.6"><h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;color:${ink}">${escapeHtml(title)}</h1>${body}</td></tr><tr><td style="padding:24px 32px 32px;color:${muted};font-size:13px;line-height:1.6;border-top:1px solid #f0e9e4">${escapeHtml(wording.footer ?? "Made with care.")}<br>${name}</td></tr></table></td></tr></table>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title></head><body style="margin:0;padding:0;background:#f6f1ec">${preheader}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f1ec;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${ink}"><tr><td align="center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:20px;overflow:hidden"><tr><td style="background:${color};padding:22px 32px;color:#ffffff;font-size:18px;font-weight:800;letter-spacing:0.02em">${name}</td></tr><tr><td style="padding:32px 32px 8px;font-size:16px;line-height:1.6"><h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;color:${ink}">${escapeHtml(title)}</h1>${body}</td></tr><tr><td style="padding:24px 32px 32px;color:${muted};font-size:13px;line-height:1.6;border-top:1px solid #f0e9e4">${escapeHtml(wording.footer ?? "Made with care.")}<br>${name}</td></tr></table></td></tr></table></body></html>`;
 }
