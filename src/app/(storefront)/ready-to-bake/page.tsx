@@ -60,7 +60,7 @@ export default async function Page() {
         </div>
       </section>
       {Boolean(page.stockists?.length) && (
-        <section className="site-container section">
+        <section className="site-container section stockists-section" id="stores">
           <span className="overline">{t("Available across Halifax HRM")}</span>
           <h2>{t("Find us in stores")}</h2>
           <p>

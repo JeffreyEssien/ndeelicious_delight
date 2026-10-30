@@ -826,6 +826,10 @@
 .newsletter-band .newsletter-success {
   color: var(--success) !important;
 }
+/* Target of the "Find a store" menu link; clears the sticky header. */
+.stockists-section {
+  scroll-margin-top: 120px;
+}
 .stockist-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
