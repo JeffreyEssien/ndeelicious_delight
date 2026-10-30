@@ -707,6 +707,39 @@
   align-items: center;
   min-height: 44px;
 }
+.footer-payments {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 32px;
+  padding-block: 24px;
+  border-top: 1px solid #443a35;
+}
+.footer-payments p {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: #b9afa9;
+  font-size: 13px;
+}
+.footer-payments p svg {
+  width: 16px;
+  height: 16px;
+}
+.payment-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.payment-marks svg {
+  display: block;
+  border-radius: 5px;
+}
 .footer-base {
   display: flex;
   justify-content: space-between;
