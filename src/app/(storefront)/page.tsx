@@ -6,7 +6,10 @@ import { ProductGrid } from "@/components/product/product-grid";
 import { ProductCarousel } from "@/components/product/product-carousel";
 import { ContentLines } from "@/components/ui/content-lines";
 import { Icon } from "@/components/ui/icons";
-import { getProducts } from "@/lib/data/catalog";
+import { getCollections, getProducts } from "@/lib/data/catalog";
+import { productStartingPrice } from "@/features/catalog/pricing";
+import { formatMoney } from "@/lib/format";
+import { CakeCategories, type CakeCategoryTile } from "@/components/layout/cake-categories";
 import { isProductPurchasable } from "@/features/catalog/availability";
 import { HeroShowcase } from "@/components/layout/hero-showcase";
 import { resolveHeroSlides } from "@/features/catalog/hero-slides";
@@ -21,13 +24,14 @@ export const metadata: Metadata = { alternates: { canonical: "/" } };
 export default async function Home() {
   const t = await getCustomerText("Page: (storefront)");
 
-  const [products, content, business, reviews, carousel, hero] = await Promise.all([
+  const [products, content, business, reviews, carousel, hero, collections] = await Promise.all([
     getProducts(),
     getStorefrontContent(),
     getBusinessSettings(),
     getApprovedReviews(),
     getStoreCarousel(),
     getStoreHero(),
+    getCollections(),
   ]);
   const home = content.home;
   // Lead with the owner's featured picks, then top up with other available products so
@@ -59,6 +63,37 @@ export default async function Home() {
     .filter((item) => item !== null)
     .slice(0, 5);
   const heroSlides = resolveHeroSlides(hero, products);
+  // One tile per cake sub-category that has cakes, its photo rotating through those cakes.
+  const money = (value: number) => formatMoney(value, business.currency, business.locale);
+  const cakeTiles: CakeCategoryTile[] = collections
+    .filter((collection) => collection.parent === "CUSTOM_CAKES")
+    .map((collection) => {
+      const cakes = products.filter(
+        (product) => product.category === "CUSTOM_CAKES" && product.collectionId === collection.id,
+      );
+      const ordered = [...cakes.filter(isProductPurchasable), ...cakes.filter((cake) => !isProductPurchasable(cake))];
+      const photos = ordered
+        .map((cake) => {
+          const url = cake.images?.[0]?.url ?? cake.image;
+          return url ? { url, alt: cake.images?.[0]?.altText || cake.name, position: cake.imagePosition } : null;
+        })
+        .filter((photo) => photo !== null)
+        .slice(0, 5);
+      const from = cakes.length ? Math.min(...cakes.map(productStartingPrice)) : 0;
+      return {
+        id: collection.id,
+        name: collection.name,
+        href: `/custom-cakes?collection=${encodeURIComponent(collection.id)}`,
+        detail: [
+          cakes.length === 1 ? t("1 cake") : t("{count} cakes", { count: cakes.length }),
+          from ? t("From {price}", { price: money(from) }) : "",
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        photos,
+      };
+    })
+    .filter((tile) => tile.photos.length > 0);
   return (
     <>
       <HeroShowcase
@@ -115,32 +150,25 @@ export default async function Home() {
           )}
         </div>
       </section>
-      <section className="editorial">
-        <div className="editorial-image">
-          <Image
-            src={home.cakeFeature.image}
-            alt={home.cakeFeature.imageAlt}
-            fill
-            sizes={"(max-width:800px) 100vw, 50vw"}
-          />
-        </div>
-        <div className="editorial-copy">
-          <span className="overline">{home.cakeFeature.eyebrow}</span>
-          <h2>{home.cakeFeature.headline}</h2>
-          <p>{home.cakeFeature.body}</p>
-          <ol>
-            {home.cakeFeature.steps.map((step, index) => (
-              <li key={step}>
-                <b>{String(index + 1).padStart(2, "0")}</b>
-                <span>{step}</span>
-              </li>
-            ))}
-          </ol>
-          <Link className="button button-primary" href="/custom-cakes">
-            {home.cakeFeature.buttonLabel} <Icon name="arrow" />
-          </Link>
-        </div>
-      </section>
+      {cakeTiles.length > 0 && (
+        <section className="section cake-cats-section">
+          <div className="site-container">
+            <div className="section-title-row">
+              <div>
+                <span className="overline">{home.cakeFeature.eyebrow}</span>
+                <h2>
+                  <ContentLines text={home.cakeFeature.headline} />
+                </h2>
+                {home.cakeFeature.body && <p className="cake-cats-intro">{home.cakeFeature.body}</p>}
+              </div>
+              <Link className="inline-link" href="/custom-cakes">
+                {home.cakeFeature.buttonLabel} <Icon name="arrow" />
+              </Link>
+            </div>
+            <CakeCategories tiles={cakeTiles} />
+          </div>
+        </section>
+      )}
       <section className="ready-feature">
         <div className="site-container ready-grid">
           <div>

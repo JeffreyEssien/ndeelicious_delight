@@ -111,12 +111,10 @@ export const storefrontContentSchema = z.object({
       )
       .max(8),
     featured: sectionHeadingSchema.extend({ linkLabel: text(80) }),
+    // The cake sub-category tiles on the homepage; photos come from the cakes themselves.
     cakeFeature: sectionHeadingSchema.extend({
       body: text(1_500),
-      steps: z.array(text(300)).max(12),
       buttonLabel: text(80),
-      image: text(2_000),
-      imageAlt: text(300),
     }),
     readyFeature: sectionHeadingSchema.extend({
       body: text(1_500),
