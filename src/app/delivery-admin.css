@@ -1,0 +1,936 @@
+/* Admin › Delivery & pricing. Scoped under .dw so the older admin form rules don't leak in. */
+.dw {
+  display: grid;
+  gap: 20px;
+  padding-bottom: 96px;
+  color: var(--ink);
+}
+.dw h2,
+.dw h3,
+.dw p {
+  margin: 0;
+}
+
+/* Overview */
+.dw-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.dw-stats > div {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.dw-stats span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.dw-stats b {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+.dw-stats b.is-on {
+  color: var(--success);
+}
+.dw-stats b.is-off {
+  color: var(--muted);
+}
+.dw-stats small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Layout: settings on the left, live checks pinned on the right. */
+.dw-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+  gap: 20px;
+}
+.dw-main {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.dw-side {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  gap: 16px;
+}
+
+/* Cards */
+.dw-card {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.dw-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.dw-card-head h2 {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+.dw-card-head p {
+  max-width: 560px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.dw-card-head > :last-child:not(div) {
+  flex-shrink: 0;
+}
+.dw-subsection {
+  display: grid;
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.dw-subsection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.dw-subsection-head > div {
+  display: grid;
+  gap: 2px;
+}
+.dw-subsection-head small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Fields */
+.dw-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.dw-grid.is-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.dw-field {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+.dw-field.is-wide {
+  grid-column: 1 / -1;
+}
+.dw-field > span,
+.dw-days legend,
+.dw-pricing legend {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.dw-field > small,
+.dw-hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.dw input:not([type="checkbox"]),
+.dw select,
+.dw textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  transition:
+    border-color var(--ease),
+    box-shadow var(--ease);
+}
+.dw textarea {
+  resize: vertical;
+}
+.dw input:not([type="checkbox"]):focus,
+.dw select:focus,
+.dw textarea:focus {
+  border-color: var(--berry);
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--berry-soft);
+}
+.dw-money {
+  position: relative;
+  display: block;
+}
+.dw-money i {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  color: var(--muted);
+  font-size: 14px;
+  font-style: normal;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.dw .dw-money input {
+  padding-left: 26px;
+}
+
+/* Switch */
+.dw-toggle {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  cursor: pointer;
+  user-select: none;
+}
+/* The real checkbox covers the whole control, so every click and tap lands on it. */
+.dw-toggle input {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.dw-toggle > span {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--line);
+  transition: background-color var(--ease);
+}
+.dw-toggle > span::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(40, 34, 32, 0.25);
+  transition: transform var(--ease);
+}
+.dw-toggle input:checked + span {
+  background: var(--success);
+}
+.dw-toggle input:checked + span::after {
+  transform: translateX(16px);
+}
+.dw-toggle input:focus-visible + span {
+  box-shadow: 0 0 0 3px var(--berry-soft);
+}
+.dw-toggle b {
+  min-width: 44px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Day picker */
+.dw-days {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.dw-days legend {
+  margin-bottom: 10px;
+  padding: 0;
+}
+.dw-day-pills {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.dw-day-pills button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--ease),
+    border-color var(--ease),
+    color var(--ease);
+}
+.dw-day-pills button:hover {
+  border-color: var(--berry);
+  color: var(--berry);
+}
+.dw-day-pills button[aria-pressed="true"] {
+  border-color: var(--berry);
+  background: var(--berry);
+  color: #fff;
+}
+.dw-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dw-presets button,
+.dw-link {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--berry);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dw-presets button:hover,
+.dw-link:hover {
+  background: var(--berry-soft);
+}
+.dw-link.is-danger {
+  color: var(--danger);
+}
+
+/* Notes and errors */
+.dw-note {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.dw-note.is-warning {
+  background: var(--accent-soft);
+  color: var(--color-on-accent);
+}
+.dw-error {
+  display: block;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+}
+.dw-field > small.dw-error {
+  color: var(--danger);
+}
+p.dw-error {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+
+/* Closed dates */
+.dw-add-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr auto;
+  align-items: end;
+  gap: 12px;
+}
+.dw-add-dates .button {
+  min-height: 42px;
+}
+.dw-dates {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  list-style: none;
+}
+.dw-dates li {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 14px;
+}
+.dw-dates li + li {
+  border-top: 1px solid var(--line);
+}
+.dw-dates li > b {
+  font-size: 14px;
+}
+.dw .dw-dates input:not([type="checkbox"]) {
+  min-height: 34px;
+  border-color: transparent;
+  background: transparent;
+}
+.dw .dw-dates input:not([type="checkbox"]):hover {
+  border-color: var(--line);
+}
+.dw-dates em {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+}
+.dw-dates li.is-past,
+.dw-dates li.is-off {
+  color: var(--muted);
+}
+.dw-dates li.is-past > b,
+.dw-dates li.is-off > b {
+  text-decoration: line-through;
+}
+.dw-icon-button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.dw-icon-button:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.dw-icon-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.dw-icon-button svg {
+  width: 16px;
+  height: 16px;
+}
+.dw-icon-button svg.is-up {
+  transform: rotate(-90deg);
+}
+.dw-icon-button svg.is-down {
+  transform: rotate(90deg);
+}
+
+/* Delivery areas */
+.dw-search {
+  position: relative;
+  display: block;
+}
+.dw-search svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  transform: translateY(-50%);
+}
+.dw .dw-search input {
+  padding-left: 36px;
+}
+.dw-areas {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dw-area {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  transition:
+    border-color var(--ease),
+    box-shadow var(--ease);
+}
+.dw-area.is-open {
+  border-color: color-mix(in srgb, var(--berry) 35%, var(--line));
+  box-shadow: 0 6px 20px rgba(40, 34, 32, 0.06);
+}
+.dw-area.has-error {
+  border-color: var(--danger);
+}
+.dw-area > .dw-error {
+  margin: 0 14px 12px;
+}
+.dw-area-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px 10px 10px;
+}
+.dw-area-index {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--berry-soft);
+  color: var(--berry);
+  font-size: 12px;
+  font-weight: 700;
+}
+.dw-area.is-inactive .dw-area-index {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.dw-area-toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dw-area-name,
+.dw-area-price {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.dw-area-name {
+  flex: 1;
+}
+.dw-area-price {
+  text-align: right;
+}
+.dw-area-name b,
+.dw-area-price b {
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dw-area-name small,
+.dw-area-price small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dw-area.is-inactive .dw-area-name b,
+.dw-area.is-inactive .dw-area-price b {
+  color: var(--muted);
+}
+.dw-area-toggle > svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  transform: rotate(90deg);
+  transition: transform var(--ease);
+}
+.dw-area.is-open .dw-area-toggle > svg {
+  transform: rotate(-90deg);
+}
+.dw-area-body {
+  display: grid;
+  gap: 18px;
+  padding: 18px 18px 16px;
+  border-top: 1px solid var(--line);
+}
+.dw-pricing {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 16px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.dw-pricing legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 0;
+}
+.dw-sentence {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.dw-sentence b {
+  color: var(--ink);
+}
+.dw-area-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.dw-area-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Postal prefix chips */
+.dw-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: text;
+}
+.dw-chips:focus-within {
+  border-color: var(--berry);
+  box-shadow: 0 0 0 3px var(--berry-soft);
+}
+.dw-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 4px 0 10px;
+  border-radius: 999px;
+  background: var(--berry-soft);
+  color: var(--berry);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.dw-chip small {
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.dw-chip.is-clash {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+.dw-chip button {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.dw-chip button:hover {
+  background: rgba(40, 34, 32, 0.08);
+}
+.dw-chip svg {
+  width: 12px;
+  height: 12px;
+}
+.dw .dw-chips input:not([type="checkbox"]) {
+  flex: 1;
+  width: auto;
+  min-width: 140px;
+  min-height: 28px;
+  padding: 2px 6px;
+  border: 0;
+  box-shadow: none;
+}
+
+/* Side panels */
+.dw-panel {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.dw-panel h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+.dw-panel h3 svg {
+  width: 18px;
+  height: 18px;
+  color: var(--berry);
+}
+.dw-panel > p,
+.dw-panel > small {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.dw-panel dl {
+  display: grid;
+  margin: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.dw-panel dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+}
+.dw-panel dl > div + div {
+  border-top: 1px solid var(--line);
+}
+.dw-panel dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+.dw-panel dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+}
+.dw-panel dd.is-off {
+  color: var(--muted);
+  font-weight: 500;
+}
+.dw-checker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.dw-result {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.dw-result.is-ok {
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+}
+.dw-result.is-warn {
+  background: var(--accent-soft);
+}
+.dw-result.is-off {
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+.dw-result b {
+  font-size: 14px;
+}
+
+/* Advanced */
+.dw-advanced summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  list-style: none;
+  cursor: pointer;
+}
+.dw-advanced summary::-webkit-details-marker {
+  display: none;
+}
+.dw-advanced summary > span {
+  display: grid;
+  gap: 2px;
+}
+.dw-advanced summary small {
+  color: var(--muted);
+  font-size: 13px;
+}
+.dw-advanced summary svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  transform: rotate(90deg);
+  transition: transform var(--ease);
+}
+.dw-advanced[open] summary svg {
+  transform: rotate(-90deg);
+}
+.dw-advanced:not([open]) {
+  gap: 0;
+}
+.dw-advanced .dw-field {
+  max-width: 360px;
+}
+
+/* Save bar */
+.dw-savebar {
+  position: sticky;
+  z-index: 5;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 12px 12px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: 0 10px 30px rgba(40, 34, 32, 0.1);
+  backdrop-filter: blur(10px);
+  font-size: 14px;
+}
+.dw-savebar > span {
+  display: grid;
+  gap: 2px;
+  color: var(--muted);
+}
+.dw-savebar.is-dirty > span {
+  color: var(--ink);
+  font-weight: 600;
+}
+.dw-savebar > div {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 1180px) {
+  .dw-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dw-side {
+    position: static;
+    grid-row: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+@media (max-width: 900px) {
+  .dw-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 720px) {
+  .dw {
+    gap: 16px;
+  }
+  .dw-card {
+    gap: 18px;
+    padding: 18px;
+  }
+  .dw-card-head {
+    flex-wrap: wrap;
+  }
+  .dw-side,
+  .dw-grid,
+  .dw-grid.is-three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* On phones the settings come first; the checks follow them. */
+  .dw-side {
+    grid-row: auto;
+  }
+  .dw-add-dates {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dw-add-dates .dw-field:nth-child(3),
+  .dw-add-dates .button {
+    grid-column: 1 / -1;
+  }
+  .dw-dates li {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 4px 8px;
+  }
+  .dw-dates li > input {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .dw-dates li em {
+    display: none;
+  }
+  .dw-area-toggle {
+    flex-wrap: wrap;
+    gap: 2px 12px;
+  }
+  .dw-area-price {
+    order: 3;
+    flex-basis: 100%;
+    text-align: left;
+  }
+  .dw-area-toggle > svg {
+    display: none;
+  }
+  .dw-toggle b {
+    min-width: 0;
+  }
+  .dw-area-summary .dw-toggle b {
+    display: none;
+  }
+  .dw-area-body {
+    padding: 16px 14px;
+  }
+  /* Only pinned while there is something to save, so it never covers the form for nothing. */
+  .dw-savebar:not(.is-dirty) {
+    position: static;
+  }
+  .dw-savebar {
+    bottom: 8px;
+    gap: 8px;
+    padding: 8px 8px 8px 14px;
+  }
+  .dw-savebar > span {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+  .dw-savebar > div {
+    gap: 4px;
+  }
+  .dw-savebar .button {
+    min-height: 40px;
+    padding-inline: 14px;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 420px) {
+  .dw-stats {
+    gap: 8px;
+  }
+  .dw-stats > div {
+    padding: 12px 14px;
+  }
+  .dw-stats b {
+    font-size: 18px;
+  }
+  .dw-day-pills {
+    gap: 4px;
+  }
+  .dw-day-pills button {
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dw *,
+  .dw *::after {
+    transition: none !important;
+  }
+}

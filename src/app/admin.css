@@ -1254,42 +1254,11 @@
 .check-row input {
   accent-color: var(--berry);
 }
-.zone-list article {
-  display: grid;
-  grid-template-columns: 58px minmax(180px, 1fr) 180px 150px 170px 48px 48px;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--line);
-}
-.zone-list article:last-child {
-  border: 0;
-}
 .admin-empty-copy {
   margin: 0;
   padding: 32px;
   color: var(--muted);
   text-align: center;
-}
-.zone-list {
-  overflow-x: auto;
-}
-.zone-list article {
-  min-width: 1050px;
-}
-.zone-order-actions {
-  display: flex;
-  gap: 4px;
-}
-.zone-order-actions button {
-  width: 26px;
-  height: 32px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-.zone-order-actions button:disabled {
-  opacity: 0.35;
 }
 .coupon-restrictions {
   min-width: 190px;
@@ -1317,27 +1286,6 @@
 }
 .coupon-restrictions small {
   color: var(--muted);
-}
-.zone-list article > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.zone-list small {
-  color: var(--muted);
-}
-.zone-list label:not(.switch) {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-}
-.zone-list label input {
-  width: 100px;
-  height: 36px;
-  padding: 0 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
 }
 .switch input {
   position: absolute;
@@ -2235,12 +2183,6 @@ html[data-theme] .admin-sidebar {
   .inventory-list article > .badge {
     grid-column: 2;
   }
-  .zone-list article {
-    grid-template-columns: 58px minmax(180px, 1fr) 180px 150px 170px 48px 48px;
-  }
-  .zone-list label:not(.switch) {
-    grid-column: 2;
-  }
   .request-detail dl {
     grid-template-columns: 1fr;
   }
@@ -2640,7 +2582,6 @@ html[data-theme] .admin-sidebar {
 /* Owner-focused admin workspaces */
 .admin-summary-strip,
 .inventory-overview,
-.delivery-overview,
 .cake-request-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2649,7 +2590,6 @@ html[data-theme] .admin-sidebar {
 }
 .admin-summary-strip > span,
 .inventory-overview > div,
-.delivery-overview > div,
 .cake-request-summary > span {
   min-width: 0;
   padding: 18px 20px;
@@ -2661,7 +2601,6 @@ html[data-theme] .admin-sidebar {
 }
 .admin-summary-strip b,
 .inventory-overview b,
-.delivery-overview b,
 .cake-request-summary b {
   display: block;
   margin-bottom: 5px;
@@ -2678,18 +2617,14 @@ html[data-theme] .admin-sidebar {
   background: color-mix(in srgb, var(--danger), transparent 94%);
 }
 .inventory-overview span,
-.inventory-overview small,
-.delivery-overview span,
-.delivery-overview small {
+.inventory-overview small {
   display: block;
 }
-.inventory-overview small,
-.delivery-overview small {
+.inventory-overview small {
   margin-top: 5px;
   color: var(--muted);
 }
 .inventory-toolbar,
-.delivery-help,
 .audit-intro,
 .settings-start,
 .admin-save-bar {
@@ -2833,7 +2768,6 @@ html[data-theme] .admin-sidebar {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
 }
-.delivery-workspace,
 .cake-request-workspace,
 .cake-workspace,
 .audit-workspace {
@@ -2842,12 +2776,6 @@ html[data-theme] .admin-sidebar {
   min-width: 0;
   gap: 20px;
 }
-.delivery-help {
-  padding: 22px 24px;
-  border-radius: var(--radius);
-  background: var(--surface-2);
-}
-.delivery-help p,
 .audit-intro p,
 .settings-start p {
   max-width: 720px;
@@ -2855,64 +2783,6 @@ html[data-theme] .admin-sidebar {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.6;
-}
-.zone-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-.zone-card {
-  min-width: 0;
-  padding: 22px;
-}
-.zone-card header {
-  display: grid;
-  grid-template-columns: 34px 1fr auto;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-.zone-card header > div {
-  display: grid;
-  gap: 4px;
-}
-.zone-card header small {
-  color: var(--muted);
-}
-.zone-position {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--berry-soft);
-  color: var(--berry);
-  font-size: 11px;
-  font-weight: 800;
-}
-.zone-fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-.zone-card footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
-}
-.zone-order-actions,
-.zone-card-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.zone-order-actions button {
-  width: auto;
-  min-height: 32px;
-  padding: 0 10px;
 }
 .labeled-switch {
   display: flex;
@@ -3418,9 +3288,6 @@ html[data-theme] .admin-sidebar {
   aspect-ratio: 9 / 16;
 }
 @media (max-width: 1100px) {
-  .zone-grid {
-    grid-template-columns: 1fr;
-  }
   .settings-start {
     align-items: flex-start;
     flex-direction: column;
@@ -3432,12 +3299,10 @@ html[data-theme] .admin-sidebar {
 @media (max-width: 800px) {
   .admin-summary-strip,
   .inventory-overview,
-  .delivery-overview,
   .cake-request-summary {
     grid-template-columns: 1fr;
   }
   .inventory-toolbar,
-  .delivery-help,
   .audit-intro,
   .admin-save-bar {
     align-items: stretch;
@@ -3484,7 +3349,6 @@ html[data-theme] .admin-sidebar {
   .inventory-list article > .badge {
     grid-column: 2 / -1;
   }
-  .zone-fields,
   .cake-request-actions,
   .cake-option-main {
     grid-template-columns: 1fr;
@@ -3496,16 +3360,9 @@ html[data-theme] .admin-sidebar {
   .cake-option-controls .text-button {
     margin-left: 0;
   }
-  .zone-card footer,
   .settings-start {
     align-items: stretch;
     flex-direction: column;
-  }
-  .zone-card header {
-    grid-template-columns: 34px 1fr;
-  }
-  .zone-card header .labeled-switch {
-    grid-column: 2;
   }
   .admin-save-bar {
     bottom: calc(74px + env(safe-area-inset-bottom));
@@ -3851,8 +3708,6 @@ html[data-theme] .admin-sidebar {
   .admin-save-bar {
     padding-bottom: max(14px, env(safe-area-inset-bottom));
   }
-  .zone-order-actions button,
-  .zone-card-actions button,
   .cake-option-types button,
   .admin-section-tabs button,
   .inventory-toolbar > div button,
@@ -3867,7 +3722,6 @@ html[data-theme] .admin-sidebar {
   .carousel-advanced-fields,
   .carousel-fields,
   .carousel-toggles,
-  .zone-fields,
   .cake-request-actions,
   .cake-option-main {
     grid-template-columns: 1fr;
@@ -5170,27 +5024,6 @@ html[data-theme] .admin-sidebar {
   height: 18px;
   flex-shrink: 0;
 }
-.admin-mode .weekday-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.admin-mode .weekday-picker label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-.fulfilment-settings h2 {
-  font-size: 22px;
-}
-.fulfilment-settings > p {
-  font-size: 14px;
-  line-height: 1.6;
-}
 .inventory-product-group > summary {
   display: flex;
   flex-wrap: wrap;
@@ -5260,20 +5093,9 @@ html[data-theme] .admin-sidebar {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
   }
-  .fulfilment-settings {
-    padding: 16px;
-  }
-  .fulfilment-settings .field-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* The areas save action belongs to its own editor, never over pickup fields. */
-.admin-mode .delivery-save-bar {
-  position: static;
-  margin-top: 16px;
-  box-shadow: none;
-}
 
 .inventory-product-group > summary > span {
   color: var(--muted);

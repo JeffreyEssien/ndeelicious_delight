@@ -10,6 +10,7 @@ import { getProducts } from "@/lib/data/catalog";
 import { isProductPurchasable } from "@/features/catalog/availability";
 import { HeroShowcase } from "@/components/layout/hero-showcase";
 import { resolveHeroSlides } from "@/features/catalog/hero-slides";
+import { FindUs } from "@/components/layout/find-us";
 import { Stockists } from "@/components/layout/stockists";
 import { NewsletterForm } from "@/components/layout/newsletter-form";
 import { getApprovedReviews } from "@/lib/data/reviews";
@@ -35,7 +36,28 @@ export default async function Home() {
     ...products.filter((product) => product.featured),
     ...products.filter((product) => !product.featured && isProductPurchasable(product)),
   ].slice(0, 4);
-  const gallery = products.flatMap((product) => product.images ?? []).slice(0, 4);
+  // One photo per product so the kitchen gallery never repeats the same bake, favouring
+  // what customers can order right now.
+  const gallery = [
+    ...products.filter((product) => isProductPurchasable(product)),
+    ...products.filter((product) => !isProductPurchasable(product)),
+  ]
+    .map((product) => {
+      const photo = product.images?.[0];
+      const url = photo?.url ?? product.image;
+      return url
+        ? {
+            id: product.id,
+            url,
+            alt: photo?.altText || product.name,
+            name: product.name,
+            slug: product.slug,
+            position: product.imagePosition,
+          }
+        : null;
+    })
+    .filter((item) => item !== null)
+    .slice(0, 5);
   const heroSlides = resolveHeroSlides(hero, products);
   return (
     <>
@@ -140,69 +162,54 @@ export default async function Home() {
             />
           </div>
         </div>
+        {Boolean(content.readyToBake.stockists?.length) && (
+          <div className="site-container ready-stockists">
+            <div className="ready-stockists-head">
+              <div>
+                <span className="overline">{t("Also in stores")}</span>
+                <h3>{t("Pick up a box near you")}</h3>
+              </div>
+              <p>{t("Our frozen pies and sausage rolls are stocked across Halifax and Dartmouth.")}</p>
+            </div>
+            <Stockists stockists={content.readyToBake.stockists ?? []} variant="strip" />
+          </div>
+        )}
       </section>
       {!!gallery.length && (
         <section className="section gallery-section">
           <div className="site-container">
-            <div className="section-title-row">
+            <div className="gallery-head">
               <div>
                 <span className="overline">{home.gallery.eyebrow}</span>
                 <h2>{home.gallery.headline}</h2>
               </div>
               {business.instagramUrl && (
-                <a className="inline-link" href={business.instagramUrl} target={"_blank"} rel={"noreferrer"}>
-                  {t("Follow along ↗")}
+                <a className="gallery-follow" href={business.instagramUrl} target={"_blank"} rel={"noreferrer"}>
+                  <Icon name="instagram" />
+                  {t("Follow along on Instagram")}
                 </a>
               )}
             </div>
-            <div className="social-gallery">
-              {gallery.map((image) => (
-                <div key={image.id}>
-                  <Image src={image.url} alt={image.altText} fill sizes={"33vw"} />
-                </div>
+            <div className="kitchen-gallery" data-count={gallery.length}>
+              {gallery.map((item, index) => (
+                <Link className="kitchen-tile" href={`/product/${item.slug}`} key={item.id}>
+                  <Image
+                    src={item.url}
+                    alt={item.alt}
+                    fill
+                    sizes={index === 0 ? "(max-width:800px) 100vw, 50vw" : "(max-width:800px) 50vw, 25vw"}
+                    style={item.position ? { objectPosition: item.position } : undefined}
+                  />
+                  <span className="kitchen-caption">
+                    {item.name} <Icon name="arrow" />
+                  </span>
+                </Link>
               ))}
             </div>
           </div>
         </section>
       )}
-      {(business.address || business.city) && (
-        <section className="section site-container find-us">
-          <div className="section-head">
-            <div>
-              <span className="overline">{t("Visit us")}</span>
-              <h2>{t("Find us in Halifax")}</h2>
-            </div>
-            <p>{t("Collect your order from the bakery, or come say hello.")}</p>
-          </div>
-          <div className="find-us-card">
-            <div>
-              <h3>{business.businessName}</h3>
-              <p>{[business.address, business.city, business.province].filter(Boolean).join(", ")}</p>
-              {business.openingHours && <p className="find-us-hours">{business.openingHours}</p>}
-            </div>
-            <a
-              className="button button-secondary"
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([business.address, business.city, business.province].filter(Boolean).join(", "))}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t("Get directions")} <Icon name="arrow" />
-            </a>
-          </div>
-        </section>
-      )}
-      {Boolean(content.readyToBake.stockists?.length) && (
-        <section className="section site-container find-stores">
-          <div className="section-head">
-            <div>
-              <span className="overline">{t("Also in stores")}</span>
-              <h2>{t("Find our ready-to-bake in stores")}</h2>
-            </div>
-            <p>{t("Our frozen pies and sausage rolls are stocked across Halifax and Dartmouth.")}</p>
-          </div>
-          <Stockists stockists={content.readyToBake.stockists ?? []} />
-        </section>
-      )}
+      <FindUs business={business} />
       {reviews.length > 0 && (
         <section className="section section-tint testimonials-section">
           <div className="site-container">

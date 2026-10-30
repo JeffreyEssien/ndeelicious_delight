@@ -703,6 +703,12 @@ export const defaultCustomerText: CustomerText = {
     Privacy: "Privacy",
     Terms: "Terms",
     "Returns & cancellations": "Returns & cancellations",
+    "Order today": "Order today",
+    "Delivery from": "Delivery from",
+    "Pickup from": "Pickup from",
+    "Some items take longer. Checkout shows your exact date.":
+      "Some items take longer. Checkout shows your exact date.",
+    "Secure checkout powered by Stripe": "Secure checkout powered by Stripe",
   },
   header: {
     "Open navigation": "Open navigation",
@@ -725,6 +731,11 @@ export const defaultCustomerText: CustomerText = {
   "Page: (storefront)": {
     "No featured products are currently published.": "No featured products are currently published.",
     "Follow along ↗": "Follow along ↗",
+    "Follow along on Instagram": "Follow along on Instagram",
+    "Also in stores": "Also in stores",
+    "Pick up a box near you": "Pick up a box near you",
+    "Our frozen pies and sausage rolls are stocked across Halifax and Dartmouth.":
+      "Our frozen pies and sausage rolls are stocked across Halifax and Dartmouth.",
   },
   layout: {
     "Skip to checkout": "Skip to checkout",

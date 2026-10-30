@@ -2,8 +2,7 @@
 import { CustomerWorkspace } from "./customer-workspace";
 import { InventoryWorkspace } from "./inventory-workspace";
 import { HistoryWorkspace } from "./history-workspace";
-import { deliveryAreasSchema } from "@/features/fulfilment/validation";
-import { FulfilmentSettings } from "./fulfilment-settings";
+import { DeliveryWorkspace } from "./delivery-workspace";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -136,7 +135,6 @@ export function AdminPortal({
   siteUrl,
 }: Props) {
   const [products, setProducts] = useState(initialProducts);
-  const [zones, setZones] = useState(initialZones);
   const [editor, setEditor] = useState<Product | null>();
   // A stray click outside the product drawer or an Escape press should not throw away work. Unsaved
   // changes are also backed up on this device and offered back when the product is opened again.
@@ -157,12 +155,10 @@ export function AdminPortal({
   };
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ALL");
-  const [zoneBusy, setZoneBusy] = useState(false);
   const notify = useToast();
   const router = useRouter();
   const { theme, setTheme } = useStoreTheme();
   useEffect(() => setProducts(initialProducts), [initialProducts]);
-  useEffect(() => setZones(initialZones), [initialZones]);
   // Seed the product search from a global-search deep link (?q=…).
   useEffect(() => {
     if (section !== "products") return;
@@ -179,6 +175,18 @@ export function AdminPortal({
       notify("Product update could not be saved.");
     }
   }
+  async function deleteProduct(product: Product) {
+    const response = await fetch(`/api/admin/products/${product.id}`, { method: "DELETE" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      notify(payload.error ?? "Product could not be deleted.");
+      return false;
+    }
+    setProducts((current) => current.filter((item) => item.id !== product.id));
+    notify(`${product.name} deleted.`);
+    router.refresh();
+    return true;
+  }
   async function duplicateProduct(product: Product) {
     const response = await fetch(`/api/admin/products/${product.id}`, { method: "POST" });
     const payload = await response.json();
@@ -186,30 +194,6 @@ export function AdminPortal({
       notify(`${product.name} duplicated as a draft.`);
       router.refresh();
     } else notify(payload.error ?? "Product could not be duplicated.");
-  }
-  async function saveZones() {
-    const parsed = deliveryAreasSchema.safeParse(zones.map((zone, sortOrder) => ({ ...zone, sortOrder })));
-    if (!parsed.success) {
-      notify(parsed.error.issues[0]?.message ?? "Check delivery areas.");
-      return false;
-    }
-    setZoneBusy(true);
-    try {
-      const response = await mutate({ action: "delivery-zones", zones: parsed.data });
-      if (response.ok) {
-        notify("Delivery areas saved.");
-        router.refresh();
-      } else {
-        const payload = await response.json().catch(() => null);
-        notify(payload?.error ?? "Delivery zones could not be saved.");
-      }
-      return response.ok;
-    } catch {
-      notify("Delivery zones could not be saved. Retry.");
-      return false;
-    } finally {
-      setZoneBusy(false);
-    }
   }
   async function changeTheme(value: StoreTheme) {
     setTheme(value);
@@ -271,6 +255,7 @@ export function AdminPortal({
           onStatus={productStatus}
           onEdit={setEditor}
           onDuplicate={duplicateProduct}
+          onDelete={deleteProduct}
         />
       )}
       {section === "inventory" && <InventoryWorkspace onEdit={setEditor} />}
@@ -288,7 +273,7 @@ export function AdminPortal({
       {section === "marketing" && (
         <SocialPostGenerator products={products} initial={initialMarketing} siteUrl={siteUrl} />
       )}
-      {section === "delivery" && <DeliveryZones zones={zones} setZones={setZones} busy={zoneBusy} onSave={saveZones} />}
+      {section === "delivery" && <DeliveryWorkspace initialZones={initialZones} />}
       {section === "audit" && <AuditLog entries={initialAuditLogs} />}
       {section === "settings" && (
         <BusinessSettings
@@ -347,6 +332,7 @@ const auditMessages: Record<string, string> = {
   PRODUCT_CREATED: "created a product",
   PRODUCT_UPDATED: "updated a product",
   PRODUCT_DUPLICATED: "duplicated a product",
+  PRODUCT_DELETED: "deleted a product",
   PRODUCT_IMAGE_ADDED: "added a product photo",
   PRODUCT_STATUS_CHANGED: "changed a product’s visibility",
   STOCK_CHANGED: "adjusted inventory",
@@ -383,6 +369,10 @@ function auditEntity(entry: AdminAuditLog) {
 
 function changedFields(entry: AdminAuditLog) {
   if (!entry.previousValue) return "A new record was added.";
+  if (!entry.newValue) {
+    const name = (entry.previousValue as { name?: unknown }).name;
+    return typeof name === "string" ? `“${name}” was deleted.` : "The record was deleted.";
+  }
   const before = entry.previousValue;
   const after = entry.newValue;
   if (
@@ -1034,6 +1024,7 @@ function Products({
   onStatus,
   onEdit,
   onDuplicate,
+  onDelete,
 }: {
   products: Product[];
   query: string;
@@ -1043,6 +1034,7 @@ function Products({
   onStatus: (id: string, status: ProductStatus) => void;
   onEdit: (product: Product) => void;
   onDuplicate: (product: Product) => void;
+  onDelete: (product: Product) => Promise<boolean>;
 }) {
   const money = useMoney();
   const priceRange = (product: Product) => {
@@ -1050,6 +1042,8 @@ function Products({
     return min === max ? money(min) : `${money(min)} – ${money(max)}`;
   };
   const [removeTarget, setRemoveTarget] = useState<Product | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const visible = products.filter(
     (p) =>
       (status === "ALL" || p.status === status) &&
@@ -1162,14 +1156,17 @@ function Products({
                           Restore
                         </button>
                       ) : (
-                        <button
-                          type="button"
-                          className="text-button danger-text"
-                          onClick={() => setRemoveTarget(product)}
-                        >
-                          Remove
+                        <button type="button" className="text-button" onClick={() => setRemoveTarget(product)}>
+                          Archive
                         </button>
                       )}
+                      <button
+                        type="button"
+                        className="text-button danger-text"
+                        onClick={() => setDeleteTarget(product)}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1181,248 +1178,42 @@ function Products({
       <ConfirmDialog
         open={removeTarget !== null}
         tone="danger"
-        title="Remove this product?"
+        title="Archive this product?"
         body={
           removeTarget
             ? `“${removeTarget.name}” will be hidden from customers. You can restore it anytime from the Archived filter.`
             : ""
         }
-        confirmLabel="Remove from shop"
+        confirmLabel="Archive"
         onConfirm={() => {
           if (removeTarget) onStatus(removeTarget.id, "ARCHIVED");
           setRemoveTarget(null);
         }}
         onCancel={() => setRemoveTarget(null)}
       />
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        tone="danger"
+        busy={deleting}
+        title="Delete this product for good?"
+        body={
+          deleteTarget
+            ? `“${deleteTarget.name}” will be removed from the shop and from admin, with its photos, options and reviews. This can’t be undone. Past orders and receipts keep its name and price.`
+            : ""
+        }
+        confirmLabel="Delete permanently"
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          setDeleting(true);
+          const deleted = await onDelete(deleteTarget);
+          setDeleting(false);
+          if (deleted) setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </>
   );
 }
-function DeliveryZones({
-  zones,
-  setZones,
-  busy,
-  onSave,
-}: {
-  zones: DeliveryZone[];
-  setZones: React.Dispatch<React.SetStateAction<DeliveryZone[]>>;
-  busy: boolean;
-  onSave: () => Promise<boolean>;
-}) {
-  const [saveState, setSaveState] = useState("Saved");
-  const business = useBusinessSettings();
-  const { currency } = business;
-  const money = useMoney();
-  const active = zones.filter((zone) => zone.active);
-  const update = (id: string, values: Partial<DeliveryZone>) => {
-    setSaveState("Unsaved changes");
-    setZones((current) => current.map((zone) => (zone.id === id ? { ...zone, ...values } : zone)));
-  };
-  const move = (index: number, direction: -1 | 1) => {
-    setSaveState("Unsaved changes");
-    return setZones((current) => {
-      const next = [...current];
-      const target = index + direction;
-      if (target < 0 || target >= next.length) return current;
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
-  };
-  const add = () => {
-    setSaveState("Unsaved changes");
-    return setZones((current) => [
-      ...current,
-      {
-        id: crypto.randomUUID(),
-        name: "",
-        fee: 0,
-        minimumOrder: 0,
-        estimate: "",
-        active: false,
-        postalCodePrefixes: [],
-        freeDeliveryThreshold: null,
-        customerNote: "",
-        sameDayEligible: false,
-        sortOrder: current.length,
-      },
-    ]);
-  };
-  return (
-    <div className="delivery-workspace">
-      <FulfilmentSettings business={business} />
-      <div className="delivery-overview">
-        <div>
-          <span>Available areas</span>
-          <b>{active.length}</b>
-          <small>Shown to customers at checkout</small>
-        </div>
-        <div>
-          <span>Lowest delivery fee</span>
-          <b>{active.length ? money(Math.min(...active.map((zone) => zone.fee))) : "—"}</b>
-          <small>{active.some((zone) => zone.fee === 0) ? "Free delivery is available" : "Across active areas"}</small>
-        </div>
-        <div>
-          <span>Highest minimum</span>
-          <b>{active.length ? money(Math.max(...active.map((zone) => zone.minimumOrder))) : "—"}</b>
-          <small>Customers must meet this subtotal</small>
-        </div>
-      </div>
-      <div className="delivery-help">
-        <div>
-          <b>Delivery areas</b>
-          <p>
-            Set each Canadian area’s name, delivery fee (CAD), minimum order and delivery estimate. Activate it and save
-            to make it available at checkout.
-          </p>
-        </div>
-        <Button variant="secondary" onClick={add}>
-          <Icon name="plus" /> Add delivery area
-        </Button>
-      </div>
-      {!zones.length && <EmptyState title="No delivery areas yet" body="Add the first area to offer local delivery." />}
-      <div className="zone-grid">
-        {zones.map((zone, index) => (
-          <article className="admin-card zone-card" key={zone.id}>
-            <header>
-              <span className="zone-position">{index + 1}</span>
-              <div>
-                <b>{zone.name || "New delivery area"}</b>
-                <small>{zone.active ? "Available at checkout" : "Hidden from customers"}</small>
-              </div>
-              <label className="switch labeled-switch">
-                <input
-                  type="checkbox"
-                  checked={zone.active}
-                  onChange={(event) => update(zone.id, { active: event.target.checked })}
-                />
-                <span />
-                <b>{zone.active ? "Active" : "Off"}</b>
-              </label>
-            </header>
-            <div className="zone-fields">
-              <Input
-                label="Area name"
-                placeholder="For example: Halifax or Dartmouth"
-                value={zone.name}
-                onChange={(event) => update(zone.id, { name: event.target.value })}
-              />
-              <Input
-                label="Postal prefixes (comma separated)"
-                placeholder="B3H, B3J"
-                value={(zone.postalCodePrefixes ?? []).join(", ")}
-                onChange={(event) =>
-                  update(zone.id, {
-                    postalCodePrefixes: event.target.value
-                      .toUpperCase()
-                      .split(",")
-                      .map((value) => value.trim())
-                      .filter(Boolean),
-                  })
-                }
-              />
-              <Input
-                label={`Free delivery from (${currency}, optional)`}
-                type="number"
-                min="0"
-                step="0.01"
-                value={zone.freeDeliveryThreshold == null ? "" : zone.freeDeliveryThreshold / 100}
-                onChange={(event) =>
-                  update(zone.id, {
-                    freeDeliveryThreshold: event.target.value ? Math.round(Number(event.target.value) * 100) : null,
-                  })
-                }
-              />
-              <Input
-                label="Customer note"
-                value={zone.customerNote ?? ""}
-                onChange={(event) => update(zone.id, { customerNote: event.target.value })}
-              />
-              <label>
-                <input
-                  type="checkbox"
-                  checked={zone.sameDayEligible ?? false}
-                  onChange={(event) => update(zone.id, { sameDayEligible: event.target.checked })}
-                />{" "}
-                Eligible for same-day delivery
-              </label>
-              <Input
-                label="Delivery estimate"
-                value={zone.estimate}
-                placeholder="For example: Next day"
-                onChange={(event) => update(zone.id, { estimate: event.target.value })}
-              />
-              <Input
-                label={`Delivery fee (${currency})`}
-                type="number"
-                min="0"
-                step="0.01"
-                value={zone.fee / 100}
-                onChange={(event) => update(zone.id, { fee: Math.round(Number(event.target.value) * 100) })}
-              />
-              <Input
-                label={`Minimum order (${currency})`}
-                type="number"
-                min="0"
-                step="0.01"
-                value={zone.minimumOrder / 100}
-                onChange={(event) => update(zone.id, { minimumOrder: Math.round(Number(event.target.value) * 100) })}
-              />
-            </div>
-            <footer>
-              <div className="zone-order-actions">
-                <button type="button" disabled={index === 0} onClick={() => move(index, -1)}>
-                  ↑ Move up
-                </button>
-                <button type="button" disabled={index === zones.length - 1} onClick={() => move(index, 1)}>
-                  ↓ Move down
-                </button>
-              </div>
-              <div className="zone-card-actions">
-                <button
-                  type="button"
-                  className="text-button"
-                  onClick={() =>
-                    setZones((current) => [
-                      ...current,
-                      { ...zone, id: crypto.randomUUID(), name: `${zone.name} copy`, active: false },
-                    ])
-                  }
-                >
-                  Duplicate
-                </button>
-                {zone.id.startsWith("new-") && (
-                  <button
-                    type="button"
-                    className="text-button danger-text"
-                    onClick={() => setZones((current) => current.filter((item) => item.id !== zone.id))}
-                  >
-                    Discard
-                  </button>
-                )}
-              </div>
-            </footer>
-          </article>
-        ))}
-      </div>
-      <div className="admin-save-bar delivery-save-bar">
-        <span role="status">{saveState}</span>
-        <Button
-          disabled={busy}
-          onClick={async () => {
-            setSaveState("Saving…");
-            try {
-              setSaveState((await onSave()) ? "Saved" : "Error: save failed. Retry.");
-            } catch {
-              setSaveState("Error: save failed. Retry.");
-            }
-          }}
-        >
-          {busy ? "Saving delivery areas…" : "Save delivery areas"}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function BusinessSettings({
   initial,
   appearance,
