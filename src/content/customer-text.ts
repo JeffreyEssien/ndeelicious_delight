@@ -759,7 +759,7 @@ export const defaultCustomerText: CustomerText = {
     "Just bake": "Just bake",
     "How to bake": "How to bake",
     "Freezer. Oven. Applause.": "Freezer. Oven. Applause.",
-    "Call ahead to check what’s in the freezer.": "Call ahead to check what’s in the freezer.",
+    "Call ahead to confirm availability.": "Call ahead to confirm availability.",
     "Available across Halifax HRM": "Available across Halifax HRM",
     "Find us in stores": "Find us in stores",
     "Meat pies, chicken pies and beef sausage rolls, frozen and ready to bake. Contact each store for current stock, prices and opening hours.":

@@ -119,7 +119,7 @@ export default async function Page() {
               <span className="overline">{t("Available across Halifax HRM")}</span>
               <h2>{t("Find us in stores")}</h2>
             </div>
-            <p>{t("Call ahead to check what’s in the freezer.")}</p>
+            <p>{t("Call ahead to confirm availability.")}</p>
           </div>
           <Stockists stockists={stockists} variant="strip" />
         </section>
