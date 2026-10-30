@@ -1,14 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), rpc: vi.fn(), after: vi.fn(), notify: vi.fn() }));
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), rpc: vi.fn(), after: vi.fn(), notify: vi.fn(), rows: vi.fn() }));
 vi.mock("@/lib/auth/admin-request", () => ({ requireAdminRequest: mocks.auth }));
 vi.mock("next/server", () => ({ after: mocks.after }));
 vi.mock("@/lib/orders/notifications", () => ({ deliverPendingOrderNotifications: mocks.notify }));
 import { POST } from "./route";
-const request = (orders: unknown) =>
-  new Request("http://localhost/api/admin/orders/bulk", { method: "POST", body: JSON.stringify({ orders }) });
+const request = (orders: unknown, confirmEarly?: boolean) =>
+  new Request("http://localhost/api/admin/orders/bulk", {
+    method: "POST",
+    body: JSON.stringify({ orders, confirmEarly }),
+  });
+// orders.select(...).in(...).eq(...) resolves to whatever rows the test sets.
+const from = () => ({ select: () => ({ in: () => ({ eq: () => Promise.resolve({ data: mocks.rows() }) }) }) });
 beforeEach(() => {
   vi.resetAllMocks();
-  mocks.auth.mockResolvedValue({ ok: true, db: { rpc: mocks.rpc }, admin: { id: "admin" }, sessionId: "session" });
+  mocks.auth.mockResolvedValue({
+    ok: true,
+    db: { rpc: mocks.rpc, from },
+    admin: { id: "admin" },
+    sessionId: "session",
+  });
 });
 describe("safe bulk fulfilment", () => {
   it("reports every successful, skipped and failed order independently", async () => {
@@ -34,6 +44,19 @@ describe("safe bulk fulfilment", () => {
       p_session_id: "session",
       p_expected_status: "PREPARING",
     });
+  });
+  it("asks before marking an order ready inside its notice period", async () => {
+    const soon = new Date(Date.now() + 3_600_000).toISOString();
+    mocks.rows.mockReturnValue([
+      { order_number: "A", created_at: new Date().toISOString(), preparation_ready_at: soon },
+    ]);
+    const held = await POST(request([{ number: "A", expectedStatus: "PREPARING" }]));
+    expect(held.status).toBe(409);
+    expect((await held.json()).early).toEqual([expect.objectContaining({ number: "A", readyAt: soon })]);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    mocks.rpc.mockResolvedValue({ data: "READY", error: null });
+    const confirmed = await POST(request([{ number: "A", expectedStatus: "PREPARING" }], true));
+    expect((await confirmed.json()).results[0].outcome).toBe("successful");
   });
   it("rejects payment/refund states and oversized batches", async () => {
     for (const orders of [

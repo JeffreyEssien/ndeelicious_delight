@@ -72,9 +72,21 @@ export const defaultCustomerText: CustomerText = {
     "Delivered. Enjoy!": "Delivered. Enjoy!",
     "Your order has arrived. We hope it brings a smile to your table.":
       "Your order has arrived. We hope it brings a smile to your table.",
+    "Your order can be ready sooner": "Your order can be ready sooner",
+    "Good news, it’s sooner": "Good news, it’s sooner",
+    "We can have your order ready earlier than planned. Pop by any time from the new time below, or keep your original time if that suits you better.":
+      "We can have your order ready earlier than planned. Pop by any time from the new time below, or keep your original time if that suits you better.",
+    "Ready from {time}": "Ready from {time}",
     "Your refund is on its way": "Your refund is on its way",
     "We’ve refunded your payment in full. It can take a few business days to show in your account.":
       "We’ve refunded your payment in full. It can take a few business days to show in your account.",
+    "We’ve sent you a refund": "We’ve sent you a refund",
+    "A refund is on its way": "A refund is on its way",
+    "We’ve refunded part of your payment. It can take a few business days to show in your account.":
+      "We’ve refunded part of your payment. It can take a few business days to show in your account.",
+    Refunded: "Refunded",
+    "Refunded so far": "Refunded so far",
+    "You paid": "You paid",
     Ordered: "Ordered",
     Paid: "Paid",
     Baking: "Baking",
@@ -406,6 +418,13 @@ export const defaultCustomerText: CustomerText = {
       "Reviews can only be submitted through the private link emailed after a completed order.",
     "Customer review": "Customer review",
     "· Verified purchase": "· Verified purchase",
+  },
+  "kitchen gallery": {
+    "From {price}": "From {price}",
+    Show: "Show",
+    "Add {name} to basket": "Add {name} to basket",
+    "Scroll back": "Scroll back",
+    "Scroll forward": "Scroll forward",
   },
   "product card": {
     PASTRIES: "PASTRIES",
@@ -767,9 +786,20 @@ export const defaultCustomerText: CustomerText = {
     "Browse all products": "Browse all products",
   },
   "Page: (storefront)": {
+    "1 cake": "1 cake",
+    "{count} cakes": "{count} cakes",
+    "From {price}": "From {price}",
     "No featured products are currently published.": "No featured products are currently published.",
     "Follow along ↗": "Follow along ↗",
     "Follow along on Instagram": "Follow along on Instagram",
+    All: "All",
+    "Ready to order": "Ready to order",
+    Cakes: "Cakes",
+    "Ready to bake": "Ready to bake",
+    "See all ready to order": "See all ready to order",
+    "See all cakes": "See all cakes",
+    "See all ready to bake": "See all ready to bake",
+    "Shop everything": "Shop everything",
     "Also in stores": "Also in stores",
     "Pick up a box near you": "Pick up a box near you",
     "Our frozen pies and sausage rolls are stocked across Halifax and Dartmouth.":

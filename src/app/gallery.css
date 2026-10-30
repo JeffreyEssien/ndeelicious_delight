@@ -1,173 +1,355 @@
 .gallery-section {
   background: var(--surface);
 }
-.gallery-head {
+/* The kitchen counter: a feature panel with the type menu, beside a row of photo-first products. */
+.counter {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 28px;
+  align-items: stretch;
+}
+.counter-panel {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  padding: 36px 32px 32px;
+  border-radius: var(--radius-panel);
+  background: var(--color-feature-surface);
+  color: var(--color-feature-text);
+}
+.counter-panel .overline {
+  color: color-mix(in srgb, var(--color-feature-text) 72%, transparent);
+}
+.counter-panel h2 {
+  margin: 14px 0 28px;
+  color: var(--color-feature-text);
+  font-size: clamp(30px, 3vw, 40px);
+  line-height: 1.05;
+}
+.counter-menu {
+  display: grid;
+  margin-bottom: 28px;
+  border-top: 1px solid color-mix(in srgb, var(--color-feature-text) 18%, transparent);
+}
+.counter-menu button {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 40px;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-feature-text) 18%, transparent);
+  background: none;
+  color: var(--color-feature-muted);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color var(--ease),
+    padding var(--ease);
 }
-.gallery-head h2 {
-  margin: 12px 0 0;
+.counter-menu button::before {
+  content: "";
+  width: 0;
+  height: 2px;
+  margin-right: -12px;
+  background: var(--color-feature-highlight);
+  transition:
+    width var(--ease),
+    margin var(--ease);
 }
-.gallery-follow {
+.counter-menu button span {
+  flex: 1;
+}
+.counter-menu button small {
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-feature-text) 12%, transparent);
+  font-size: 12px;
+  text-align: center;
+}
+.counter-menu button:hover,
+.counter-menu button[aria-pressed="true"] {
+  color: var(--color-feature-text);
+}
+.counter-menu button[aria-pressed="true"]::before {
+  width: 18px;
+  margin-right: 0;
+}
+.counter-cta {
   display: inline-flex;
-  flex-shrink: 0;
+  align-self: flex-start;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
-  padding: 0 18px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--color-text);
+  min-height: 46px;
+  margin-top: auto;
+  padding: 0 20px;
+  border-radius: var(--radius-pill);
+  background: var(--color-feature-highlight);
+  color: var(--color-on-feature-highlight);
   font-size: 14px;
+  font-weight: 700;
+  transition: transform var(--ease);
+}
+.counter-cta:hover {
+  transform: translateX(2px);
+}
+.counter-cta svg,
+.counter-instagram svg {
+  width: 16px;
+  height: 16px;
+}
+.counter-instagram {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  color: var(--color-feature-muted);
+  font-size: 13px;
   font-weight: 600;
-  transition:
-    border-color var(--ease),
-    color var(--ease);
 }
-.gallery-follow svg {
-  width: 17px;
-  height: 17px;
+.counter-instagram:hover {
+  color: var(--color-feature-text);
 }
-.gallery-follow:hover {
-  border-color: var(--berry);
-  color: var(--berry);
+.counter-shelf {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 20px;
 }
-/* Bento layout: the first photo leads at double size, the rest fill around it. */
-.kitchen-gallery {
+.counter-track {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-auto-rows: clamp(180px, 18vw, 260px);
-  gap: 14px;
+  grid-auto-columns: calc((100% - 2 * 20px) / 3.15);
+  grid-auto-flow: column;
+  gap: 20px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
 }
-.kitchen-tile {
+.counter-track::-webkit-scrollbar {
+  display: none;
+}
+.counter-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: start;
+  animation: counter-in 480ms var(--ease-standard) both;
+}
+.counter-card:nth-child(2) {
+  animation-delay: 50ms;
+}
+.counter-card:nth-child(3) {
+  animation-delay: 100ms;
+}
+.counter-card:nth-child(4) {
+  animation-delay: 150ms;
+}
+.counter-photo {
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius-xl);
+  aspect-ratio: 4 / 5;
+  margin-bottom: 14px;
+  border-radius: var(--radius-card);
   background: var(--accent-soft);
-  isolation: isolate;
 }
-.kitchen-tile:first-child {
-  grid-column: span 2;
-  grid-row: span 2;
-}
-.kitchen-gallery[data-count="1"] .kitchen-tile {
-  grid-column: 1 / -1;
-}
-.kitchen-gallery[data-count="2"] .kitchen-tile:nth-child(2),
-.kitchen-gallery[data-count="3"] .kitchen-tile:not(:first-child),
-.kitchen-gallery[data-count="4"] .kitchen-tile:nth-child(2) {
-  grid-column: span 2;
-}
-.kitchen-gallery[data-count="2"] .kitchen-tile:nth-child(2) {
-  grid-row: span 2;
-}
-.kitchen-tile img {
+.counter-photo img {
   object-fit: cover;
-  transition: transform 700ms var(--ease-standard);
+  transition: transform 600ms var(--ease-standard);
 }
-.kitchen-tile::after {
+.counter-card:hover .counter-photo img {
+  transform: scale(1.04);
+}
+.counter-add {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+  color: var(--color-text);
+  cursor: pointer;
+  transition:
+    background var(--ease),
+    color var(--ease),
+    transform var(--ease);
+}
+.counter-add svg {
+  width: 18px;
+  height: 18px;
+}
+.counter-add:hover,
+.counter-card:hover .counter-add.is-link {
+  background: var(--berry);
+  color: var(--color-on-primary);
+}
+.counter-add.is-link {
+  pointer-events: none;
+}
+.counter-add.is-added {
+  background: var(--success);
+  color: var(--color-on-primary);
+  transform: scale(1.06);
+}
+.counter-type {
+  margin-bottom: 4px;
+  color: var(--berry);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.counter-name {
+  color: var(--color-text);
+  font-family: var(--font-serif);
+  font-size: 19px;
+  line-height: 1.25;
+}
+/* The whole card opens the product; the quick add sits above this layer. */
+.counter-name::after {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(to top, rgba(26, 18, 14, 0.55), transparent 45%);
-  opacity: 0.85;
-  transition: opacity var(--ease);
 }
-.kitchen-caption {
-  position: absolute;
-  z-index: 2;
-  left: 18px;
-  right: 18px;
-  bottom: 16px;
+.counter-price {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+.counter-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.25);
+  gap: 10px;
 }
-.kitchen-tile:first-child .kitchen-caption {
-  left: 26px;
-  bottom: 24px;
-  font-size: 20px;
+.counter-progress {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  margin-right: 12px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--line);
 }
-.kitchen-caption svg {
-  width: 16px;
-  height: 16px;
-  opacity: 0;
-  transform: translateX(-6px);
+.counter-progress i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+  background: var(--color-text);
   transition:
-    opacity var(--ease),
-    transform var(--ease);
+    left 120ms linear,
+    width var(--ease);
 }
-.kitchen-tile:hover img {
-  transform: scale(1.05);
+.counter-controls button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  transition:
+    border-color var(--ease),
+    color var(--ease);
 }
-.kitchen-tile:hover::after {
-  opacity: 1;
+.counter-controls button:first-of-type svg {
+  transform: rotate(180deg);
 }
-.kitchen-tile:hover .kitchen-caption svg,
-.kitchen-tile:focus-visible .kitchen-caption svg {
-  opacity: 1;
-  transform: none;
+.counter-controls button:hover {
+  border-color: var(--berry);
+  color: var(--berry);
 }
-@media (max-width: 800px) {
-  .gallery-head {
-    flex-direction: column;
-    align-items: flex-start;
-    margin-bottom: 28px;
+.counter-controls svg {
+  width: 18px;
+  height: 18px;
+}
+@keyframes counter-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  .kitchen-gallery {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: 44vw;
-    gap: 10px;
+}
+@media (max-width: 1000px) {
+  .counter {
+    grid-template-columns: minmax(0, 1fr);
   }
-  /* The lead photo runs full width; the rest pair up, and an unpaired last one runs full width. */
-  .kitchen-gallery[data-count] .kitchen-tile {
-    grid-column: span 1;
-    grid-row: span 1;
+  .counter-panel {
+    padding: 28px 24px 24px;
   }
-  .kitchen-gallery[data-count] .kitchen-tile:first-child {
-    grid-column: 1 / -1;
-    grid-row: span 2;
+  .counter-panel h2 {
+    margin-bottom: 20px;
   }
-  .kitchen-gallery[data-count="2"] .kitchen-tile:last-child,
-  .kitchen-gallery[data-count="4"] .kitchen-tile:last-child {
-    grid-column: 1 / -1;
+  /* The menu becomes a row of tabs so the products stay close. */
+  .counter-menu {
+    display: flex;
+    overflow-x: auto;
+    gap: 22px;
+    margin-bottom: 22px;
+    border-top: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-feature-text) 18%, transparent);
+    scrollbar-width: none;
   }
-  .kitchen-tile {
-    border-radius: var(--radius-lg);
+  .counter-menu::-webkit-scrollbar {
+    display: none;
   }
-  .kitchen-tile:first-child .kitchen-caption {
-    left: 18px;
-    bottom: 16px;
+  .counter-menu button {
+    flex: none;
+    min-height: 44px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .counter-menu button::before {
+    display: none;
+  }
+  .counter-menu button[aria-pressed="true"] {
+    border-bottom-color: var(--color-feature-highlight);
+  }
+  .counter-cta {
+    margin-top: 0;
+  }
+  .counter-track {
+    grid-auto-columns: calc((100% - 2 * 16px) / 2.4);
+    gap: 16px;
+  }
+}
+@media (max-width: 700px) {
+  .counter-track {
+    grid-auto-columns: 64vw;
+    margin-inline: calc(var(--page-gutter) * -1);
+    padding-inline: var(--page-gutter);
+    scroll-padding-inline: var(--page-gutter);
+  }
+  .counter-controls button {
+    display: none;
+  }
+  .counter-progress {
+    margin-right: 0;
+  }
+  .counter-name {
     font-size: 17px;
-  }
-  .kitchen-caption {
-    left: 14px;
-    right: 14px;
-    bottom: 12px;
-    font-size: 14px;
-    line-height: 1.3;
-  }
-  .kitchen-caption svg {
-    flex-shrink: 0;
-    opacity: 1;
-    transform: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kitchen-tile img,
-  .kitchen-caption svg {
+  .counter-card {
+    animation: none;
+  }
+  .counter-photo img,
+  .counter-progress i {
     transition: none;
   }
-  .kitchen-tile:hover img {
+  .counter-card:hover .counter-photo img {
     transform: none;
   }
 }

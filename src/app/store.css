@@ -2067,7 +2067,6 @@
     display: none;
   }
   .section-head,
-  .editorial,
   .ready-grid,
   .about-tagline,
   .founder-section,
@@ -2119,13 +2118,6 @@
   }
   .product-meta h3 {
     overflow-wrap: anywhere;
-  }
-  .editorial-image {
-    min-height: 520px;
-  }
-  .editorial-copy {
-    max-width: none;
-    padding: 56px 24px;
   }
   .ready-grid > div:first-child {
     padding-left: 0;

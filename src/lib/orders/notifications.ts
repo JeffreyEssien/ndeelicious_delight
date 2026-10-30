@@ -40,7 +40,7 @@ async function deliver(db: SupabaseClient, notificationId: string) {
   const { data: order, error: orderError } = await db
     .from("orders")
     .select(
-      "order_number,customer_name,fulfilment,delivery_address_snapshot,subtotal,discount_total,delivery_fee,tax_total,grand_total,currency,order_items(product_name,variant_name,quantity,final_price,product_snapshot)",
+      "order_number,customer_name,fulfilment,preparation_ready_at,delivery_address_snapshot,subtotal,discount_total,delivery_fee,tax_total,grand_total,currency,order_items(product_name,variant_name,quantity,final_price,product_snapshot)",
     )
     .eq("id", notification.order_id)
     .single();
@@ -70,6 +70,28 @@ async function deliver(db: SupabaseClient, notificationId: string) {
       : await issueOrderDocument(db, order.order_number, "RECEIPT");
     receiptUrl = `${getSiteUrl()}/documents/orders/${encodeURIComponent(order.order_number)}/receipt?token=${receipt.token}`;
     receiptDocumentId = receipt.document.id;
+  }
+  let refund: { amount: number; refundedTotal: number; paid: number } | undefined;
+  if (notification.event_type === "REFUNDED" || notification.event_type === "PARTIALLY_REFUNDED") {
+    const [{ data: payment }, { data: latest }] = await Promise.all([
+      db
+        .from("payments")
+        .select("amount,refunded_amount")
+        .eq("order_id", notification.order_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      db
+        .from("order_refunds")
+        .select("amount")
+        .eq("order_id", notification.order_id)
+        .eq("status", "SUCCEEDED")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    if (payment && latest)
+      refund = { amount: latest.amount, refundedTotal: payment.refunded_amount, paid: payment.amount };
   }
   const schedule = business.fulfilmentSchedule;
   const address = order.delivery_address_snapshot;
@@ -109,11 +131,23 @@ async function deliver(db: SupabaseClient, notificationId: string) {
               [business.address, business.city, business.province].filter(Boolean).join(", "),
             hours: business.openingHours || "",
             instructions: schedule?.pickupInstructions ?? "",
+            readyFrom:
+              notification.event_type === "EARLIER_PICKUP" && order.preparation_ready_at
+                ? new Intl.DateTimeFormat(business.locale, {
+                    timeZone: business.timezone,
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  }).format(new Date(order.preparation_ready_at))
+                : undefined,
           }
         : undefined,
     trackUrl: `${getSiteUrl()}/track-order?order=${encodeURIComponent(order.order_number)}`,
     receiptUrl: receiptUrl || undefined,
     whatsappUrl: whatsappUrl(business.whatsapp) || undefined,
+    refund,
     businessName: frame.businessName,
     footer: frame.footer,
     accent: resolveThemeTokens(theme, appearance).primary,

@@ -27,6 +27,13 @@ export async function createStripeCheckout(input: CheckoutPayment) {
   const siteUrl = getSiteUrl();
   const session = await stripeClient().checkout.sessions.create(
     {
+      // Checkout Studio settings: an embedded payment form on our own /pay page.
+      ui_mode: "form",
+      billing_address_collection: "auto",
+      phone_number_collection: { enabled: false },
+      automatic_tax: { enabled: false },
+      submit_type: "auto",
+      integration_identifier: "custom_embedded_web_0001",
       mode: "payment",
       customer_email: input.email,
       client_reference_id: input.orderId,
@@ -43,13 +50,18 @@ export async function createStripeCheckout(input: CheckoutPayment) {
         },
       ],
       expires_at: Math.floor(Date.now() / 1000) + 31 * 60,
-      success_url: `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}&cancelled=1`,
+      return_url: `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
     },
     { idempotencyKey: input.attemptKey ?? `checkout:${input.orderId}:initial` },
   );
-  if (!session.url) throw new Error("Stripe did not return a checkout URL.");
-  return { id: session.id, url: session.url, expiresAt: session.expires_at };
+  if (!session.client_secret) throw new Error("Stripe did not return a checkout client secret.");
+  // The form is embedded on our own payment page, so that page is where customers go to pay.
+  return {
+    id: session.id,
+    url: paymentEntryUrl(session.id),
+    clientSecret: session.client_secret,
+    expiresAt: session.expires_at,
+  };
 }
 
 export async function expireStripeCheckout(sessionId: string) {
@@ -93,7 +105,8 @@ export async function retrieveStripeCheckout(sessionId: string) {
     id: session.id,
     status: session.status,
     paymentStatus: session.payment_status,
-    url: session.url,
+    url: session.status === "open" ? paymentEntryUrl(session.id) : null,
+    clientSecret: session.client_secret,
     expiresAt: session.expires_at,
     amountTotal: session.amount_total,
     currency: session.currency,

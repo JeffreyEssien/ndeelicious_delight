@@ -241,26 +241,6 @@ export function DeliveryWorkspace({ initialZones }: { initialZones: DeliveryZone
               setDraft((current) => ({ ...current, zones: current.zones.filter((z) => z.id !== id) }))
             }
           />
-          <details className="dw-card dw-advanced">
-            <summary>
-              <span>
-                <b>Delivery tax</b>
-                <small>Advanced. Confirm the treatment with your accountant first.</small>
-              </span>
-              <Icon name="chevron" />
-            </summary>
-            <label className="dw-field">
-              <span>Delivery tax treatment</span>
-              <select
-                value={draft.deliveryTaxMode}
-                onChange={(event) => setDraft((current) => ({ ...current, deliveryTaxMode: event.target.value }))}
-              >
-                <option value="">Setup required</option>
-                <option value="SEPARATE_TAXABLE_SERVICE">Separate taxable service</option>
-                <option value="FOLLOW_ORDER_ITEMS">Follow order items proportionally</option>
-              </select>
-            </label>
-          </details>
         </div>
         <aside className="dw-side">
           <NextDatesPreview draft={draft} />

@@ -172,7 +172,7 @@ describe("calculateOrderQuote", () => {
       /not currently available/,
     );
   });
-  it("calculates configured tax after discounts and optionally taxes delivery", () => {
+  it("taxes products only, never the delivery fee", () => {
     const quote = calculateOrderQuote({
       cart: [{ productId: "p2", variantId: "v1", quantity: 1 }],
       products,
@@ -183,7 +183,7 @@ describe("calculateOrderQuote", () => {
       taxDelivery: true,
       deliveryTaxMode: "SEPARATE_TAXABLE_SERVICE",
     });
-    expect(quote.taxTotal).toBe(Math.round(((quote.subtotal + 2_000) * 1_400) / 10_000));
+    expect(quote.taxTotal).toBe(Math.round((quote.subtotal * 1_400) / 10_000));
     expect(quote.grandTotal).toBe(quote.subtotal + quote.deliveryFee + quote.taxTotal);
   });
   it("rejects an invalid configured tax rate", () => {
