@@ -809,28 +809,214 @@
   width: 26px;
   height: 26px;
 }
-.find-us-card {
+/* Homepage: pickup and directions. */
+.find-us-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--accent-soft);
+}
+.find-us-copy {
+  display: grid;
+  align-content: center;
+  gap: 20px;
+  padding: clamp(32px, 5vw, 64px);
+}
+.find-us-copy h2 {
+  margin: 0;
+  font-size: clamp(34px, 4vw, 52px);
+  line-height: 1.05;
+}
+.find-us-copy > p {
+  max-width: 460px;
+  margin: 0;
+  color: var(--color-on-accent);
+  font-size: 17px;
+  line-height: 1.6;
+}
+.find-us-steps {
+  display: grid;
+  gap: 14px;
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+}
+.find-us-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.find-us-steps li > b {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--berry);
+  font-size: 12px;
+}
+.find-us-steps h3 {
+  margin: 2px 0 2px;
+  font-size: 16px;
+}
+.find-us-steps p {
+  margin: 0;
+  color: var(--color-on-accent);
+  font-size: 14px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+.find-us-actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 28px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
+  gap: 12px;
 }
-.find-us-card h3 {
-  margin: 0 0 6px;
-  font-size: 20px;
-}
-.find-us-card p {
+.find-us-help {
   margin: 0;
-}
-.find-us-hours {
-  margin-top: 4px;
-  color: var(--muted);
+  color: var(--color-on-accent);
   font-size: 14px;
+}
+.find-us-help a {
+  color: var(--berry);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* A drawn map rather than an embed: no third-party requests, and the whole card opens directions. */
+.find-us-map {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 460px;
+  padding: 24px;
+  overflow: hidden;
+  background: var(--berry-dark);
+  color: #fff;
+  isolation: isolate;
+}
+.find-us-roads {
+  position: absolute;
+  z-index: -1;
+  inset: -20%;
+  background:
+    linear-gradient(90deg, transparent 47%, rgba(255, 255, 255, 0.16) 47% 53%, transparent 53%) 0 0 / 100% 100%,
+    linear-gradient(0deg, transparent 58%, rgba(255, 255, 255, 0.12) 58% 62%, transparent 62%) 0 0 / 100% 100%,
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 56px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 56px),
+    radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.12), transparent 45%);
+  transform: rotate(-12deg);
+  transition: transform 900ms var(--ease-standard);
+}
+.find-us-map:hover .find-us-roads {
+  transform: rotate(-12deg) scale(1.06);
+}
+.find-us-pin {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  width: 46px;
+  height: 46px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--surface);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+.find-us-pin span {
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  background: var(--berry);
+}
+.find-us-pin::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  animation: find-us-pulse 2.4s ease-out infinite;
+}
+@keyframes find-us-pulse {
+  from {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+.find-us-place {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 20px 22px;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+  color: var(--color-text);
+  backdrop-filter: blur(8px);
+}
+.find-us-place b {
+  font-size: 18px;
+}
+.find-us-place > span {
+  color: var(--muted);
+  font-size: 15px;
+}
+.find-us-place small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--color-text);
+  font-size: 14px;
+}
+.find-us-place small svg {
+  width: 15px;
+  height: 15px;
+  color: var(--berry);
+}
+.find-us-place em {
+  justify-self: start;
+  margin-top: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--berry-soft, var(--accent-soft));
+  color: var(--berry);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 600;
+}
+@media (max-width: 860px) {
+  .find-us-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .find-us-map {
+    min-height: 340px;
+    padding: 16px;
+  }
+  .find-us-pin {
+    top: 26%;
+  }
+  .find-us-copy > p {
+    font-size: 16px;
+  }
+  .find-us-actions .button {
+    flex: 1 1 200px;
+    justify-content: center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .find-us-pin::after {
+    animation: none;
+  }
+  .find-us-roads {
+    transition: none;
+  }
 }
 .testimonial-grid {
   display: grid;
