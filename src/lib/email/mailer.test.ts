@@ -10,7 +10,7 @@ vi.mock("nodemailer", () => ({
   },
 }));
 
-import { emailFrame, escapeHtml, sendTransactionalEmail } from "./mailer";
+import { emailFrame, escapeHtml, htmlToText, sendTransactionalEmail } from "./mailer";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -68,6 +68,7 @@ describe("SMTP transactional email", () => {
       replyTo: "reply@example.com",
       subject: "Order received",
       html: "<p>Thank you</p>",
+      text: "Thank you",
     });
   });
 
@@ -75,20 +76,40 @@ describe("SMTP transactional email", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("SMTP_USER", "bakery@gmail.com");
     vi.stubEnv("SMTP_PASSWORD", "app-password");
-    mocks.sendMail.mockRejectedValue({ code: "EAUTH" });
+    mocks.sendMail.mockRejectedValue({ code: "EAUTH", response: "535-5.7.8 Username and Password not accepted" });
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     await expect(
       sendTransactionalEmail({ to: "customer@example.com", subject: "Hello", html: "<p>Hello</p>" }),
-    ).resolves.toEqual({ sent: false, reason: "provider-error" });
+    ).resolves.toEqual({
+      sent: false,
+      reason: "provider-error",
+      detail: "EAUTH 535-5.7.8 Username and Password not accepted",
+    });
   });
   it("does not report successful handoff when SMTP rejects a recipient", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("SMTP_USER", "bakery@gmail.com");
     vi.stubEnv("SMTP_PASSWORD", "app-password");
     mocks.sendMail.mockResolvedValue({ messageId: "id", accepted: [], rejected: ["customer@example.com"] });
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
     await expect(
       sendTransactionalEmail({ to: "customer@example.com", subject: "Quote", html: "<p>Quote</p>" }),
-    ).resolves.toEqual({ sent: false, reason: "provider-error" });
+    ).resolves.toEqual({ sent: false, reason: "provider-error", detail: "rejected by the mail server" });
+  });
+
+  it("sends a readable plain-text copy alongside the HTML", () => {
+    const html = emailFrame(
+      "Your order is in!",
+      '<p>Hi Ada,</p><p>Thanks &amp; see you soon.</p><a href="https://shop.example/track">Track your order</a>',
+      { preheader: "Thanks" },
+    );
+    expect(html.startsWith('<!doctype html><html lang="en"><head><meta charset="utf-8">')).toBe(true);
+    const text = htmlToText(html);
+    expect(text).toContain("Your order is in!");
+    expect(text).toContain("Thanks & see you soon.");
+    expect(text).toContain("Track your order (https://shop.example/track)");
+    expect(text).not.toMatch(/<|&amp;/);
+    expect(text.startsWith("Ndeeelicious Delight")).toBe(true);
   });
 });

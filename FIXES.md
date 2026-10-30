@@ -30,6 +30,7 @@ The full history and plans live in `PROGRESS.md` and `implementation.md`.
 | #72 | "From the kitchen" is a shop counter: feature panel with a type menu (All, Ready to order, Cakes, Ready to bake) beside a row of photo-first products with quick add; Ready to order leads | |
 | #74 | Website content editor rebuilt: page list, search across all text, plain field names showing where each appears, edit markers with undo, list editing, publish bar with Cmd/Ctrl+S; only fields the site uses | |
 | #75 | Home Screen and push notification icons pointed at `/icon` and `/apple-icon`, which 404; they now use `/icon.png` and `/apple-icon.png` | |
+| #77 | Order panel More menu no longer cut off. Emails now include a plain-text copy and a full HTML document (better inbox delivery), and failed emails save the mail server's own reason in `last_error` | |
 
 ## Good to know
 

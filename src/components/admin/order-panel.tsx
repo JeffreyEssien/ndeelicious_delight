@@ -21,6 +21,20 @@ function mutate(body: unknown) {
   });
 }
 
+// The More menu opens toward whichever side of its button has room inside the panel, so it is
+// never cut off whether the button lands on the left (phones) or the right (wide panels).
+function placeMoreMenu(event: React.SyntheticEvent<HTMLDetailsElement>) {
+  const details = event.currentTarget;
+  const menu = details.querySelector<HTMLElement>(":scope > div");
+  const panel = details.closest<HTMLElement>(".op") ?? document.body;
+  if (!details.open || !menu) return;
+  const button = details.getBoundingClientRect();
+  const bounds = panel.getBoundingClientRect();
+  const width = menu.offsetWidth;
+  details.dataset.align =
+    button.left + width <= bounds.right - 8 || button.right - width < bounds.left + 8 ? "start" : "end";
+}
+
 function ago(iso: string) {
   const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
   if (minutes < 1) return "just now";
@@ -264,7 +278,7 @@ export function OrderDetail({
         <Button variant="secondary" onClick={() => window.print()}>
           Print
         </Button>
-        <details className="op-more">
+        <details className="op-more" onToggle={placeMoreMenu}>
           <summary>More</summary>
           <div>
             <OrderStatusSelect value={order.status} onChange={changeStatus} />
