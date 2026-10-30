@@ -7,6 +7,7 @@ import { Button, Input, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { AdminOrder } from "@/lib/data/admin";
+import { earlyReadyMessage, isEarly } from "@/lib/orders/notice";
 import type { OrderStatus } from "@/types";
 import { paymentTone, stageTone } from "./order-tones";
 
@@ -148,14 +149,28 @@ export function OrderDetail({
   const outstanding = Math.max(0, order.total - paid);
   const paymentStatus = order.payment?.status ?? "UNPAID";
 
-  async function advance() {
-    if (busy || !nextAction) return;
+  // Marking ready inside the customer's notice period is allowed, but asks first.
+  function readyCheck(stage: OrderStatus) {
+    if (stage !== "READY" || !order.readyAt || !isEarly(order.readyAt)) return true;
+    return window.confirm(
+      earlyReadyMessage(
+        [{ number: order.id, placedAt: order.date, readyAt: order.readyAt }],
+        business.locale,
+        business.timezone,
+      ),
+    );
+  }
+  async function changeStatus(stage: OrderStatus) {
+    if (busy || !readyCheck(stage)) return;
     setBusy(true);
     try {
-      await onStatus(order.id, nextAction.stage);
+      await onStatus(order.id, stage);
     } finally {
       setBusy(false);
     }
+  }
+  async function advance() {
+    if (nextAction) await changeStatus(nextAction.stage);
   }
   async function saveNote() {
     setBusy(true);
@@ -252,7 +267,7 @@ export function OrderDetail({
         <details className="op-more">
           <summary>More</summary>
           <div>
-            <OrderStatusSelect value={order.status} onChange={(value) => onStatus(order.id, value)} />
+            <OrderStatusSelect value={order.status} onChange={changeStatus} />
             <Button variant="secondary" disabled={busy} onClick={retryNotifications}>
               Resend customer emails
             </Button>

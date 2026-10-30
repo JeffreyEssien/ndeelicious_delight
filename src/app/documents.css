@@ -770,6 +770,13 @@
   width: 100%;
   margin: 12px 0;
 }
+/* Stripe's embedded payment form renders inside this box, in its own secure iframe. */
+.payment-entry .payment-form {
+  width: 100%;
+  min-height: 120px;
+  margin: 8px 0 16px;
+  text-align: left;
+}
 .payment-entry small {
   display: block;
   color: var(--muted);

@@ -61,7 +61,10 @@ export async function POST(request: Request) {
       );
     }
     if (existing.status === "open" && existing.url && existing.expiresAt > Date.now() / 1000) {
-      return Response.json({ payment: { checkoutUrl: existing.url } }, { headers: { "Cache-Control": "no-store" } });
+      return Response.json(
+        { payment: { checkoutUrl: existing.url, sessionId: existing.id, clientSecret: existing.clientSecret } },
+        { headers: { "Cache-Control": "no-store" } },
+      );
     }
     if (existing.status !== "expired")
       return Response.json({ error: "Payment status is being updated. Please try again shortly." }, { status: 409 });
@@ -105,7 +108,10 @@ export async function POST(request: Request) {
       { onConflict: "idempotency_key", ignoreDuplicates: true },
     );
     if (insertError) throw insertError;
-    return Response.json({ payment: { checkoutUrl: checkout.url } });
+    return Response.json(
+      { payment: { checkoutUrl: checkout.url, sessionId: checkout.id, clientSecret: checkout.clientSecret } },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (reason) {
     if (sessionId) await expireStripeCheckout(sessionId);
     if (sessionId) await transitionOrderStatus(service, order.order_number, "FAILED").catch(() => undefined);
