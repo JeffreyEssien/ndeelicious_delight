@@ -20,32 +20,39 @@ test.beforeEach(async ({ context, page }) => {
 test("owner delivery configuration persists and rejects duplicate postal prefixes", async ({ page }) => {
   await page.request.post("http://127.0.0.1:4545/__fixtures/reset-delivery-areas");
   await page.goto("/admin/delivery");
-  const workspace = page.locator(".delivery-workspace");
-  await workspace.getByRole("button", { name: "Add delivery area" }).click();
-  const card = workspace.locator(".zone-card").last();
+  const workspace = page.locator(".dw");
+  await workspace.getByRole("button", { name: "Add area" }).click();
+  const card = workspace.locator(".dw-area").last();
   await card.getByLabel("Area name").fill("Fixture Halifax");
-  await card.getByLabel("Postal prefixes").fill("B3H");
+  await card.getByLabel("Add postal prefixes").fill("B3H");
+  await card.getByLabel("Add postal prefixes").press("Enter");
   await card.getByLabel("Delivery fee").fill("10");
   await card.getByLabel("Minimum order").fill("20");
-  await card.getByLabel("Free delivery from").fill("50");
+  await card.getByLabel("Free delivery over").fill("50");
   await card.getByLabel("Delivery estimate").fill("Scheduled delivery");
-  await card.getByRole("checkbox", { name: "Off", exact: true }).check();
+  await card.getByRole("switch", { name: "Off", exact: true }).check();
   const savedResponse = page.waitForResponse(
     (response) => response.url().endsWith("/api/admin/mutate") && response.request().method() === "POST",
   );
-  await workspace.getByRole("button", { name: "Save delivery areas" }).click();
+  await workspace.getByRole("button", { name: "Save changes" }).click();
   expect((await savedResponse).status()).toBe(200);
-  await expect(workspace.locator(".admin-save-bar [role=status]")).toHaveText("Saved");
+  await expect(workspace.locator(".dw-savebar [role=status]")).toHaveText("All changes saved");
   await page.reload();
-  await expect(page.getByLabel("Postal prefixes").last()).toHaveValue("B3H");
-  await expect(page.getByLabel("Free delivery from").last()).toHaveValue("50");
-  await workspace.getByRole("button", { name: "Add delivery area" }).click();
-  const duplicate = workspace.locator(".zone-card").last();
+  const saved = workspace.locator(".dw-area").last();
+  await saved.getByRole("button", { name: /Fixture Halifax/ }).click();
+  await expect(saved.locator(".dw-chip")).toHaveCount(1);
+  await expect(saved.locator(".dw-chip")).toContainText("B3H");
+  await expect(saved.getByLabel("Free delivery over")).toHaveValue("50");
+  await workspace.getByRole("button", { name: "Add area" }).click();
+  const duplicate = workspace.locator(".dw-area").last();
   await duplicate.getByLabel("Area name").fill("Duplicate fixture area");
-  await duplicate.getByLabel("Postal prefixes").fill("B3H");
-  await duplicate.getByRole("checkbox", { name: "Off", exact: true }).check();
-  await workspace.getByRole("button", { name: "Save delivery areas" }).click();
-  await expect(workspace.locator(".admin-save-bar [role=status]")).toContainText("Error");
+  await duplicate.getByLabel("Add postal prefixes").fill("B3H");
+  await duplicate.getByLabel("Add postal prefixes").press("Enter");
+  await duplicate.getByRole("switch", { name: "Off", exact: true }).check();
+  await expect(duplicate.locator(".dw-chip.is-clash")).toContainText("also in Fixture Halifax");
+  await workspace.getByRole("button", { name: "Save changes" }).click();
+  await expect(duplicate).toContainText("belongs to more than one active area");
+  await expect(workspace.locator(".dw-savebar [role=status]")).toContainText("Unsaved changes");
   const persisted = await (await page.request.get("http://127.0.0.1:4545/rest/v1/delivery_zones")).json();
   const liveArea = persisted[0];
   const areaInput = {
@@ -69,7 +76,7 @@ test("owner delivery configuration persists and rejects duplicate postal prefixe
   });
   expect(apiRejected.status()).toBe(400);
   await page.reload();
-  await expect(workspace.locator(".zone-card")).toHaveCount(1);
+  await expect(workspace.locator(".dw-area")).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.goto("/admin/settings");
   await page.getByLabel("Offer delivery at checkout").check();
