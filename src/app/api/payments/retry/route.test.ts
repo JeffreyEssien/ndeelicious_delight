@@ -66,20 +66,29 @@ beforeEach(() => {
   mocks.save.mockResolvedValue({ error: null });
   mocks.create.mockResolvedValue({
     id: "cs_test_new",
-    url: "https://checkout.stripe.com/new",
+    url: "https://shop.example/pay?session=cs_test_new",
+    clientSecret: "cs_test_new_secret",
     expiresAt: Date.now() / 1000 + 1800,
   });
 });
 describe("email payment renewal", () => {
   it("reuses only a Stripe-confirmed open session from the latest attempt", async () => {
     mocks.session.mockResolvedValue({
+      id: "cs_test_current",
       status: "open",
       paymentStatus: "unpaid",
-      url: "https://checkout.stripe.com/current",
+      url: "https://shop.example/pay?session=cs_test_current",
+      clientSecret: "cs_test_current_secret",
       expiresAt: Date.now() / 1000 + 100,
     });
     const response = await POST(request());
     expect(response.status).toBe(200);
+    // The embedded form on /pay mounts with this session's client secret.
+    expect((await response.json()).payment).toEqual({
+      checkoutUrl: "https://shop.example/pay?session=cs_test_current",
+      sessionId: "cs_test_current",
+      clientSecret: "cs_test_current_secret",
+    });
     expect(mocks.session).toHaveBeenCalledWith("cs_test_current");
     expect(mocks.create).not.toHaveBeenCalled();
   });
@@ -87,6 +96,10 @@ describe("email payment renewal", () => {
     mocks.session.mockResolvedValue({ status: "expired", paymentStatus: "unpaid" });
     const response = await POST(request());
     expect(response.status).toBe(200);
+    expect((await response.json()).payment).toMatchObject({
+      sessionId: "cs_test_new",
+      clientSecret: "cs_test_new_secret",
+    });
     expect(mocks.retire).toHaveBeenCalled();
     expect(mocks.prepare).toHaveBeenCalledWith("prepare_order_payment_retry", {
       p_order_id: "order",
