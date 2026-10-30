@@ -750,6 +750,16 @@ export const defaultCustomerText: CustomerText = {
   },
   "Page: ready-to-bake": {
     "No ready-to-bake products are currently published.": "No ready-to-bake products are currently published.",
+    "Grab a box": "Grab a box",
+    "Find a store": "Find a store",
+    "box to choose": "box to choose",
+    "boxes to choose from": "boxes to choose from",
+    "store near you": "store near you",
+    "stores across HRM": "stores across HRM",
+    "Just bake": "Just bake",
+    "How to bake": "How to bake",
+    "Freezer. Oven. Applause.": "Freezer. Oven. Applause.",
+    "Call ahead to check what’s in the freezer.": "Call ahead to check what’s in the freezer.",
     "Available across Halifax HRM": "Available across Halifax HRM",
     "Find us in stores": "Find us in stores",
     "Meat pies, chicken pies and beef sausage rolls, frozen and ready to bake. Contact each store for current stock, prices and opening hours.":
