@@ -24,6 +24,7 @@ The full history and plans live in `PROGRESS.md` and `implementation.md`.
 | #66 | Stripe embedded payment form (`ui_mode: "form"`) on `/pay` | |
 | #67 | Orders can be marked ready before the 24-hour notice ends; the admin gets an "are you sure" reminder instead of a block | 0059 |
 | #68 | Customers get an email for partial refunds; refund emails show the amounts | 0060 |
+| #69 | Tax on products only. Delivery fees are never taxed, and the admin's delivery tax setting is gone | |
 
 ## Good to know
 

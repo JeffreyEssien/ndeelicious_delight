@@ -744,43 +744,6 @@ p.dw-error {
   font-size: 14px;
 }
 
-/* Advanced */
-.dw-advanced summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  list-style: none;
-  cursor: pointer;
-}
-.dw-advanced summary::-webkit-details-marker {
-  display: none;
-}
-.dw-advanced summary > span {
-  display: grid;
-  gap: 2px;
-}
-.dw-advanced summary small {
-  color: var(--muted);
-  font-size: 13px;
-}
-.dw-advanced summary svg {
-  width: 16px;
-  height: 16px;
-  color: var(--muted);
-  transform: rotate(90deg);
-  transition: transform var(--ease);
-}
-.dw-advanced[open] summary svg {
-  transform: rotate(-90deg);
-}
-.dw-advanced:not([open]) {
-  gap: 0;
-}
-.dw-advanced .dw-field {
-  max-width: 360px;
-}
-
 /* Save bar */
 .dw-savebar {
   position: sticky;
