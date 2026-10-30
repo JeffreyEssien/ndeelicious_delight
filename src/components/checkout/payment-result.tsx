@@ -1,5 +1,6 @@
 "use client";
 import { useCustomerText } from "@/components/customer-text-provider";
+import { OrderPushButton } from "@/components/order/order-push-button";
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -170,6 +171,7 @@ export function PaymentResult({
           {t(error)}
         </p>
       )}
+      {succeeded && payment?.orderNumber && <OrderPushButton orderNumber={payment.orderNumber} sessionId={sessionId} />}
       <div className="success-actions">
         {succeeded && payment?.orderNumber && (
           <Link

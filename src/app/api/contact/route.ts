@@ -3,6 +3,7 @@ import { isSameOrigin } from "@/lib/auth/validation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { emailFrame, escapeHtml } from "@/lib/email/mailer";
 import { sendEmailToActiveAdmins } from "@/lib/email/admin-recipients";
+import { pushToAdmins } from "@/lib/push/send";
 import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
 const schema = z.object({
@@ -22,6 +23,12 @@ export async function POST(request: Request) {
   const db = createServiceClient();
   const { error } = await db.from("contact_messages").insert(parsed.data);
   if (error) return Response.json({ error: "We couldn’t send your message. Please try again." }, { status: 500 });
+  await pushToAdmins(db, {
+    title: `Message from ${parsed.data.name}`,
+    body: parsed.data.subject,
+    url: "/admin",
+    tag: "admin-message",
+  });
   await sendEmailToActiveAdmins(db, {
     replyTo: parsed.data.email,
     subject: "New customer message",
