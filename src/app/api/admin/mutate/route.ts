@@ -12,7 +12,7 @@ import {
   setVariantInventory,
   transitionAdminOrderStatus,
 } from "@/lib/data/inventory";
-import { deliverPendingOrderNotifications } from "@/lib/orders/notifications";
+import { deliverPendingOrderNotifications, resendOrderEmails } from "@/lib/orders/notifications";
 import { offerEarlierPickups } from "@/lib/orders/earlier-pickup";
 import { deliverCakeQuoteEmail, queueCakeQuoteEmail } from "@/lib/cakes/notifications";
 import { issueCakeQuote } from "@/lib/documents/service";
@@ -306,7 +306,8 @@ export async function POST(request: Request) {
       error = { message: "Order note update failed." };
     }
   }
-  if (input.action === "notification-retry") after(() => deliverPendingOrderNotifications(supabase, input.orderNumber));
+  let resend: Awaited<ReturnType<typeof resendOrderEmails>> | undefined;
+  if (input.action === "notification-retry") resend = await resendOrderEmails(supabase, input.orderNumber);
   if (input.action === "theme")
     ({ error } = await supabase
       .from("site_settings")
@@ -493,5 +494,6 @@ export async function POST(request: Request) {
     ...(savedIds ? { savedIds } : {}),
     ...(cakeDeleteOutcome ? { cakeDeleteOutcome } : {}),
     ...(quoteDeliveryId ? { deliveryStatus: "PENDING", documentId: quoteDocumentId } : {}),
+    ...(resend ? { resend } : {}),
   });
 }

@@ -195,8 +195,16 @@ export function OrderDetail({
   async function retryNotifications() {
     setBusy(true);
     const response = await mutate({ action: "notification-retry", orderNumber: order.id });
+    const payload = await response.json().catch(() => null);
     setBusy(false);
-    notify(response.ok ? "Pending customer emails were retried." : "Customer emails could not be retried.");
+    const resend = payload?.resend as
+      | { recipient: string; sent: number; failed: string[]; nothing: boolean }
+      | undefined;
+    if (!response.ok || !resend) notify(payload?.error ?? "Emails could not be resent. Try again.");
+    else if (resend.nothing) notify("There's no email to send for this order yet.");
+    else if (resend.failed.length) notify(`Not sent. ${resend.failed[0]}`);
+    else notify(`Sent to ${resend.recipient}. If they don't see it, ask them to check spam.`);
+    if (onRefresh) await onRefresh();
   }
   async function refund() {
     const amount = Math.round(Number(refundAmount) * 100);
