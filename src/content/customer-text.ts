@@ -750,7 +750,7 @@ export const defaultCustomerText: CustomerText = {
   },
   "Page: ready-to-bake": {
     "No ready-to-bake products are currently published.": "No ready-to-bake products are currently published.",
-    "Shop the range": "Shop the range",
+    "Fill your freezer": "Fill your freezer",
     "Find a store": "Find a store",
     "box to choose": "box to choose",
     "boxes to choose from": "boxes to choose from",
