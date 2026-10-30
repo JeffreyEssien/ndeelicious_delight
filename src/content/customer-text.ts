@@ -703,6 +703,7 @@ export const defaultCustomerText: CustomerText = {
     Privacy: "Privacy",
     Terms: "Terms",
     "Returns & cancellations": "Returns & cancellations",
+    "Secure checkout powered by Stripe": "Secure checkout powered by Stripe",
   },
   header: {
     "Open navigation": "Open navigation",
