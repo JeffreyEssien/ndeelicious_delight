@@ -7,6 +7,7 @@ import "../admin.css";
 import "../documents.css";
 import "../delivery-admin.css";
 import "../orders-admin.css";
+import "../content-admin.css";
 
 export const metadata: Metadata = { robots: { index: false, follow: false, nocache: true } };
 
