@@ -204,6 +204,59 @@ export async function deliverPendingOrderNotifications(db: SupabaseClient, order
   for (const notification of data ?? []) await deliver(db, notification.id);
 }
 
+/** Plain words for why an email could not be sent, from what the mail server said. */
+export function emailFailureReason(lastError: string | null | undefined) {
+  const error = lastError ?? "";
+  if (error.startsWith("not-configured")) return "Email isn't set up on the website yet (the SMTP settings in Vercel).";
+  if (/EAUTH|535|Username and Password/i.test(error))
+    return "Gmail refused the login. The email password in Vercel needs updating.";
+  if (/5\.4\.5|limit/i.test(error)) return "Gmail's daily sending limit was reached. Try again tomorrow.";
+  if (error === "invalid-notification-data") return "This email couldn't be put together for this order.";
+  return error
+    ? `The mail server said: ${error.replace(/^provider-error:?\s*/, "") || "no reason given"}`
+    : "No reason was given.";
+}
+
+/**
+ * The admin's "Resend customer emails": sends any email that failed or is waiting, straight away,
+ * or, when everything already went out, sends the customer's latest update again. Push
+ * notifications are not repeated. Reports what happened so the admin isn't left guessing.
+ */
+export async function resendOrderEmails(db: SupabaseClient, orderNumber: string) {
+  const { data: order } = await db.from("orders").select("id,email").eq("order_number", orderNumber).maybeSingle();
+  if (!order) return { recipient: "", sent: 0, failed: [] as string[], nothing: true };
+  const { data: rows } = await db
+    .from("order_notifications")
+    .select("id,status,created_at,next_attempt_at")
+    .eq("order_id", order.id)
+    .order("created_at", { ascending: false });
+  const now = new Date().toISOString();
+  // Leave an email that is being sent right now alone, so the customer never gets it twice.
+  const all = (rows ?? []).filter(
+    (row) => !(row.status === "SENDING" && Date.parse(row.next_attempt_at) > Date.parse(now)),
+  );
+  const waiting = all.filter((row) => row.status !== "SENT");
+  const chosen = waiting.length ? waiting : all.slice(0, 1);
+  if (!chosen.length) return { recipient: order.email as string, sent: 0, failed: [], nothing: true };
+  await db
+    .from("order_notifications")
+    .update({ status: "PENDING", next_attempt_at: now, updated_at: now })
+    .in(
+      "id",
+      chosen.map((row) => row.id),
+    );
+  let sent = 0;
+  const failed: string[] = [];
+  for (const row of [...chosen].reverse()) {
+    if (await deliver(db, row.id)) sent += 1;
+    else {
+      const { data: after } = await db.from("order_notifications").select("last_error").eq("id", row.id).maybeSingle();
+      failed.push(emailFailureReason(after?.last_error));
+    }
+  }
+  return { recipient: order.email as string, sent, failed, nothing: false };
+}
+
 export async function sendPaidOrderAdminNotification(db: SupabaseClient, orderNumber: string) {
   const { data: order } = await db
     .from("orders")
