@@ -48,13 +48,10 @@ test("compact products, wrapped delivery settings and minute preparation persist
   await page.goto("/product/classic-butter-croissant");
   await expect(page.getByText(/Preparation: 45 minutes/)).toBeVisible();
   await page.goto("/admin/delivery");
-  await expect(page.getByRole("heading", { name: "Delivery schedule & pickup" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Delivery schedule" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await expect(page.locator(".weekday-picker")).toHaveCount(2);
-  expect(await page.locator(".delivery-save-bar").evaluate((element) => getComputedStyle(element).position)).toBe(
-    "static",
-  );
-  const days = page.locator(".weekday-picker").locator("label");
+  await expect(page.locator(".dw-days")).toHaveCount(2);
+  const days = page.locator(".dw-day-pills button");
   await expect(days).toHaveCount(14);
   for (const day of await days.all()) {
     const box = await day.boundingBox();

@@ -5,6 +5,7 @@ import { getBusinessSettings, getStoreAppearance, getStoreTheme } from "@/lib/da
 import { resolveThemeTokens } from "@/lib/theme/tokens";
 import "../admin.css";
 import "../documents.css";
+import "../delivery-admin.css";
 
 export const metadata: Metadata = { robots: { index: false, follow: false, nocache: true } };
 
