@@ -27,6 +27,7 @@ The full history and plans live in `PROGRESS.md` and `implementation.md`.
 | #69 | Tax on products only. Delivery fees are never taxed, and the admin's delivery tax setting is gone | |
 | #70 | Saving a pickup schedule that allows earlier pickups moves open pickup orders forward and emails those customers the new time | 0061 |
 | #71 | Homepage cake section is now a grid of cake sub-category tiles; each photo rotates through that category's cakes | 0062 |
+| #72 | "From the kitchen" gallery covers all products, with type chips (All, Ready to order, Cakes, Ready to bake); Ready to order leads the mix | |
 
 ## Good to know
 

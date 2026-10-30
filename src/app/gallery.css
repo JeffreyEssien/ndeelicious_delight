@@ -35,6 +35,65 @@
   border-color: var(--berry);
   color: var(--berry);
 }
+/* Type chips: switch the gallery between all products and one kind. */
+.kitchen-filters {
+  display: flex;
+  overflow-x: auto;
+  gap: 8px;
+  margin: -16px 0 24px;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.kitchen-filters::-webkit-scrollbar {
+  display: none;
+}
+.kitchen-filters button {
+  flex: none;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--ease),
+    border-color var(--ease),
+    color var(--ease);
+}
+.kitchen-filters button:hover {
+  border-color: var(--berry);
+  color: var(--berry);
+}
+.kitchen-filters button[aria-pressed="true"] {
+  border-color: var(--berry);
+  background: var(--berry);
+  color: var(--color-on-primary);
+}
+.kitchen-type {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  left: 14px;
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.kitchen-tile:first-child .kitchen-type {
+  top: 20px;
+  left: 22px;
+}
+.kitchen-more {
+  display: inline-flex;
+  margin-top: 24px;
+}
 /* Bento layout: the first photo leads at double size, the rest fill around it. */
 .kitchen-gallery {
   display: grid;
@@ -48,6 +107,25 @@
   border-radius: var(--radius-xl);
   background: var(--accent-soft);
   isolation: isolate;
+  animation: kitchen-in 420ms var(--ease-standard) both;
+}
+.kitchen-tile:nth-child(2) {
+  animation-delay: 40ms;
+}
+.kitchen-tile:nth-child(3) {
+  animation-delay: 80ms;
+}
+.kitchen-tile:nth-child(4) {
+  animation-delay: 120ms;
+}
+.kitchen-tile:nth-child(5) {
+  animation-delay: 160ms;
+}
+@keyframes kitchen-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 }
 .kitchen-tile:first-child {
   grid-column: span 2;
@@ -163,6 +241,9 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .kitchen-tile {
+    animation: none;
+  }
   .kitchen-tile img,
   .kitchen-caption svg {
     transition: none;
