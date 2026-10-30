@@ -57,3 +57,30 @@ export async function POST(request: Request, context: Context) {
   invalidateStorefrontCache();
   return Response.json({ ok: true, id }, { status: 201 });
 }
+
+export async function DELETE(request: Request, context: Context) {
+  const auth = await requireAdminRequest(request);
+  if (!auth.ok) return auth.response;
+  const { id } = await context.params;
+  const { error } = await auth.db.rpc("admin_delete_product", {
+    p_id: id,
+    p_admin_id: auth.admin.id,
+    p_session_id: auth.sessionId,
+  });
+  if (error) {
+    if (error.message?.includes("PRODUCT_IN_CHECKOUT"))
+      return Response.json(
+        {
+          error: "Someone is paying for this product right now. Try again in 15 minutes, once their checkout finishes.",
+        },
+        { status: 409 },
+      );
+    const result = productSaveError(error);
+    return Response.json(
+      { error: result.status === 500 ? "Product could not be deleted. Please try again." : result.error },
+      { status: result.status },
+    );
+  }
+  invalidateStorefrontCache();
+  return Response.json({ ok: true });
+}
