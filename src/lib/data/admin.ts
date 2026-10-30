@@ -97,6 +97,8 @@ export type AdminOrder = Order & {
   taxTotal: number;
   internalNote: string;
   customerNote: string;
+  /** When the customer's notice period ends; marking ready before then asks first. */
+  readyAt: string | null;
   address: Record<string, string> | null;
   payment: { status: string; amount: number; refundedAmount: number; paidAt: string | null } | null;
   lines: Array<{
@@ -266,7 +268,7 @@ async function fetchOrderRows(db: SupabaseClient, identifier?: string, recentLim
   const query = db
     .from("orders")
     .select(
-      "id,order_number,customer_name,email,phone,grand_total,subtotal,discount_total,delivery_fee,tax_total,currency,status,created_at,fulfilment,delivery_address_snapshot,customer_note,internal_note,order_items(id,product_name,variant_name,sku,unit_price,quantity,discount,final_price,product_snapshot),payments(status,amount,refunded_amount,paid_at),order_events(id,event_type,from_status,to_status,note,created_at)",
+      "id,order_number,customer_name,email,phone,grand_total,subtotal,discount_total,delivery_fee,tax_total,currency,status,created_at,preparation_ready_at,fulfilment,delivery_address_snapshot,customer_note,internal_note,order_items(id,product_name,variant_name,sku,unit_price,quantity,discount,final_price,product_snapshot),payments(status,amount,refunded_amount,paid_at),order_events(id,event_type,from_status,to_status,note,created_at)",
     )
     .order("created_at", { referencedTable: "payments", ascending: false })
     .order("created_at", { ascending: false });
@@ -301,6 +303,7 @@ function mapOrderRows(orderResult: Pick<Awaited<ReturnType<typeof fetchOrderRows
     taxTotal: row.tax_total,
     internalNote: row.internal_note ?? "",
     customerNote: row.customer_note ?? "",
+    readyAt: row.preparation_ready_at ?? null,
     address: row.delivery_address_snapshot as Record<string, string> | null,
     payment: row.payments?.[0]
       ? {
