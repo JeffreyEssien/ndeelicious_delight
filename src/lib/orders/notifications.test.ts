@@ -7,7 +7,7 @@ vi.mock("@/lib/email/mailer", async (importOriginal) => ({
   sendTransactionalEmail: mocks.sendEmail,
 }));
 
-import { sendPaidOrderAdminNotification } from "./notifications";
+import { emailFailureReason, sendPaidOrderAdminNotification } from "./notifications";
 
 const db = {
   from: () => ({ select: () => ({ eq: () => ({ maybeSingle: mocks.maybeSingle }) }) }),
@@ -38,5 +38,19 @@ describe("order notifications", () => {
       }),
     );
     expect(mocks.sendEmail.mock.calls[0][0].html).toContain("Cake &lt;large&gt;");
+  });
+});
+
+describe("why an email was not sent", () => {
+  it("turns mail server replies into plain words for the admin", () => {
+    expect(emailFailureReason("not-configured")).toMatch(/isn't set up/);
+    expect(emailFailureReason("provider-error: EAUTH 535-5.7.8 Username and Password not accepted")).toMatch(
+      /refused the login/,
+    );
+    expect(emailFailureReason("provider-error: EENVELOPE 550 5.4.5 Daily user sending limit exceeded")).toMatch(
+      /daily sending limit/,
+    );
+    expect(emailFailureReason("provider-error: ETIMEDOUT")).toBe("The mail server said: ETIMEDOUT");
+    expect(emailFailureReason(null)).toBe("No reason was given.");
   });
 });
