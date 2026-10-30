@@ -35,7 +35,28 @@ export default async function Home() {
     ...products.filter((product) => product.featured),
     ...products.filter((product) => !product.featured && isProductPurchasable(product)),
   ].slice(0, 4);
-  const gallery = products.flatMap((product) => product.images ?? []).slice(0, 4);
+  // One photo per product so the kitchen gallery never repeats the same bake, favouring
+  // what customers can order right now.
+  const gallery = [
+    ...products.filter((product) => isProductPurchasable(product)),
+    ...products.filter((product) => !isProductPurchasable(product)),
+  ]
+    .map((product) => {
+      const photo = product.images?.[0];
+      const url = photo?.url ?? product.image;
+      return url
+        ? {
+            id: product.id,
+            url,
+            alt: photo?.altText || product.name,
+            name: product.name,
+            slug: product.slug,
+            position: product.imagePosition,
+          }
+        : null;
+    })
+    .filter((item) => item !== null)
+    .slice(0, 5);
   const heroSlides = resolveHeroSlides(hero, products);
   return (
     <>
@@ -156,22 +177,32 @@ export default async function Home() {
       {!!gallery.length && (
         <section className="section gallery-section">
           <div className="site-container">
-            <div className="section-title-row">
+            <div className="gallery-head">
               <div>
                 <span className="overline">{home.gallery.eyebrow}</span>
                 <h2>{home.gallery.headline}</h2>
               </div>
               {business.instagramUrl && (
-                <a className="inline-link" href={business.instagramUrl} target={"_blank"} rel={"noreferrer"}>
-                  {t("Follow along ↗")}
+                <a className="gallery-follow" href={business.instagramUrl} target={"_blank"} rel={"noreferrer"}>
+                  <Icon name="instagram" />
+                  {t("Follow along on Instagram")}
                 </a>
               )}
             </div>
-            <div className="social-gallery">
-              {gallery.map((image) => (
-                <div key={image.id}>
-                  <Image src={image.url} alt={image.altText} fill sizes={"33vw"} />
-                </div>
+            <div className="kitchen-gallery" data-count={gallery.length}>
+              {gallery.map((item, index) => (
+                <Link className="kitchen-tile" href={`/product/${item.slug}`} key={item.id}>
+                  <Image
+                    src={item.url}
+                    alt={item.alt}
+                    fill
+                    sizes={index === 0 ? "(max-width:800px) 100vw, 50vw" : "(max-width:800px) 50vw, 25vw"}
+                    style={item.position ? { objectPosition: item.position } : undefined}
+                  />
+                  <span className="kitchen-caption">
+                    {item.name} <Icon name="arrow" />
+                  </span>
+                </Link>
               ))}
             </div>
           </div>
