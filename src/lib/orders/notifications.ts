@@ -11,21 +11,6 @@ import { createAccessToken, issueOrderDocument, latestDocument } from "@/lib/doc
 import { getSiteUrl } from "@/lib/site-url";
 import { pushToAdmins, pushToOrder } from "@/lib/push/send";
 
-export async function queueOrderNotification(db: SupabaseClient, orderId: string, eventType: "ORDER_RECEIVED") {
-  const { data: order, error: orderError } = await db.from("orders").select("email").eq("id", orderId).single();
-  if (orderError) throw orderError;
-  const { data, error } = await db
-    .from("order_notifications")
-    .upsert(
-      { order_id: orderId, event_type: eventType, recipient: order.email },
-      { onConflict: "order_id,event_type,recipient", ignoreDuplicates: true },
-    )
-    .select("id")
-    .maybeSingle();
-  if (error) throw error;
-  return data?.id as string | undefined;
-}
-
 async function deliver(db: SupabaseClient, notificationId: string) {
   const leaseUntil = new Date(Date.now() + 5 * 60_000).toISOString();
   const { data: notification, error: claimError } = await db
@@ -185,10 +170,6 @@ async function deliver(db: SupabaseClient, notificationId: string) {
   if (result.sent && receiptDocumentId)
     await db.from("document_events").insert({ document_id: receiptDocumentId, action: "RECEIPT_SENT" });
   return result.sent;
-}
-
-export async function deliverOrderNotification(db: SupabaseClient, notificationId: string) {
-  return deliver(db, notificationId);
 }
 
 export async function deliverPendingOrderNotifications(db: SupabaseClient, orderNumber: string) {
