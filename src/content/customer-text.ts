@@ -41,10 +41,9 @@ export const defaultCustomerText: CustomerText = {
     "Your order is in!": "Your order is in!",
     "Thank you for choosing us. As soon as your payment goes through, we’ll put your order on the schedule.":
       "Thank you for choosing us. As soon as your payment goes through, we’ll put your order on the schedule.",
-    "Payment received, thank you!": "Payment received, thank you!",
-    "You’re all set": "You’re all set",
-    "Your payment came through. We’ll confirm your order shortly and let you know when it’s in the oven.":
-      "Your payment came through. We’ll confirm your order shortly and let you know when it’s in the oven.",
+    "Thank you for your order": "Thank you for your order",
+    "Your payment came through and your order is on our list. Your receipt is below. We’ll let you know as soon as it’s in the oven.":
+      "Your payment came through and your order is on our list. Your receipt is below. We’ll let you know as soon as it’s in the oven.",
     "Your order is confirmed": "Your order is confirmed",
     "It’s on our schedule": "It’s on our schedule",
     "We’ve confirmed your order and set aside time in the kitchen for it.":

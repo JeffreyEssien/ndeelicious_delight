@@ -32,6 +32,7 @@ The full history and plans live in `PROGRESS.md` and `implementation.md`.
 | #75 | Home Screen and push notification icons pointed at `/icon` and `/apple-icon`, which 404; they now use `/icon.png` and `/apple-icon.png` | |
 | #77 | Order panel More menu no longer cut off. Emails now include a plain-text copy and a full HTML document (better inbox delivery), and failed emails save the mail server's own reason in `last_error` | |
 | #79 | "Resend customer emails" now really resends: failed or waiting emails go now, otherwise the latest update is sent again (no repeat push). The admin is told the address it went to, or why it failed in plain words | |
+| #82 | Customers get no email until they pay; the first email is "Thank you for your order" with the receipt. The admin "awaiting payment" alert stays | |
 
 ## Good to know
 
