@@ -63,14 +63,6 @@
 .counter-menu button span {
   flex: 1;
 }
-.counter-menu button small {
-  min-width: 26px;
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--color-feature-text) 12%, transparent);
-  font-size: 12px;
-  text-align: center;
-}
 .counter-menu button:hover,
 .counter-menu button[aria-pressed="true"] {
   color: var(--color-feature-text);

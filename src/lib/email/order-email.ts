@@ -12,9 +12,9 @@ export const orderEmailCopy: Record<string, Copy | { pickup: Copy; delivery: Cop
     body: "Thank you for choosing us. As soon as your payment goes through, we’ll put your order on the schedule.",
   },
   PAID: {
-    subject: "Payment received, thank you!",
-    title: "You’re all set",
-    body: "Your payment came through. We’ll confirm your order shortly and let you know when it’s in the oven.",
+    subject: "Thank you for your order",
+    title: "Your order is in!",
+    body: "Your payment came through and your order is on our list. Your receipt is below. We’ll let you know as soon as it’s in the oven.",
   },
   CONFIRMED: {
     subject: "Your order is confirmed",

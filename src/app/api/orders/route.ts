@@ -10,11 +10,7 @@ import { claimOrderCoupon, getCoupon } from "@/lib/data/coupons";
 import { InventoryConflictError, reserveOrderInventory } from "@/lib/data/inventory";
 import { getBusinessSettings } from "@/lib/data/settings";
 import { createStripeCheckout, expireStripeCheckout, PaymentConfigurationError } from "@/lib/payments/stripe";
-import {
-  deliverOrderNotification,
-  queueOrderNotification,
-  sendPlacedOrderAdminNotification,
-} from "@/lib/orders/notifications";
+import { sendPlacedOrderAdminNotification } from "@/lib/orders/notifications";
 import { logError } from "@/lib/observability/log";
 import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 
@@ -188,8 +184,7 @@ export async function POST(request: Request) {
       },
     });
     if (paymentError) throw paymentError;
-    const notificationId = await queueOrderNotification(service, order.id, "ORDER_RECEIVED").catch(() => undefined);
-    if (notificationId) after(() => deliverOrderNotification(service, notificationId));
+    // The customer's first email is the confirmation with receipt, sent once payment goes through.
     after(() => sendPlacedOrderAdminNotification(service, order.order_number));
     return Response.json(
       {
