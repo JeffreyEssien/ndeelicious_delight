@@ -11,21 +11,6 @@ import { createAccessToken, issueOrderDocument, latestDocument } from "@/lib/doc
 import { getSiteUrl } from "@/lib/site-url";
 import { pushToAdmins, pushToOrder } from "@/lib/push/send";
 
-export async function queueOrderNotification(db: SupabaseClient, orderId: string, eventType: "ORDER_RECEIVED") {
-  const { data: order, error: orderError } = await db.from("orders").select("email").eq("id", orderId).single();
-  if (orderError) throw orderError;
-  const { data, error } = await db
-    .from("order_notifications")
-    .upsert(
-      { order_id: orderId, event_type: eventType, recipient: order.email },
-      { onConflict: "order_id,event_type,recipient", ignoreDuplicates: true },
-    )
-    .select("id")
-    .maybeSingle();
-  if (error) throw error;
-  return data?.id as string | undefined;
-}
-
 async function deliver(db: SupabaseClient, notificationId: string) {
   const leaseUntil = new Date(Date.now() + 5 * 60_000).toISOString();
   const { data: notification, error: claimError } = await db
@@ -187,14 +172,11 @@ async function deliver(db: SupabaseClient, notificationId: string) {
   return result.sent;
 }
 
-export async function deliverOrderNotification(db: SupabaseClient, notificationId: string) {
-  return deliver(db, notificationId);
-}
-
 /**
  * The scheduled job's safety net: order emails that failed (a Gmail hiccup, a timeout) or got stuck
  * mid-send are tried again, up to five times over the following days. Without this, a failed
- * email only went out if something else happened on the same order.
+ * email only went out if something else happened on the same order. Old "order received" emails
+ * are skipped: customers hear nothing until they pay.
  */
 export async function retryFailedOrderEmails(db: SupabaseClient, now = new Date()) {
   const { data } = await db
@@ -202,6 +184,7 @@ export async function retryFailedOrderEmails(db: SupabaseClient, now = new Date(
     .select("id")
     .in("status", ["PENDING", "FAILED", "SENDING"])
     .lte("next_attempt_at", now.toISOString())
+    .neq("event_type", "ORDER_RECEIVED")
     .lt("attempts", 5)
     .gte("created_at", new Date(now.getTime() - 3 * 86_400_000).toISOString())
     .order("created_at")

@@ -87,6 +87,7 @@ describe("scheduled retry of order emails", () => {
     await expect(retryFailedOrderEmails(fakeDb as never, now)).resolves.toEqual({ tried: 2, sent: 0 });
     expect(calls).toContainEqual(["in", "status", ["PENDING", "FAILED", "SENDING"]]);
     expect(calls).toContainEqual(["lte", "next_attempt_at", now.toISOString()]);
+    expect(calls).toContainEqual(["neq", "event_type", "ORDER_RECEIVED"]);
     expect(calls).toContainEqual(["lt", "attempts", 5]);
     expect(calls).toContainEqual(["gte", "created_at", "2026-10-28T12:00:00.000Z"]);
     expect(calls.filter(([name]) => name === "update")).toHaveLength(2);

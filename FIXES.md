@@ -33,6 +33,7 @@ The full history and plans live in `PROGRESS.md` and `implementation.md`.
 | #77 | Order panel More menu no longer cut off. Emails now include a plain-text copy and a full HTML document (better inbox delivery), and failed emails save the mail server's own reason in `last_error` | |
 | #79 | "Resend customer emails" now really resends: failed or waiting emails go now, otherwise the latest update is sent again (no repeat push). The admin is told the address it went to, or why it failed in plain words | |
 | #81 | Order emails that fail or get stuck are now retried by the scheduled job (up to 5 tries within 3 days); before, they only went out if something else happened on the order | |
+| #82 | Customers get no email until they pay; the first email is "Thank you for your order" with the receipt. The admin "awaiting payment" alert stays | |
 
 ## Good to know
 
