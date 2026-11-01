@@ -172,6 +172,28 @@ async function deliver(db: SupabaseClient, notificationId: string) {
   return result.sent;
 }
 
+/**
+ * The scheduled job's safety net: order emails that failed (a Gmail hiccup, a timeout) or got stuck
+ * mid-send are tried again, up to five times over the following days. Without this, a failed
+ * email only went out if something else happened on the same order. Old "order received" emails
+ * are skipped: customers hear nothing until they pay.
+ */
+export async function retryFailedOrderEmails(db: SupabaseClient, now = new Date()) {
+  const { data } = await db
+    .from("order_notifications")
+    .select("id")
+    .in("status", ["PENDING", "FAILED", "SENDING"])
+    .lte("next_attempt_at", now.toISOString())
+    .neq("event_type", "ORDER_RECEIVED")
+    .lt("attempts", 5)
+    .gte("created_at", new Date(now.getTime() - 3 * 86_400_000).toISOString())
+    .order("created_at")
+    .limit(25);
+  let sent = 0;
+  for (const notification of data ?? []) if (await deliver(db, notification.id)) sent += 1;
+  return { tried: data?.length ?? 0, sent };
+}
+
 export async function deliverPendingOrderNotifications(db: SupabaseClient, orderNumber: string) {
   const { data: order } = await db.from("orders").select("id").eq("order_number", orderNumber).maybeSingle();
   if (!order) return;

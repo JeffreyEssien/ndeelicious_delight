@@ -117,9 +117,6 @@ export function KitchenGallery({
     ? products.filter((product) => product.category === active).slice(0, PER_VIEW)
     : mixed(products, filters);
   const labels = Object.fromEntries(filters.map((item) => [item.type, item.label]));
-  const counts = Object.fromEntries(
-    filters.map((item) => [item.type, products.filter((product) => product.category === item.type).length]),
-  );
   const menu = [{ type: "ALL", label: allLabel }, ...filters];
 
   // The thin line under the row shows how much of it is in view and where.
@@ -161,7 +158,6 @@ export function KitchenGallery({
                 }}
               >
                 <span>{item.label}</span>
-                {item.type !== "ALL" && <small>{counts[item.type]}</small>}
               </button>
             ))}
           </nav>
