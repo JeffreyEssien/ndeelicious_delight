@@ -32,10 +32,13 @@ The full history and plans live in `PROGRESS.md` and `implementation.md`.
 | #75 | Home Screen and push notification icons pointed at `/icon` and `/apple-icon`, which 404; they now use `/icon.png` and `/apple-icon.png` | |
 | #77 | Order panel More menu no longer cut off. Emails now include a plain-text copy and a full HTML document (better inbox delivery), and failed emails save the mail server's own reason in `last_error` | |
 | #79 | "Resend customer emails" now really resends: failed or waiting emails go now, otherwise the latest update is sent again (no repeat push). The admin is told the address it went to, or why it failed in plain words | |
+| #81 | Order emails that fail or get stuck are now retried by the scheduled job (up to 5 tries within 3 days); before, they only went out if something else happened on the order | |
 
 ## Good to know
 
 - Lead time: checkout uses the longer of the shop-wide 24-hour minimum (`MIN_LEAD_TIME_HOURS`) and the product's or cake's own lead time. Each cake's lead time is set on the admin Cakes page.
 - The next free migration number is 0063. Check other open branches before using it.
 - The pickup time customers are told lives in `orders.preparation_ready_at`. `fulfilment_snapshot` can't be changed after the order is placed.
+- Email flow per order: at checkout the customer gets "We've got your order" and the admins get "awaiting payment"; on payment the customer gets "Payment received" with the receipt and the admins get "paid"; then one email per stage. About 4 emails per order, far below Gmail's ~500 a day.
+- The scheduled job (`.github/workflows/scheduled-notifications.yml` → `/api/cron/notifications`) is set to hourly, but GitHub actually runs it every few hours.
 - Pre-existing biome format errors in `src/lib/auth/validation.test.ts` and `src/lib/supabase/config.ts` are not ours, so don't commit formatter changes to them. The `RouteContext`/`LayoutProps` tsc errors come from Next's generated types.
