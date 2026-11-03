@@ -7,6 +7,14 @@ export type EmailInput = {
   /** Plain-text version; made from the HTML when not given. */
   text?: string;
   replyTo?: string;
+  attachments?: EmailAttachment[];
+};
+
+export type EmailAttachment = {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+  cid?: string;
 };
 
 const entities: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", nbsp: " " };
@@ -93,6 +101,7 @@ export async function sendTransactionalEmail(input: EmailInput) {
       subject: input.subject,
       html: input.html,
       text: input.text ?? htmlToText(input.html),
+      attachments: input.attachments,
     });
     if (!result.accepted?.length || result.rejected?.length) {
       const detail = `rejected by the mail server${result.response ? `: ${result.response}` : ""}`.slice(0, 300);
