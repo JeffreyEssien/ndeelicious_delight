@@ -71,6 +71,9 @@ export function Footer({ content, business }: { content: StorefrontContent["glob
           <Link href="/privacy">{t("Privacy")}</Link>
           <Link href="/terms">{t("Terms")}</Link>
           <Link href="/refund-policy">{t("Returns & cancellations")}</Link>
+          <a href="https://jeffrey-s-portfolio.vercel.app/" target="_blank" rel="noreferrer">
+            Built by Jeffrey
+          </a>
         </nav>
       </div>
     </footer>
