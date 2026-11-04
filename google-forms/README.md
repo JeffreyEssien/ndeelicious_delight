@@ -27,7 +27,7 @@ PRODUCT_IMPORT_ADMIN_EMAILS=<admin emails, comma separated, e.g. owner@example.c
 1. Open <https://script.google.com> → **New project**, name it "Ndeeelicious product upload".
 2. Replace `Code.gs` with the contents of `product-upload.gs`.
 3. **Project Settings → Script properties**, add:
-   - `API_BASE_URL` — `https://www.ndeelicious.com`
+   - `API_BASE_URL` — `https://www.ndeeeliciousdelight.com`
    - `API_KEY` — the same value as `PRODUCT_IMPORT_API_KEY`
    - `NOTIFY_EMAIL` — optional; where results are emailed (defaults to your Google account)
 4. Select `createProductForm` and click **Run**. Approve the permissions (Forms, Drive, external
