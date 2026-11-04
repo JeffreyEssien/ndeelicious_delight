@@ -112,4 +112,10 @@ describe("SMTP transactional email", () => {
     expect(text).not.toMatch(/<|&amp;/);
     expect(text.startsWith("Ndeeelicious Delight")).toBe(true);
   });
+
+  it("shows the hosted brand logo in the header, named for when images are blocked", () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://shop.example");
+    const html = emailFrame("Hello", "<p>Body</p>", { businessName: "Ada & Co" });
+    expect(html).toContain('<img src="https://shop.example/brand-logo.jpg" width="200" alt="Ada &amp; Co"');
+  });
 });

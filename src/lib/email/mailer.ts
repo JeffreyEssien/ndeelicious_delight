@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { getSiteUrl } from "@/lib/site-url";
 
 export type EmailInput = {
   to: string | string[];
@@ -31,6 +32,7 @@ export function htmlToText(html: string) {
       const text = label.replace(/<[^>]+>/g, "").trim();
       return text && text !== href ? `${text} (${href})` : href;
     })
+    .replace(/<img\s[^>]*alt="([^"]*)"[^>]*>/gi, "$1")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|h[1-6]|tr|table|li)>/gi, "\n")
     .replace(/<\/td>/gi, "  ")
@@ -125,7 +127,7 @@ export async function sendTransactionalEmail(input: EmailInput) {
 export type EmailWording = {
   businessName?: string;
   footer?: string;
-  /** Brand colour for the header and buttons; the store theme's primary colour where known. */
+  /** Brand colour for the line under the logo and for buttons; the store theme's primary colour where known. */
   accent?: string;
   /** Inbox preview line shown after the subject in most email apps. */
   preheader?: string;
@@ -134,6 +136,8 @@ export type EmailWording = {
 const ink = "#241b1e";
 const muted = "#6e6669";
 const safeColor = (value: string | undefined) => (value && /^#[0-9a-f]{6}$/i.test(value) ? value : "#792f49");
+// The logo's own purple, so the image blends into the header bar.
+const logoBackground = "#611699";
 
 /** A full-width button that survives email clients, including Outlook. */
 export function emailButton(href: string, label: string, accent?: string) {
@@ -148,5 +152,8 @@ export function emailFrame(title: string, body: string, wording: EmailWording = 
   const preheader = wording.preheader
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(wording.preheader)}</div>`
     : "";
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title></head><body style="margin:0;padding:0;background:#f6f1ec">${preheader}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f1ec;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${ink}"><tr><td align="center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:20px;overflow:hidden"><tr><td style="background:${color};padding:22px 32px;color:#ffffff;font-size:18px;font-weight:800;letter-spacing:0.02em">${name}</td></tr><tr><td style="padding:32px 32px 8px;font-size:16px;line-height:1.6"><h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;color:${ink}">${escapeHtml(title)}</h1>${body}</td></tr><tr><td style="padding:24px 32px 32px;color:${muted};font-size:13px;line-height:1.6;border-top:1px solid #f0e9e4">${escapeHtml(wording.footer ?? "Made with care.")}<br>${name}</td></tr></table></td></tr></table></body></html>`;
+  // Hosted, not attached: email apps show linked images inline. The styled alt text stands in
+  // for the logo when images are blocked.
+  const logo = `<img src="${escapeHtml(getSiteUrl())}/brand-logo.jpg" width="200" alt="${name}" style="display:block;margin:0 auto;border:0;width:200px;max-width:100%;height:auto;color:#ffffff;font-size:18px;font-weight:800">`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title></head><body style="margin:0;padding:0;background:#f6f1ec">${preheader}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f1ec;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${ink}"><tr><td align="center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:20px;overflow:hidden"><tr><td align="center" style="background:${logoBackground};padding:16px 32px;border-bottom:4px solid ${color}">${logo}</td></tr><tr><td style="padding:32px 32px 8px;font-size:16px;line-height:1.6"><h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;color:${ink}">${escapeHtml(title)}</h1>${body}</td></tr><tr><td style="padding:24px 32px 32px;color:${muted};font-size:13px;line-height:1.6;border-top:1px solid #f0e9e4">${escapeHtml(wording.footer ?? "Made with care.")}<br>${name}</td></tr></table></td></tr></table></body></html>`;
 }
