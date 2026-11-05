@@ -97,13 +97,18 @@ export async function sendDailyLowStockDigest(db: SupabaseClient) {
 export async function sendDueReviewInvitations(db: SupabaseClient) {
   const { t, frame } = await getCustomerEmailText(db);
   const cutoff = new Date(Date.now() - 12 * 60 * 60_000).toISOString();
+  // Invitations expire 90 days after delivery, so older orders never need another look.
+  // Newest first: with an hourly run, an order can only be missed if more than 100
+  // orders become eligible within one hour.
+  const oldest = new Date(Date.now() - 90 * 86400_000).toISOString();
   const { data: orders, error } = await db
     .from("orders")
     .select("id,order_number,customer_id,customer_name,email,delivered_at,order_items(id,product_id,product_name)")
     .eq("status", "DELIVERED")
     .not("delivered_at", "is", null)
     .lte("delivered_at", cutoff)
-    .order("delivered_at")
+    .gte("delivered_at", oldest)
+    .order("delivered_at", { ascending: false })
     .limit(100);
   if (error) throw error;
   let sent = 0;

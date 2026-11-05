@@ -31,9 +31,25 @@ jobs:
             https://*) ;;
             *) echo "::error::PRODUCTION_SITE_URL must use HTTPS."; exit 1 ;;
           esac
-          curl --fail-with-body --silent --show-error \
+          # Redirects are not followed on purpose (they would drop the auth header),
+          # so a redirect means PRODUCTION_SITE_URL is out of date and must fail loudly.
+          status=$(curl --silent --show-error \
             --retry 2 \
             --retry-all-errors \
             --max-time 55 \
+            --output response.json \
+            --write-out "%{http_code} %{redirect_url}" \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "${SITE_URL%/}/api/cron/notifications"
+            "${SITE_URL%/}/api/cron/notifications")
+          code=${status%% *}
+          location=${status#* }
+          cat response.json; echo
+          case "$code" in
+            3*) echo "::error::$SITE_URL redirects to ${location:-another address}. Update PRODUCTION_SITE_URL to the final address."; exit 1 ;;
+            200) ;;
+            *) echo "::error::Notification dispatcher returned HTTP $code."; exit 1 ;;
+          esac
+          if ! grep -q '"ok":true' response.json; then
+            echo "::error::Notification dispatcher did not report ok:true."
+            exit 1
+          fi
