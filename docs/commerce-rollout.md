@@ -50,4 +50,4 @@ Discount cents are allocated only to coupon-eligible lines with deterministic la
 
 Browser tests use `e2e/fixture-server.mjs`, port 4545, and the app's `.next-fixtures` output on port 3100. Use the commands in README, with `STRIPE_SECRET_KEY=` as well as blank SMTP credentials to ensure fixture tests cannot contact live payment/email services. Customer Budget Match tests run before admin tests that change synthetic configuration. `e2e/commerce-admin.spec.ts` verifies actual API totals, duplicate FSA rejection, persistence, PNG/ZIP bytes and image/logo failures.
 
-Production canonical URL: https://www.ndeelicious.com. `NEXT_PUBLIC_SITE_URL` is the shared URL source for metadata, payments, documents/email/tracking and marketing. Development/isolated preview URLs remain explicit environment overrides.
+Production canonical URL: https://www.ndeeeliciousdelight.com. `NEXT_PUBLIC_SITE_URL` is the shared URL source for metadata, payments, documents/email/tracking and marketing. Development/isolated preview URLs remain explicit environment overrides.

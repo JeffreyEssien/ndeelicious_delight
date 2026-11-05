@@ -520,7 +520,7 @@ function config_() {
   const properties = PropertiesService.getScriptProperties();
   const baseUrl = (properties.getProperty("API_BASE_URL") || "").replace(/\/+$/, "");
   const apiKey = properties.getProperty("API_KEY") || "";
-  if (!/^https:\/\//.test(baseUrl)) throw new Error("Set the API_BASE_URL script property, e.g. https://www.ndeelicious.com");
+  if (!/^https:\/\//.test(baseUrl)) throw new Error("Set the API_BASE_URL script property, e.g. https://www.ndeeeliciousdelight.com");
   if (apiKey.length < 32) throw new Error("Set the API_KEY script property to PRODUCT_IMPORT_API_KEY.");
   return { baseUrl: baseUrl, apiKey: apiKey };
 }
