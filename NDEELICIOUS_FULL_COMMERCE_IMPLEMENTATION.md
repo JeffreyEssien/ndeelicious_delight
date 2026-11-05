@@ -1,7 +1,7 @@
 # NDEELICIOUS Delight — HRM Fulfilment, Tax, Pack Variants, Cake-Type Budget Matching & Mobile Commerce Implementation
 
 Repository: `JeffreyEssien/ndeelicious_delight`
-Production: `https://www.ndeelicious.com`
+Production: `https://www.ndeeeliciousdelight.com`
 Reference for merchandising/fulfilment inspiration: `https://thebutterandbliss.com`
 
 ---

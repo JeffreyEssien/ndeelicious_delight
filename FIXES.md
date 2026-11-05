@@ -8,7 +8,7 @@ The full history and plans live in `PROGRESS.md` and `implementation.md`.
 - [ ] Release `dev` → `main`.
 - [ ] Apply migrations to the production database, in order: 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062.
 - [ ] Upgrade Next.js (critical RCE advisory on the current version).
-- [ ] Stripe: work through `STRIPE_INTEGRATION_TODO.md`. The webhook is `https://www.ndeelicious.com/api/stripe/webhook`, on sandbox keys until launch.
+- [ ] Stripe: work through `STRIPE_INTEGRATION_TODO.md`. The webhook is `https://www.ndeeeliciousdelight.com/api/stripe/webhook`, on sandbox keys until launch.
 
 ## Shipped (PRs into `dev`)
 
