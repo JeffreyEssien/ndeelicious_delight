@@ -88,8 +88,14 @@ export function ProductPurchase({ product }: { product: Product }) {
           const rows: Picker[] = [];
           if (flavourChoices.length)
             rows.push({ key: `L${layer}-flavour`, label: `Flavour${suffix}`, options: flavourChoices, required: true });
-          if (fillingChoices.length)
-            rows.push({ key: `L${layer}-filling`, label: `Filling${suffix}`, options: fillingChoices, required: true });
+          // Fillings sit between layers, so an N-layer cake has N − 1 of them.
+          if (fillingChoices.length && layer < layerCount)
+            rows.push({
+              key: `L${layer}-filling`,
+              label: layerCount > 2 ? `Filling ${layer}` : "Filling",
+              options: fillingChoices,
+              required: true,
+            });
           return rows;
         }),
       );
