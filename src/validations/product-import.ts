@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { taxClasses } from "@/features/tax/types";
-import { productCategorySchema, productStatusSchema } from "@/validations/product";
+import { CUSTOM_CAKE_PREPARATION_HOURS, productCategorySchema, productStatusSchema } from "@/validations/product";
 
 const text = (maximum: number) => z.string().trim().max(maximum).optional().default("");
 const list = z.array(z.string().trim().min(1).max(100)).max(50).optional().default([]);
@@ -81,7 +81,11 @@ export function toProductInput(data: ProductImport, slug: string, collectionId: 
     category: data.category,
     shoppingMode,
     taxClass: data.taxClass,
-    preparationHours: data.preparationHours,
+    // The form sends 0 for a blank answer, so a cake without a preparation time gets the cake default.
+    preparationHours:
+      data.category === "CUSTOM_CAKES" && !data.preparationHours
+        ? CUSTOM_CAKE_PREPARATION_HOURS
+        : data.preparationHours,
     price,
     discountPrice,
     status: data.status,

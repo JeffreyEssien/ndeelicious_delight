@@ -4,7 +4,13 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { CakeSizeLayer, Product, ProductImage, ProductStatus, ProductVariant } from "@/types";
-import { isVisibleStatus, MIN_LEAD_TIME_HOURS, productInputSchema, productIssues } from "@/validations/product";
+import {
+  CUSTOM_CAKE_PREPARATION_HOURS,
+  isVisibleStatus,
+  MIN_LEAD_TIME_HOURS,
+  productInputSchema,
+  productIssues,
+} from "@/validations/product";
 import { Button, Checkbox, Input, Select, Textarea } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
 import { normalizeCakeSizeLayers, variantPrice } from "@/features/catalog/pricing";
@@ -806,6 +812,13 @@ export function ProductEditor({
               const nextCategory = event.target.value;
               setCategory(nextCategory);
               setCollectionId("");
+              // Cakes start at the cake preparation time; it can still be lowered below.
+              if (nextCategory === "CUSTOM_CAKES")
+                setPreparation((current) =>
+                  (Number(current.hours) || 0) + (Number(current.minutes) || 0) / 60 < CUSTOM_CAKE_PREPARATION_HOURS
+                    ? { hours: String(CUSTOM_CAKE_PREPARATION_HOURS), minutes: "0" }
+                    : current,
+                );
             }}
           >
             <option value="PASTRIES">Ready to order</option>
@@ -875,6 +888,8 @@ export function ProductEditor({
           <p className="field-help">
             How long this product takes to make, for example 0 hours 45 minutes. Every order also has the shop&apos;s
             minimum lead time of {MIN_LEAD_TIME_HOURS} hours; customers get whichever is longer.
+            {isCake &&
+              ` Custom cakes start at ${CUSTOM_CAKE_PREPARATION_HOURS} hours (${CUSTOM_CAKE_PREPARATION_HOURS / 24} days); change it if this cake needs a different time.`}
           </p>
           <h3>Inventory</h3>
           <Checkbox label="Track inventory" name="trackInventory" defaultChecked={product?.trackInventory ?? true} />

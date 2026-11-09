@@ -34,7 +34,7 @@ Next.js was upgraded from 16.3.5 to 16.3.8 to address the critical `ImageRespons
 ## Remaining G15 work
 
 - Run database integration tests against an isolated local or test Supabase environment, including document immutability, expired/revoked access, revision races, and concurrent quote conversion.
-- Add full browser journeys for storefront checkout, cake builder, order tracking, admin login, catalogue/inventory management, coupon handling, and order processing.
+- Add full browser journeys for storefront checkout, order tracking, admin login, catalogue/inventory management, coupon handling, and order processing.
 - Exercise rate-limit and same-origin behavior from the browser, including retry messaging and shared-instance concurrency.
 - Complete the remaining delayed/duplicate payment, reservation, refund, quote-conversion, and multi-request race cases in an isolated environment.
 - Repeat migration and security-header verification in staging before production promotion.

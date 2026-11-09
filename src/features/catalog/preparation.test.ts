@@ -6,3 +6,8 @@ it("formats short and mixed preparation durations in owner/customer language", (
   expect(formatPreparationTime(1)).toBe("1 hour");
   expect(formatPreparationTime(1.5)).toBe("1 hour 30 min");
 });
+it("shows whole days for whole-day preparation times", () => {
+  expect(formatPreparationTime(24)).toBe("1 day");
+  expect(formatPreparationTime(168)).toBe("7 days");
+  expect(formatPreparationTime(30)).toBe("30 hours");
+});
