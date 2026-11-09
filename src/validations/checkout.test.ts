@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { cakeUploadSchema } from "./cake";
 import { checkoutSchema } from "./checkout";
 
 const customer = { name: "Taylor Smith", email: "taylor@example.com", phone: "+1 416 555 0123" };
@@ -37,11 +36,5 @@ describe("checkout validation", () => {
         cart,
       }).success,
     ).toBe(false);
-  });
-
-  it("rejects executable cake uploads", () => {
-    expect(cakeUploadSchema.safeParse({ name: "cake.exe", size: 100, type: "application/octet-stream" }).success).toBe(
-      false,
-    );
   });
 });

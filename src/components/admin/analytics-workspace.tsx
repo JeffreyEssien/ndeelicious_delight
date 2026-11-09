@@ -312,18 +312,6 @@ function Customers({
             meaning="Visitors who searched; query text is not stored."
             action="Frequent use may signal navigation gaps."
           />
-          <DetailMetric
-            label="Cake-builder starts"
-            value={awaiting ?? count(period.cakeBuilderStarts)}
-            meaning="Visitors who began building a custom cake."
-            action="Compare starts with completions to find friction."
-          />
-          <DetailMetric
-            label="Cake-builder completion"
-            value={awaiting ?? percent(period.cakeBuilderCompletionRate)}
-            meaning="Builder completions divided by starts."
-            action="A low rate can indicate too many steps or unclear choices."
-          />
         </div>
       </Section>
     </div>

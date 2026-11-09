@@ -4,6 +4,7 @@ import { useUnsavedChanges } from "./use-unsaved-changes";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cakeTypesSchema, type CakeType } from "@/validations/cake-type";
+import { CUSTOM_CAKE_PREPARATION_HOURS } from "@/validations/product";
 import { ConfirmDialog } from "./confirm-dialog";
 import { MediaPicker } from "./media-library";
 export function CakeTypesEditor({
@@ -444,7 +445,8 @@ export function CakeTypesEditor({
                   name: "",
                   slug: "",
                   description: "",
-                  leadTimeValue: 0,
+                  // Custom cakes need a week's notice unless the owner sets otherwise.
+                  leadTimeValue: CUSTOM_CAKE_PREPARATION_HOURS / 24,
                   leadTimeUnit: "days",
                   active: false,
                   sortOrder: items.length,

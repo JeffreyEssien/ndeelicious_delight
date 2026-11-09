@@ -102,9 +102,6 @@ export type AnalyticsPeriod = {
   productToCartRate: number;
   cartToCheckoutRate: number;
   searches: number;
-  cakeBuilderStarts: number;
-  cakeBuilderCompletions: number;
-  cakeBuilderCompletionRate: number;
   statusBreakdown: Array<{ label: string; value: number }>;
   revenueTrend: Array<{ label: string; revenue: number; orders: number }>;
   products: Array<{ id: string; name: string; units: number; revenue: number; share: number }>;
@@ -289,8 +286,6 @@ function calculatePeriod(
   const productViewers = eventSessions("PRODUCT_VIEWED");
   const cartVisitors = eventSessions("ADD_TO_CART");
   const checkoutVisitors = eventSessions("CHECKOUT_STARTED");
-  const cakeBuilderStarts = eventSessions("CAKE_BUILDER_STARTED");
-  const cakeBuilderCompletions = eventSessions("CAKE_BUILDER_COMPLETED");
   const completedNotifications = notifications.filter((notification) =>
     ["SENT", "FAILED"].includes(notification.status),
   );
@@ -370,9 +365,6 @@ function calculatePeriod(
     productToCartRate: percent(cartVisitors, productViewers),
     cartToCheckoutRate: percent(checkoutVisitors, cartVisitors),
     searches: eventSessions("SEARCH_PERFORMED"),
-    cakeBuilderStarts,
-    cakeBuilderCompletions,
-    cakeBuilderCompletionRate: percent(cakeBuilderCompletions, cakeBuilderStarts),
     statusBreakdown,
     revenueTrend: trend(sales, start, end, days),
     products,

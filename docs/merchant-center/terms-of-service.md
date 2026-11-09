@@ -12,7 +12,7 @@ Review your selected products, cake options, spelling, delivery or collection da
 
 ## Prices, delivery fees and taxes
 
-Prices are shown in Canadian dollars (CAD). Applicable delivery fees and taxes are displayed in the checkout total before payment. A custom-cake builder estimate is not a final accepted quote. The accepted quote and checkout show the agreed cake price and applicable fulfilment charges.
+Prices are shown in Canadian dollars (CAD). Applicable delivery fees and taxes are displayed in the checkout total before payment. A cake estimate is not a final accepted quote. The accepted quote and checkout show the agreed cake price and applicable fulfilment charges.
 
 ## Custom cake designs
 

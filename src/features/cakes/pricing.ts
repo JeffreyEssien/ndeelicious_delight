@@ -1,4 +1,3 @@
-import { earliestCakeDate, leadTimeHours } from "./lead-time";
 import type { CakeType } from "@/validations/cake-type";
 import type { CakeConfiguration } from "@/types";
 import type { CakeOption } from "@/types/content";
@@ -43,20 +42,4 @@ export function calculateCakeConfigurationPrice(
     quoteRequired: selected.some((option) => option?.quoteRequired),
     selected: selected.filter((option): option is CakeOption => Boolean(option)),
   };
-}
-
-export function calculateCakeQuote(
-  config: CakeConfiguration,
-  options: CakeOption[],
-  input: { now?: Date; cakeType: CakeType; timezone: string },
-) {
-  const pricing = calculateCakeConfigurationPrice(config, options, input.cakeType);
-  const now = input.now ?? new Date();
-  if (!input.cakeType?.active || input.cakeType.id !== config.cakeTypeId || leadTimeHours(input.cakeType) <= 0)
-    throw new CommerceError("INVALID_CAKE_TYPE", "Choose an available cake type with a configured lead time.");
-  const earliestDay = earliestCakeDate(input.cakeType, input.timezone, now);
-  const earliest = new Date(`${earliestDay}T00:00:00Z`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(config.deliveryDate) || config.deliveryDate < earliestDay)
-    throw new CommerceError("INVALID_CAKE_DATE", "Choose a date with enough preparation time.");
-  return { estimatedTotal: pricing.total, quoteRequired: pricing.quoteRequired, earliestDate: earliest };
 }

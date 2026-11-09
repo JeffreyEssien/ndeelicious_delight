@@ -6,6 +6,8 @@ export const productStatusSchema = z.enum(["ACTIVE", "OUT_OF_STOCK", "DRAFT", "A
 
 // Every order needs at least a day's notice, whatever is in it.
 export const MIN_LEAD_TIME_HOURS = 24;
+// Custom cakes start at a week's preparation; the admin can still set a different time per cake.
+export const CUSTOM_CAKE_PREPARATION_HOURS = 7 * 24;
 
 const optionalText = (maximum: number) => z.string().trim().max(maximum).optional().default("");
 

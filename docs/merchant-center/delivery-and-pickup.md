@@ -12,7 +12,7 @@ Delivery charges depend on the selected delivery area and are shown at checkout 
 
 ## Preparation and delivery dates
 
-The available date depends on the product, bakery capacity and agreed cake requirements. The cake builder currently requires at least 72 hours' notice; a wedding cake or complex custom design may need an individually agreed preparation schedule. Your confirmed delivery or collection arrangement is the schedule for your order. Contact us before paying if you need a specific event time.
+The available date depends on the product, bakery capacity and agreed cake requirements. Custom cakes require at least seven days' notice unless a cake's listing says otherwise; a wedding cake or complex custom design may need an individually agreed preparation schedule. Your confirmed delivery or collection arrangement is the schedule for your order. Contact us before paying if you need a specific event time.
 
 ## Pickup
 

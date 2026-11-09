@@ -105,5 +105,6 @@ export function formatPreparationTime(hours: number) {
   const wholeHours = Math.floor(minutes / 60),
     remaining = minutes % 60;
   if (!wholeHours) return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  if (!remaining && wholeHours % 24 === 0) return `${wholeHours / 24} ${wholeHours === 24 ? "day" : "days"}`;
   return `${wholeHours} ${wholeHours === 1 ? "hour" : "hours"}${remaining ? ` ${remaining} min` : ""}`;
 }
