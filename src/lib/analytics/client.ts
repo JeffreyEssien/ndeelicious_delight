@@ -4,9 +4,7 @@ export type CommerceEventName =
   | "REMOVE_FROM_CART"
   | "CHECKOUT_STARTED"
   | "COUPON_APPLIED"
-  | "SEARCH_PERFORMED"
-  | "CAKE_BUILDER_STARTED"
-  | "CAKE_BUILDER_COMPLETED";
+  | "SEARCH_PERFORMED";
 
 const anonymousIdKey = "ndee-analytics-id";
 

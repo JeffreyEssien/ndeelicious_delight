@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["pdfkit", "fontkit"],
   outputFileTracingIncludes: { "/api/**/pdf": ["./public/fonts/*.ttf", "./public/brand-logo.jpg"] },
   distDir: process.env.NDEE_BROWSER_FIXTURES === "true" ? ".next-fixtures" : ".next",
+  // Old bookmarks and shared links to the retired cake page land on the cakes catalogue.
+  async redirects() {
+    return [{ source: "/custom-cakes/build-your-cake", destination: "/custom-cakes", permanent: true }];
+  },
   async headers() {
     return [
       {

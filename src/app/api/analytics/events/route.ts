@@ -13,8 +13,6 @@ const eventSchema = z.object({
     "CHECKOUT_STARTED",
     "COUPON_APPLIED",
     "SEARCH_PERFORMED",
-    "CAKE_BUILDER_STARTED",
-    "CAKE_BUILDER_COMPLETED",
   ]),
   anonymousId: z.string().uuid(),
   productId: z.string().uuid().optional(),
