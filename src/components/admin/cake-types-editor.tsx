@@ -168,7 +168,7 @@ export function CakeTypesEditor({
     <section className="admin-card cake-types-editor">
       <h2>My cakes</h2>
       <p>
-        Add a cake, set its price and preparation time, then publish. Every cake automatically offers all your sizes and
+        Add a cake, set its price and lead time (how much notice you need), then publish. Every cake automatically offers all your sizes and
         flavours — you only adjust that if a particular cake is different.
       </p>
       <fieldset disabled={busy} style={{ border: 0, padding: 0 }}>
@@ -312,7 +312,7 @@ export function CakeTypesEditor({
                 ))}
               </details>
               <label>
-                Preparation time
+                Lead time (notice needed)
                 <input
                   type="number"
                   min={type.active ? "0.01" : "0"}

@@ -97,6 +97,8 @@ export function shoppingMode(product: Product) {
 }
 export function preparationLabel(product: Product) {
   if (!product.preparationHours) return "Available to order";
+  // Cakes arrive ready to serve; their hours are notice needed (lead time), not time to prepare.
+  if (product.category === "CUSTOM_CAKES") return `Lead time: ${formatPreparationTime(product.preparationHours)}`;
   return `Preparation: ${formatPreparationTime(product.preparationHours)}`;
 }
 

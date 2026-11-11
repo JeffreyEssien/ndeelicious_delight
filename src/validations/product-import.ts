@@ -81,7 +81,7 @@ export function toProductInput(data: ProductImport, slug: string, collectionId: 
     category: data.category,
     shoppingMode,
     taxClass: data.taxClass,
-    // The form sends 0 for a blank answer, so a cake without a preparation time gets the cake default.
+    // The form sends 0 for a blank answer, so a cake without a lead time gets the cake default.
     preparationHours:
       data.category === "CUSTOM_CAKES" && !data.preparationHours
         ? CUSTOM_CAKE_PREPARATION_HOURS
