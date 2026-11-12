@@ -196,6 +196,7 @@ export function ProductEditor({
       .catch(() => {});
   }, []);
   // How long this product takes to make, in hours and minutes. The shop-wide minimum lead time is separate.
+  // Cakes reuse this field for their lead time (days of notice), since a cake has no preparation time.
   const [preparation, setPreparation] = useState(() => {
     const total = Math.round((product?.preparationHours ?? 0) * 60);
     return { hours: String(Math.floor(total / 60)), minutes: String(total % 60) };
@@ -812,7 +813,7 @@ export function ProductEditor({
               const nextCategory = event.target.value;
               setCategory(nextCategory);
               setCollectionId("");
-              // Cakes start at the cake preparation time; it can still be lowered below.
+              // Cakes start at the cake lead time (days of notice); it can still be lowered below.
               if (nextCategory === "CUSTOM_CAKES")
                 setPreparation((current) =>
                   (Number(current.hours) || 0) + (Number(current.minutes) || 0) / 60 < CUSTOM_CAKE_PREPARATION_HOURS
@@ -852,7 +853,7 @@ export function ProductEditor({
         </div>
 
         <div className="product-editor-section">
-          <h3>Shopping &amp; preparation</h3>
+          <h3>{isCake ? "Shopping & lead time" : "Shopping & preparation"}</h3>
           <Select label="Tax classification" name="taxClass" defaultValue={product?.taxClass ?? "REQUIRES_REVIEW"}>
             <option value="REQUIRES_REVIEW">Setup required</option>
             <option value="ZERO_RATED_GROCERY">Eligible basic grocery (zero rated)</option>
@@ -865,31 +866,64 @@ export function ProductEditor({
             Confirm CRA classification, serving size and packaging. Sweet servings qualify for the six-or-more rule only
             when sold together without individual taxable packaging.
           </p>
-          <div className="field-row">
-            <Input
-              label="Preparation time (hours)"
-              type="number"
-              min="0"
-              max="8760"
-              step="1"
-              value={preparation.hours}
-              onChange={(event) => setPreparation((current) => ({ ...current, hours: event.target.value }))}
-            />
-            <Input
-              label="Preparation time (minutes)"
-              type="number"
-              min="0"
-              max="59"
-              step="1"
-              value={preparation.minutes}
-              onChange={(event) => setPreparation((current) => ({ ...current, minutes: event.target.value }))}
-            />
-          </div>
+          {isCake ? (
+            // Cakes are delivered ready to serve, so they have no preparation time, only a lead time: the days of
+            // notice needed before pickup or delivery. It is stored in the same hours field scheduling reads.
+            <div className="field-row">
+              <Input
+                label="Lead time (days of notice)"
+                type="number"
+                min="0"
+                max="365"
+                step="1"
+                value={String(
+                  Math.round((((Number(preparation.hours) || 0) + (Number(preparation.minutes) || 0) / 60) / 24) * 100) /
+                    100,
+                )}
+                onChange={(event) =>
+                  setPreparation({
+                    hours: String(Math.round((Number(event.target.value) || 0) * 24)),
+                    minutes: "0",
+                  })
+                }
+              />
+            </div>
+          ) : (
+            <div className="field-row">
+              <Input
+                label="Preparation time (hours)"
+                type="number"
+                min="0"
+                max="8760"
+                step="1"
+                value={preparation.hours}
+                onChange={(event) => setPreparation((current) => ({ ...current, hours: event.target.value }))}
+              />
+              <Input
+                label="Preparation time (minutes)"
+                type="number"
+                min="0"
+                max="59"
+                step="1"
+                value={preparation.minutes}
+                onChange={(event) => setPreparation((current) => ({ ...current, minutes: event.target.value }))}
+              />
+            </div>
+          )}
           <p className="field-help">
-            How long this product takes to make, for example 0 hours 45 minutes. Every order also has the shop&apos;s
-            minimum lead time of {MIN_LEAD_TIME_HOURS} hours; customers get whichever is longer.
-            {isCake &&
-              ` Custom cakes start at ${CUSTOM_CAKE_PREPARATION_HOURS} hours (${CUSTOM_CAKE_PREPARATION_HOURS / 24} days); change it if this cake needs a different time.`}
+            {isCake ? (
+              <>
+                <strong>Lead time</strong> is how many days&apos; notice you need before this cake can be picked up or
+                delivered. Cakes have no preparation time: they&apos;re delivered ready to serve. Custom cakes start at{" "}
+                {CUSTOM_CAKE_PREPARATION_HOURS / 24} days; change it if this cake needs more or less notice.
+              </>
+            ) : (
+              <>
+                <strong>Preparation time</strong> is how long this product takes to make, for example 0 hours 45
+                minutes. <strong>Lead time</strong> is the notice every order needs: the shop minimum is{" "}
+                {MIN_LEAD_TIME_HOURS} hours, and customers get whichever is longer.
+              </>
+            )}
           </p>
           <h3>Inventory</h3>
           <Checkbox label="Track inventory" name="trackInventory" defaultChecked={product?.trackInventory ?? true} />

@@ -798,6 +798,8 @@ export const defaultCustomerText: CustomerText = {
     "Ingredients & allergens": "Ingredients & allergens",
     "Contains:": "Contains:",
     "Storage & preparation": "Storage & preparation",
+    "Lead time": "Lead time",
+    "Order at least {time} ahead. Your cake arrives ready to serve.": "Order at least {time} ahead. Your cake arrives ready to serve.",
     "You may also love": "You may also love",
     "Shop all": "Shop all",
   },

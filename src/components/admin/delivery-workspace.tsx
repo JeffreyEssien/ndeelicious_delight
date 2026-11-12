@@ -1157,7 +1157,7 @@ function NextDatesPreview({ draft }: { draft: Draft }) {
           </div>
         ))}
       </dl>
-      <small>Items with longer preparation times push these dates later.</small>
+      <small>Items with longer preparation or lead times (like custom cakes) push these dates later.</small>
     </section>
   );
 }
