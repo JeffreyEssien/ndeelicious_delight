@@ -8,7 +8,7 @@ import { ProductReviews } from "@/components/product/product-reviews";
 import { ProductGrid } from "@/components/product/product-grid";
 import { formatMoney } from "@/lib/format";
 import { getPurchasableVariants } from "@/features/catalog/availability";
-import { variantPrice } from "@/features/catalog/pricing";
+import { formatPreparationTime, variantPrice } from "@/features/catalog/pricing";
 import { getProduct, getProducts } from "@/lib/data/catalog";
 import { Badge } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icons";
@@ -96,8 +96,22 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             <p>
               <Icon name="clock" />
               <span>
-                <b>{content.product.preparationTitle}</b>
-                <small>{content.product.preparationText}</small>
+                {product.category === "CUSTOM_CAKES" && product.preparationHours ? (
+                  // Cakes arrive ready to serve, so customers see the notice needed (lead time), not a preparation time.
+                  <>
+                    <b>{t("Lead time")}</b>
+                    <small>
+                      {t("Order at least {time} ahead. Your cake arrives ready to serve.", {
+                        time: formatPreparationTime(product.preparationHours),
+                      })}
+                    </small>
+                  </>
+                ) : (
+                  <>
+                    <b>{content.product.preparationTitle}</b>
+                    <small>{content.product.preparationText}</small>
+                  </>
+                )}
               </span>
             </p>
           </div>

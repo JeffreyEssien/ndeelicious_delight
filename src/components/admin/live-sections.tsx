@@ -299,7 +299,7 @@ export function CakeRequests({
                   {
                     {
                       cakeType: "Cake",
-                      minimumLeadTime: "Preparation time",
+                      minimumLeadTime: "Lead time",
                       size: "Size",
                       flavour: "Cake flavour",
                       filling: "Filling",
